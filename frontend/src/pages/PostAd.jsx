@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage, ensureLoggedIn } from '../lib/firebase';
+import { db, ensureLoggedIn } from '../lib/firebase';
+import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { CATEGORIES, getSubcategory } from '../data/categories';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
 import ImageUploader from '../components/ImageUploader.jsx';
@@ -46,18 +46,16 @@ export default function PostAd() {
       // wake up on its first request after being idle (free tier).
       const user = await ensureLoggedIn();
 
-      let imageUrls = [];
+      // Photos are resized + compressed client-side and stored as
+      // base64 strings directly on the listing document — no
+      // Firebase Storage (which needs the paid Blaze plan) involved.
+      let compressedImages = [];
       if (images.length > 0) {
-        setStatusMsg(`Uploading photos (0/${images.length})...`);
-        imageUrls = [];
+        setStatusMsg(`Processing photos (0/${images.length})...`);
         for (let i = 0; i < images.length; i++) {
-          const file = images[i];
-          const path = `listings/${user.uid}/${Date.now()}_${i}_${file.name}`;
-          const storageRef = ref(storage, path);
-          await uploadBytes(storageRef, file);
-          const url = await getDownloadURL(storageRef);
-          imageUrls.push(url);
-          setStatusMsg(`Uploading photos (${i + 1}/${images.length})...`);
+          const dataUrl = await fileToCompressedBase64(images[i]);
+          compressedImages.push(dataUrl);
+          setStatusMsg(`Processing photos (${i + 1}/${images.length})...`);
         }
       }
 
@@ -72,7 +70,7 @@ export default function PostAd() {
         subcategory: subcategoryId,
         attributes: attrs,
         condition: attrs.condition || '',
-        imageUrls,
+        images: compressedImages,
         createdAt: serverTimestamp(),
         boostedUntil: null,
         views: 0,
@@ -95,7 +93,7 @@ export default function PostAd() {
       <div className="form-block">
         <div className="field-group">
           <label className="field-label">Photos</label>
-          <ImageUploader files={images} onChange={setImages} />
+          <ImageUploader files={images} onChange={setImages} maxImages={5} />
         </div>
 
         <div className="field-group">

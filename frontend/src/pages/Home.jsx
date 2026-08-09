@@ -53,7 +53,7 @@ export default function Home() {
 }
 
 function ListingCard({ item }) {
-  const photo = item.imageUrls && item.imageUrls[0];
+  const photo = item.images && item.images[0];
   return (
     <Link to={`/product/${item.id}`} className="listing-card">
       <div className="thumb" style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: item.color || '#8FA998' }} />
