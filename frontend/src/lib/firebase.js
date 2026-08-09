@@ -8,12 +8,13 @@ import { getInitData } from './telegram';
 // Safe to keep in the client bundle (these are public identifiers,
 // not secrets — access is controlled by firestore.rules).
 const firebaseConfig = {
-  apiKey: 'REPLACE_ME',
-  authDomain: 'REPLACE_ME.firebaseapp.com',
-  projectId: 'REPLACE_ME',
-  storageBucket: 'REPLACE_ME.appspot.com',
-  messagingSenderId: 'REPLACE_ME',
-  appId: 'REPLACE_ME',
+  apiKey: 'AIzaSyB3fzsBS9m5dqrk20wHig35lPxxnKny5mE',
+  authDomain: 'holeta-c22fc.firebaseapp.com',
+  projectId: 'holeta-c22fc',
+  storageBucket: 'holeta-c22fc.firebasestorage.app',
+  messagingSenderId: '747642466720',
+  appId: '1:747642466720:web:0be7ee1e33e7d1668774c5',
+  measurementId: 'G-THX2TJHHR3',
 };
 
 export const app = initializeApp(firebaseConfig);
