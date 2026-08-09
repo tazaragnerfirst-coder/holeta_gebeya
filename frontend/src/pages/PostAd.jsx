@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, ensureLoggedIn } from '../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage, ensureLoggedIn } from '../lib/firebase';
 import { CATEGORIES, getSubcategory } from '../data/categories';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
+import ImageUploader from '../components/ImageUploader.jsx';
 
 export default function PostAd() {
   const navigate = useNavigate();
@@ -14,7 +16,9 @@ export default function PostAd() {
   const [price, setPrice] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('Holeta');
+  const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [statusMsg, setStatusMsg] = useState('');
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
   const subcategory = category && subcategoryId ? getSubcategory(categoryId, subcategoryId) : null;
@@ -35,11 +39,30 @@ export default function PostAd() {
       return;
     }
     setSubmitting(true);
+    setStatusMsg('Signing in...');
     try {
       // Login is only requested at the moment of posting — browsing
-      // and viewing never require it.
+      // and viewing never require it. The backend can take ~30s to
+      // wake up on its first request after being idle (free tier).
       const user = await ensureLoggedIn();
-      const ref = await addDoc(collection(db, 'listings'), {
+
+      let imageUrls = [];
+      if (images.length > 0) {
+        setStatusMsg(`Uploading photos (0/${images.length})...`);
+        imageUrls = [];
+        for (let i = 0; i < images.length; i++) {
+          const file = images[i];
+          const path = `listings/${user.uid}/${Date.now()}_${i}_${file.name}`;
+          const storageRef = ref(storage, path);
+          await uploadBytes(storageRef, file);
+          const url = await getDownloadURL(storageRef);
+          imageUrls.push(url);
+          setStatusMsg(`Uploading photos (${i + 1}/${images.length})...`);
+        }
+      }
+
+      setStatusMsg('Publishing...');
+      const ref2 = await addDoc(collection(db, 'listings'), {
         sellerId: user.uid,
         title,
         price: Number(price),
@@ -49,14 +72,19 @@ export default function PostAd() {
         subcategory: subcategoryId,
         attributes: attrs,
         condition: attrs.condition || '',
+        imageUrls,
         createdAt: serverTimestamp(),
         boostedUntil: null,
         views: 0,
         status: 'active',
       });
-      navigate(`/product/${ref.id}`);
+      navigate(`/product/${ref2.id}`);
+    } catch (err) {
+      console.error(err);
+      alert(`Couldn't post your ad: ${err.message || err}\n\nIf this is the first request in a while, the server may still be waking up — please try again in 30 seconds.`);
     } finally {
       setSubmitting(false);
+      setStatusMsg('');
     }
   }
 
@@ -65,6 +93,11 @@ export default function PostAd() {
       <h2 className="page-title">Post an Ad</h2>
 
       <div className="form-block">
+        <div className="field-group">
+          <label className="field-label">Photos</label>
+          <ImageUploader files={images} onChange={setImages} />
+        </div>
+
         <div className="field-group">
           <label className="field-label">Category</label>
           <select className="field" value={categoryId} onChange={(e) => onCategoryChange(e.target.value)}>
@@ -111,8 +144,9 @@ export default function PostAd() {
         </div>
 
         <button className="btn btn-primary" disabled={submitting} onClick={submit}>
-          {submitting ? 'Posting...' : 'Continue'}
+          {submitting ? (statusMsg || 'Posting...') : 'Continue'}
         </button>
+        {submitting && <p className="helper-text" style={{ textAlign: 'center' }}>First post after a while can take up to 30s while the server wakes up.</p>}
       </div>
     </div>
   );

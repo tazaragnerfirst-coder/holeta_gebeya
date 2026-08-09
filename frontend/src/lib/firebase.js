@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, signInWithCustomToken } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import { getInitData } from './telegram';
 
 // Fill these in from Firebase Console → Project Settings → General.
@@ -24,6 +25,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 let loginPromise = null;
 
@@ -33,6 +35,10 @@ let loginPromise = null;
  * account: contacting a seller (chat) or posting an ad.
  * Sends Telegram initData to the Render backend for HMAC
  * verification, then signs in with the returned custom token.
+ *
+ * NOTE: the Render free tier sleeps after inactivity — the first
+ * call after a while can take 20-50s to wake up. Callers should
+ * show a loading state while this resolves.
  */
 export function ensureLoggedIn() {
   if (auth.currentUser) return Promise.resolve(auth.currentUser);
@@ -44,11 +50,15 @@ export function ensureLoggedIn() {
     body: JSON.stringify({ initData: getInitData() }),
   })
     .then((r) => {
-      if (!r.ok) return r.json().then((e) => { throw new Error(e.error || 'Login failed'); });
+      if (!r.ok) return r.json().then((e) => { throw new Error(e.error || `Login failed (${r.status})`); });
       return r.json();
     })
     .then((data) => signInWithCustomToken(auth, data.token))
     .then((cred) => cred.user)
+    .catch((err) => {
+      console.error('ensureLoggedIn failed:', err);
+      throw err;
+    })
     .finally(() => { loginPromise = null; });
 
   return loginPromise;

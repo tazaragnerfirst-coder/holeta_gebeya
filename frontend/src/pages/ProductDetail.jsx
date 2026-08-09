@@ -32,7 +32,7 @@ export default function ProductDetail() {
 
   return (
     <div className="page">
-      <div className="carousel" style={{ background: item.color || '#8FA998' }} />
+      <div className="carousel" style={item.imageUrls?.[0] ? { backgroundImage: `url(${item.imageUrls[0]})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { background: item.color || '#8FA998' }} />
       <div className="pd-body">
         <div className="pd-price-row">
           <div className="pd-price">{item.price} ETB</div>
