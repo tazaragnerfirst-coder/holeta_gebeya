@@ -1,7 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, signInWithCustomToken } from 'firebase/auth';
-import { getFunctions, httpsCallable } from 'firebase/functions';
 import { getInitData } from './telegram';
 
 // Fill these in from Firebase Console → Project Settings → General.
@@ -17,10 +16,14 @@ const firebaseConfig = {
   measurementId: 'G-THX2TJHHR3',
 };
 
+// URL of the small Express server deployed on Render — see
+// backend/server/index.js. Set VITE_BACKEND_URL in a .env file
+// (frontend/.env) or in Vite's build-time env vars.
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const auth = getAuth(app);
-export const functions = getFunctions(app);
 
 let loginPromise = null;
 
@@ -28,16 +31,23 @@ let loginPromise = null;
  * Browsing (home, search, product detail) needs NO auth.
  * Call this lazily — only right before an action that requires an
  * account: contacting a seller (chat) or posting an ad.
- * Verifies Telegram initData server-side and exchanges it for a
- * Firebase custom auth token.
+ * Sends Telegram initData to the Render backend for HMAC
+ * verification, then signs in with the returned custom token.
  */
 export function ensureLoggedIn() {
   if (auth.currentUser) return Promise.resolve(auth.currentUser);
   if (loginPromise) return loginPromise;
 
-  const telegramAuth = httpsCallable(functions, 'telegramAuth');
-  loginPromise = telegramAuth({ initData: getInitData() })
-    .then((res) => signInWithCustomToken(auth, res.data.token))
+  loginPromise = fetch(`${BACKEND_URL}/telegramAuth`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ initData: getInitData() }),
+  })
+    .then((r) => {
+      if (!r.ok) return r.json().then((e) => { throw new Error(e.error || 'Login failed'); });
+      return r.json();
+    })
+    .then((data) => signInWithCustomToken(auth, data.token))
     .then((cred) => cred.user)
     .finally(() => { loginPromise = null; });
 

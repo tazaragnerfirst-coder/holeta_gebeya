@@ -3,9 +3,6 @@
     "rules": "backend/firestore.rules",
     "indexes": "backend/firestore.indexes.json"
   },
-  "functions": [
-    { "source": "backend/functions", "codebase": "default" }
-  ],
   "hosting": {
     "public": "frontend/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
