@@ -7,6 +7,7 @@ import ChatList from './pages/ChatList.jsx';
 import ChatThread from './pages/ChatThread.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Profile from './pages/Profile.jsx';
+import Icon from './components/Icon.jsx';
 
 export default function App() {
   return (
@@ -28,18 +29,19 @@ export default function App() {
 }
 
 function BottomNav() {
-  const item = (to, label) => (
+  const item = (to, label, icon) => (
     <NavLink to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end={to === '/'}>
+      <Icon name={icon} size={20} />
       <span>{label}</span>
     </NavLink>
   );
   return (
     <nav className="bottom-nav">
-      {item('/', 'Home')}
-      {item('/chat', 'Chat')}
-      <NavLink to="/post" className="nav-fab">+</NavLink>
-      {item('/dashboard', 'Dashboard')}
-      {item('/profile', 'Profile')}
+      {item('/', 'Home', 'home')}
+      {item('/chat', 'Chat', 'chat')}
+      <NavLink to="/post" className="nav-fab"><Icon name="plus" size={22} /></NavLink>
+      {item('/dashboard', 'Dashboard', 'briefcase')}
+      {item('/profile', 'Profile', 'user')}
     </nav>
   );
 }

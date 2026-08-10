@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import Icon from './Icon.jsx';
 
 export default function ImageUploader({ files, onChange, maxImages = 8 }) {
   const inputRef = useRef(null);
@@ -16,11 +17,11 @@ export default function ImageUploader({ files, onChange, maxImages = 8 }) {
       <div className="upload-grid">
         {files.map((f, i) => (
           <div className="upload-slot filled" key={i} style={{ backgroundImage: `url(${URL.createObjectURL(f)})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-            <span className="x" onClick={() => removeAt(i)}>×</span>
+            <span className="x" onClick={() => removeAt(i)}><Icon name="x" size={12} /></span>
           </div>
         ))}
         {files.length < maxImages && (
-          <div className="upload-slot" onClick={() => inputRef.current?.click()}>+</div>
+          <div className="upload-slot" onClick={() => inputRef.current?.click()}><Icon name="camera" size={20} /></div>
         )}
       </div>
       <input
