@@ -15,6 +15,9 @@ function colorFor(id) {
 export default function Home() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'price-asc'
 
   useEffect(() => {
     // Public read — no auth required. See firestore.rules.
@@ -26,30 +29,63 @@ export default function Home() {
 
   const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());
 
+  const term = search.trim().toLowerCase();
+  let filtered = listings.filter((l) => {
+    const matchesTerm = !term || l.title?.toLowerCase().includes(term);
+    const matchesCategory = !activeCategory || l.category === activeCategory;
+    return matchesTerm && matchesCategory;
+  });
+  if (sortBy === 'price-asc') {
+    filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+  }
+
+  const filtering = term || activeCategory;
+
   return (
     <div className="page">
       <div className="search-bar">
         <Icon name="search" size={17} style={{ color: 'var(--ink-faint)' }} />
-        <input placeholder="Search — e.g. iPhone, sofa, Vitz..." />
+        <input
+          placeholder="Search — e.g. iPhone, sofa, Vitz..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {search && (
+          <Icon name="x" size={16} style={{ color: 'var(--ink-faint)', cursor: 'pointer' }} onClick={() => setSearch('')} />
+        )}
       </div>
 
       <div className="chip-row">
         <div className="chip active"><Icon name="mapPin" size={14} /> Holeta</div>
-        <div className="chip">All prices</div>
-        <div className="chip">Newest</div>
+        <div
+          className={`chip ${sortBy === 'price-asc' ? 'active' : ''}`}
+          onClick={() => setSortBy(sortBy === 'price-asc' ? 'newest' : 'price-asc')}
+        >
+          {sortBy === 'price-asc' ? 'Price: Low to High' : 'All prices'}
+        </div>
+        <div className="chip" onClick={() => setSortBy('newest')}>Newest</div>
+        {activeCategory && (
+          <div className="chip active" onClick={() => setActiveCategory(null)}>
+            {CATEGORIES.find((c) => c.id === activeCategory)?.name} <Icon name="x" size={12} />
+          </div>
+        )}
       </div>
 
       <h3 className="section-title">Categories</h3>
       <div className="cat-grid">
         {CATEGORIES.map((c) => (
-          <div className="cat-item" key={c.id}>
+          <div
+            className={`cat-item ${activeCategory === c.id ? 'active' : ''}`}
+            key={c.id}
+            onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
+          >
             <div className="cat-icon"><Icon name={c.icon || 'grid'} size={19} /></div>
             <span>{c.name}</span>
           </div>
         ))}
       </div>
 
-      {boosted.length > 0 && (
+      {!filtering && boosted.length > 0 && (
         <>
           <h3 className="section-title"><Icon name="trendingUp" size={16} /> Featured</h3>
           <div className="boost-scroll">
@@ -58,13 +94,15 @@ export default function Home() {
         </>
       )}
 
-      <h3 className="section-title">Recent Listings</h3>
+      <h3 className="section-title">{filtering ? 'Results' : 'Recent Listings'}</h3>
       {loading && <p className="helper-text">Loading...</p>}
-      {!loading && listings.length === 0 && (
-        <p className="helper-text">No listings yet — be the first to post one.</p>
+      {!loading && filtered.length === 0 && (
+        <p className="helper-text">
+          {filtering ? 'No listings match your search or filter.' : 'No listings yet — be the first to post one.'}
+        </p>
       )}
       <div className="listing-grid">
-        {listings.map((item) => <ListingCard key={item.id} item={item} />)}
+        {filtered.map((item) => <ListingCard key={item.id} item={item} />)}
       </div>
     </div>
   );
