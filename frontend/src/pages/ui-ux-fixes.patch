@@ -1,0 +1,223 @@
+diff --git a/frontend/src/components/Icon.jsx b/frontend/src/components/Icon.jsx
+index 250581f..35e5a54 100644
+--- a/frontend/src/components/Icon.jsx
++++ b/frontend/src/components/Icon.jsx
+@@ -32,7 +32,7 @@ const PATHS = {
+   x: '<path d="M6 6l12 12M18 6L6 18"/>',
+ };
+ 
+-export default function Icon({ name, size = 20, className = '', style }) {
++export default function Icon({ name, size = 20, className = '', style, ...rest }) {
+   const path = PATHS[name] || '';
+   return (
+     <svg
+@@ -47,6 +47,7 @@ export default function Icon({ name, size = 20, className = '', style }) {
+       strokeLinecap="round"
+       strokeLinejoin="round"
+       dangerouslySetInnerHTML={{ __html: path }}
++      {...rest}
+     />
+   );
+ }
+diff --git a/frontend/src/pages/ChatThread.jsx b/frontend/src/pages/ChatThread.jsx
+index c9f8e45..e7722bc 100644
+--- a/frontend/src/pages/ChatThread.jsx
++++ b/frontend/src/pages/ChatThread.jsx
+@@ -1,5 +1,5 @@
+ import React, { useEffect, useState } from 'react';
+-import { useParams } from 'react-router-dom';
++import { Link, useParams } from 'react-router-dom';
+ import { collection, addDoc, doc, serverTimestamp, orderBy, query, onSnapshot, updateDoc } from 'firebase/firestore';
+ import { auth, db, ensureLoggedIn } from '../lib/firebase';
+ import Icon from '../components/Icon.jsx';
+@@ -8,11 +8,16 @@ export default function ChatThread() {
+   const { id } = useParams();
+   const [messages, setMessages] = useState([]);
+   const [text, setText] = useState('');
++  const [chatInfo, setChatInfo] = useState(null);
+ 
+   useEffect(() => {
+     ensureLoggedIn().then(() => {
++      const unsubChat = onSnapshot(doc(db, 'chats', id), (snap) => {
++        if (snap.exists()) setChatInfo(snap.data());
++      });
+       const q = query(collection(db, 'chats', id, 'messages'), orderBy('createdAt', 'asc'));
+-      return onSnapshot(q, (snap) => setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
++      const unsubMsgs = onSnapshot(q, (snap) => setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
++      return () => { unsubChat(); unsubMsgs(); };
+     }).catch((err) => console.error(err));
+   }, [id]);
+ 
+@@ -34,6 +39,18 @@ export default function ChatThread() {
+ 
+   return (
+     <div className="page thread-page">
++      <div className="chat-context">
++        <Link to="/chat" className="chat-back" aria-label="Back to messages">
++          <Icon name="chevronLeft" size={19} />
++        </Link>
++        <div className="thumb-mini" />
++        <div className="info">
++          <div className="t">{chatInfo?.listingTitle || 'Listing'}</div>
++        </div>
++        {chatInfo?.listingId && (
++          <Link to={`/product/${chatInfo.listingId}`} className="p" style={{ textDecoration: 'none' }}>View</Link>
++        )}
++      </div>
+       <div className="safety-banner">
+         <Icon name="shield" size={16} />
+         <span>Meet the seller in person and inspect the item before you pay. Never send money in advance.</span>
+diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+index 793164b..0e79e07 100644
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -1,4 +1,5 @@
+ import React, { useEffect, useState } from 'react';
++import { Link } from 'react-router-dom';
+ import { collection, query, where, onSnapshot } from 'firebase/firestore';
+ import { db, ensureLoggedIn } from '../lib/firebase';
+ import Icon from '../components/Icon.jsx';
+@@ -35,7 +36,7 @@ export default function Dashboard() {
+       {ads.map((a) => {
+         const photo = a.images && a.images[0];
+         return (
+-          <div className="ad-row" key={a.id}>
++          <Link to={`/product/${a.id}`} className="ad-row" key={a.id} style={{ textDecoration: 'none', color: 'inherit' }}>
+             <div className="ad-thumb" style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
+               {!photo && <Icon name="image" size={16} />}
+             </div>
+@@ -45,7 +46,7 @@ export default function Dashboard() {
+               <div className="metrics"><span><Icon name="eye" size={13} /> {a.views || 0}</span></div>
+             </div>
+             <div className={`status-pill ${a.status}`}>{a.status}</div>
+-          </div>
++          </Link>
+         );
+       })}
+     </div>
+diff --git a/frontend/src/pages/Home.jsx b/frontend/src/pages/Home.jsx
+index ccfcab7..20facd2 100644
+--- a/frontend/src/pages/Home.jsx
++++ b/frontend/src/pages/Home.jsx
+@@ -15,6 +15,9 @@ function colorFor(id) {
+ export default function Home() {
+   const [listings, setListings] = useState([]);
+   const [loading, setLoading] = useState(true);
++  const [search, setSearch] = useState('');
++  const [activeCategory, setActiveCategory] = useState(null);
++  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'price-asc'
+ 
+   useEffect(() => {
+     // Public read — no auth required. See firestore.rules.
+@@ -26,30 +29,63 @@ export default function Home() {
+ 
+   const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());
+ 
++  const term = search.trim().toLowerCase();
++  let filtered = listings.filter((l) => {
++    const matchesTerm = !term || l.title?.toLowerCase().includes(term);
++    const matchesCategory = !activeCategory || l.category === activeCategory;
++    return matchesTerm && matchesCategory;
++  });
++  if (sortBy === 'price-asc') {
++    filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
++  }
++
++  const filtering = term || activeCategory;
++
+   return (
+     <div className="page">
+       <div className="search-bar">
+         <Icon name="search" size={17} style={{ color: 'var(--ink-faint)' }} />
+-        <input placeholder="Search — e.g. iPhone, sofa, Vitz..." />
++        <input
++          placeholder="Search — e.g. iPhone, sofa, Vitz..."
++          value={search}
++          onChange={(e) => setSearch(e.target.value)}
++        />
++        {search && (
++          <Icon name="x" size={16} style={{ color: 'var(--ink-faint)', cursor: 'pointer' }} onClick={() => setSearch('')} />
++        )}
+       </div>
+ 
+       <div className="chip-row">
+         <div className="chip active"><Icon name="mapPin" size={14} /> Holeta</div>
+-        <div className="chip">All prices</div>
+-        <div className="chip">Newest</div>
++        <div
++          className={`chip ${sortBy === 'price-asc' ? 'active' : ''}`}
++          onClick={() => setSortBy(sortBy === 'price-asc' ? 'newest' : 'price-asc')}
++        >
++          {sortBy === 'price-asc' ? 'Price: Low to High' : 'All prices'}
++        </div>
++        <div className="chip" onClick={() => setSortBy('newest')}>Newest</div>
++        {activeCategory && (
++          <div className="chip active" onClick={() => setActiveCategory(null)}>
++            {CATEGORIES.find((c) => c.id === activeCategory)?.name} <Icon name="x" size={12} />
++          </div>
++        )}
+       </div>
+ 
+       <h3 className="section-title">Categories</h3>
+       <div className="cat-grid">
+         {CATEGORIES.map((c) => (
+-          <div className="cat-item" key={c.id}>
++          <div
++            className={`cat-item ${activeCategory === c.id ? 'active' : ''}`}
++            key={c.id}
++            onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
++          >
+             <div className="cat-icon"><Icon name={c.icon || 'grid'} size={19} /></div>
+             <span>{c.name}</span>
+           </div>
+         ))}
+       </div>
+ 
+-      {boosted.length > 0 && (
++      {!filtering && boosted.length > 0 && (
+         <>
+           <h3 className="section-title"><Icon name="trendingUp" size={16} /> Featured</h3>
+           <div className="boost-scroll">
+@@ -58,13 +94,15 @@ export default function Home() {
+         </>
+       )}
+ 
+-      <h3 className="section-title">Recent Listings</h3>
++      <h3 className="section-title">{filtering ? 'Results' : 'Recent Listings'}</h3>
+       {loading && <p className="helper-text">Loading...</p>}
+-      {!loading && listings.length === 0 && (
+-        <p className="helper-text">No listings yet — be the first to post one.</p>
++      {!loading && filtered.length === 0 && (
++        <p className="helper-text">
++          {filtering ? 'No listings match your search or filter.' : 'No listings yet — be the first to post one.'}
++        </p>
+       )}
+       <div className="listing-grid">
+-        {listings.map((item) => <ListingCard key={item.id} item={item} />)}
++        {filtered.map((item) => <ListingCard key={item.id} item={item} />)}
+       </div>
+     </div>
+   );
+diff --git a/frontend/src/styles/theme.css b/frontend/src/styles/theme.css
+index 5397ac5..91a6cf6 100644
+--- a/frontend/src/styles/theme.css
++++ b/frontend/src/styles/theme.css
+@@ -31,7 +31,9 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
+ .chip.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+ 
+ .cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+-.cat-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink-soft);box-shadow:var(--shadow-card);}
++.cat-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;font-size:11.5px;font-weight:600;color:var(--ink-soft);box-shadow:var(--shadow-card);cursor:pointer;transition:border-color .15s,background .15s;}
++.cat-item.active{border-color:var(--primary);background:var(--primary-tint);color:var(--primary);}
++.cat-item.active .cat-icon{background:var(--primary);color:#fff;}
+ .cat-icon{width:38px;height:38px;border-radius:11px;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;}
+ 
+ .boost-scroll{display:flex;gap:11px;overflow-x:auto;padding-bottom:4px;}
+@@ -95,6 +97,7 @@ textarea.field{min-height:84px;resize:vertical;}
+ .chat-info .msg{font-size:12px;color:var(--ink-soft);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+ 
+ .chat-context{display:flex;align-items:center;gap:10px;background:var(--surface-sunken);margin:0 0 10px;padding:9px 10px;border-radius:12px;}
++.chat-back{display:flex;align-items:center;justify-content:center;width:28px;height:28px;flex:0 0 auto;color:var(--ink-soft);text-decoration:none;}
+ .chat-context .thumb-mini{width:36px;height:36px;border-radius:9px;background:var(--surface);flex:0 0 auto;}
+ .chat-context .info{flex:1;}
+ .chat-context .t{font-size:12px;font-weight:700;}
