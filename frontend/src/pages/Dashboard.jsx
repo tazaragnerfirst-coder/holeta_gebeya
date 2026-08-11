@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db, ensureLoggedIn } from '../lib/firebase';
 import Icon from '../components/Icon.jsx';
@@ -35,7 +36,7 @@ export default function Dashboard() {
       {ads.map((a) => {
         const photo = a.images && a.images[0];
         return (
-          <div className="ad-row" key={a.id}>
+          <Link to={`/product/${a.id}`} className="ad-row" key={a.id} style={{ textDecoration: 'none', color: 'inherit' }}>
             <div className="ad-thumb" style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
               {!photo && <Icon name="image" size={16} />}
             </div>
@@ -45,9 +46,9 @@ export default function Dashboard() {
               <div className="metrics"><span><Icon name="eye" size={13} /> {a.views || 0}</span></div>
             </div>
             <div className={`status-pill ${a.status}`}>{a.status}</div>
-          </div>
+          </Link>
         );
       })}
     </div>
   );
-}
+      }
