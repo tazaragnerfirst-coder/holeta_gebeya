@@ -32,7 +32,7 @@ const PATHS = {
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
 };
 
-export default function Icon({ name, size = 20, className = '', style }) {
+export default function Icon({ name, size = 20, className = '', style, ...rest }) {
   const path = PATHS[name] || '';
   return (
     <svg
@@ -47,6 +47,7 @@ export default function Icon({ name, size = 20, className = '', style }) {
       strokeLinecap="round"
       strokeLinejoin="round"
       dangerouslySetInnerHTML={{ __html: path }}
+      {...rest}
     />
   );
 }
