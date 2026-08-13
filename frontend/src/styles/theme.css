@@ -88,29 +88,43 @@ textarea.field{min-height:84px;resize:vertical;}
 .upload-slot.filled{border-style:solid;}
 .upload-slot .x{position:absolute;top:4px;right:4px;width:20px;height:20px;background:rgba(0,0,0,.5);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;}
 
-.chat-list-item{display:flex;align-items:center;gap:11px;text-decoration:none;color:inherit;padding:12px 0;border-bottom:1px solid var(--line);}
+.chat-list-item{position:relative;display:flex;align-items:center;gap:11px;text-decoration:none;color:inherit;padding:12px 0;border-bottom:1px solid var(--line);}
 .chat-thumb{width:50px;height:50px;border-radius:12px;flex:0 0 auto;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;color:var(--ink-faint);}
+.chat-thumb.support-thumb,.thumb-mini.support-thumb{background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;}
+.chat-list-item.support-pin{margin-bottom:2px;}
 .chat-info{flex:1;min-width:0;}
 .chat-info .top{display:flex;justify-content:space-between;gap:8px;}
 .chat-info .name{font-weight:700;font-size:13.5px;}
 .chat-info .time{font-size:10.5px;color:var(--ink-faint);flex:0 0 auto;}
 .chat-info .msg{font-size:12px;color:var(--ink-soft);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.unread-dot{position:absolute;right:0;top:16px;width:9px;height:9px;border-radius:50%;background:var(--primary);flex:0 0 auto;}
 
 .chat-context{display:flex;align-items:center;gap:10px;background:var(--surface-sunken);margin:0 0 10px;padding:9px 10px;border-radius:12px;}
 .chat-back{display:flex;align-items:center;justify-content:center;width:28px;height:28px;flex:0 0 auto;color:var(--ink-soft);text-decoration:none;}
 .chat-context .thumb-mini{width:36px;height:36px;border-radius:9px;background:var(--surface);flex:0 0 auto;}
-.chat-context .info{flex:1;}
-.chat-context .t{font-size:12px;font-weight:700;}
+.chat-context .info{flex:1;min-width:0;}
+.chat-context .n{font-size:12.5px;font-weight:700;}
+.chat-context .t{font-size:11px;color:var(--ink-faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .chat-context .p{font-size:12px;font-weight:800;color:var(--primary);}
 
-.thread-page{display:flex;flex-direction:column;min-height:100%;padding-bottom:0;}
-.thread{display:flex;flex-direction:column;gap:8px;flex:1;padding:6px 0;}
-.bubble{max-width:75%;padding:10px 13px;border-radius:16px;font-size:13px;line-height:1.5;}
+.thread-page{display:flex;flex-direction:column;min-height:calc(var(--app-vh, 100vh) - 0px);padding-bottom:0;}
+.thread{display:flex;flex-direction:column;gap:2px;flex:1;padding:6px 0;}
+.date-sep{display:flex;justify-content:center;margin:14px 0 8px;}
+.date-sep span{font-size:11px;font-weight:600;color:var(--ink-faint);background:var(--surface-sunken);padding:4px 11px;border-radius:20px;}
+.bubble{max-width:75%;padding:10px 13px;border-radius:16px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+.bubble.first{margin-top:8px;}
+.bubble.grouped{margin-top:2px;}
 .bubble.them{background:var(--surface);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:5px;}
 .bubble.me{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:5px;}
-.chat-input-row{display:flex;align-items:center;gap:9px;padding:10px 0 14px;position:sticky;bottom:0;background:var(--bg-app);}
-.chat-input-row .field{flex:1;}
+.bubble-time{font-size:10px;color:var(--ink-faint);margin:2px 2px 6px;}
+.bubble-time.me{align-self:flex-end;}
+.bubble-time.them{align-self:flex-start;}
+.chat-input-row{display:flex;align-items:flex-end;gap:9px;padding:10px 0 14px;position:sticky;bottom:0;background:var(--bg-app);}
+.chat-input-row .field{flex:1;resize:none;max-height:110px;line-height:1.4;}
 .send-btn{background:var(--primary);color:#fff;border:none;border-radius:50%;width:42px;height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.send-btn:disabled{opacity:.45;cursor:default;}
+
+.error-banner{display:flex;gap:8px;align-items:center;background:#FDECEA;color:#9B2C1F;border:1px solid #F3C4BC;border-radius:var(--radius-md);padding:10px 12px;font-size:12px;font-weight:500;margin:8px 0;}
 
 .stat-row{display:flex;gap:10px;}
 .stat-card{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:13px;box-shadow:var(--shadow-card);}

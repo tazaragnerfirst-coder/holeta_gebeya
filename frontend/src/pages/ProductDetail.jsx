@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, query, where, getDocs, limit, serverTimestamp } from 'firebase/firestore';
 import { db, ensureLoggedIn } from '../lib/firebase';
+import { getUnsafeUserPreview } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [item, setItem] = useState(null);
+  const [chatError, setChatError] = useState('');
+  const [startingChat, setStartingChat] = useState(false);
 
   useEffect(() => {
     getDoc(doc(db, 'listings', id)).then((snap) => {
@@ -18,20 +21,45 @@ export default function ProductDetail() {
   // Auth is only requested HERE — the moment the user wants to act
   // (message the seller), never before this point.
   async function startChat() {
+    if (startingChat) return;
+    setChatError('');
+    setStartingChat(true);
     try {
       const user = await ensureLoggedIn();
+
+      // Reuse an existing thread for this listing+buyer instead of
+      // creating a duplicate every time "Chat with Seller" is tapped.
+      const existing = await getDocs(query(
+        collection(db, 'chats'),
+        where('listingId', '==', id),
+        where('buyerId', '==', user.uid),
+        limit(1)
+      ));
+      if (!existing.empty) {
+        navigate(`/chat/${existing.docs[0].id}`);
+        return;
+      }
+
+      const buyerName = getUnsafeUserPreview()?.first_name || 'Buyer';
       const chatRef = await addDoc(collection(db, 'chats'), {
         listingId: id,
         listingTitle: item.title,
+        listingPhoto: item.images?.[0] || '',
         sellerId: item.sellerId,
+        sellerName: item.sellerName || 'Seller',
         buyerId: user.uid,
+        buyerName,
         participants: [item.sellerId, user.uid],
+        lastMessage: '',
+        lastSenderId: '',
         createdAt: serverTimestamp(),
         lastMessageAt: serverTimestamp(),
       });
       navigate(`/chat/${chatRef.id}`);
     } catch (err) {
-      alert(`Couldn't start chat: ${err.message || err}`);
+      setChatError(err.message || "Couldn't start chat. Please try again.");
+    } finally {
+      setStartingChat(false);
     }
   }
 
@@ -70,13 +98,20 @@ export default function ProductDetail() {
           <Icon name="shield" size={16} />
           <span>Meet the seller in person and inspect the item before you pay. Never send money in advance.</span>
         </div>
+
+        {chatError && (
+          <div className="error-banner">
+            <Icon name="x" size={14} />
+            <span>{chatError}</span>
+          </div>
+        )}
       </div>
       <div className="sticky-actions">
-        <button className="btn btn-outline-primary" onClick={() => ensureLoggedIn().then(() => alert('Calling — number revealed after login.')).catch((e) => alert(e.message))}>
+        <button className="btn btn-outline-primary" onClick={() => ensureLoggedIn().then(() => alert('Calling — number revealed after login.')).catch((e) => setChatError(e.message))}>
           <Icon name="phone" size={16} /> Call
         </button>
-        <button className="btn btn-primary" onClick={startChat}>
-          <Icon name="chat" size={16} /> Chat with Seller
+        <button className="btn btn-primary" onClick={startChat} disabled={startingChat}>
+          <Icon name="chat" size={16} /> {startingChat ? 'Opening…' : 'Chat with Seller'}
         </button>
       </div>
     </div>

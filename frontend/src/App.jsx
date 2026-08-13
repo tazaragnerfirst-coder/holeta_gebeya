@@ -31,7 +31,7 @@ export default function App() {
 function BottomNav() {
   const item = (to, label, icon) => (
     <NavLink to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end={to === '/'}>
-      <Icon name={icon} size={20} />
+      <Icon name={icon} size={24} />
       <span>{label}</span>
     </NavLink>
   );
@@ -39,7 +39,7 @@ function BottomNav() {
     <nav className="bottom-nav">
       {item('/', 'Home', 'home')}
       {item('/chat', 'Chat', 'chat')}
-      <NavLink to="/post" className="nav-fab"><Icon name="plus" size={22} /></NavLink>
+      <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
       {item('/dashboard', 'Dashboard', 'briefcase')}
       {item('/profile', 'Profile', 'user')}
     </nav>

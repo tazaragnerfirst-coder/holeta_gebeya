@@ -30,6 +30,10 @@ const PATHS = {
   car: '<path d="M4 16V12l2-5h12l2 5v4"/><path d="M4 16h16"/><circle cx="7.5" cy="17.5" r="1.6"/><circle cx="16.5" cy="17.5" r="1.6"/>',
   image: '<rect x="3" y="4.5" width="18" height="15" rx="2.5"/><circle cx="8.5" cy="10" r="1.6"/><path d="M4 16.5l5-4.5 3.5 3 3-2.5 4.5 4"/>',
   x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h13M21 18h0"/><circle cx="16" cy="6" r="2.2"/><circle cx="8" cy="12" r="2.2"/><circle cx="17" cy="18" r="2.2"/>',
+  xCircle: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>',
+  history: '<path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-7 3"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/>',
+  frown: '<circle cx="12" cy="12" r="9"/><path d="M8.5 15.5c1-1.2 2.2-1.8 3.5-1.8s2.5.6 3.5 1.8"/><circle cx="9" cy="9.5" r=".5" fill="currentColor" stroke="none"/><circle cx="15" cy="9.5" r=".5" fill="currentColor" stroke="none"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {

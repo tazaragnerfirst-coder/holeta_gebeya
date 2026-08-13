@@ -80,6 +80,56 @@ app.post('/telegramAuth', async (req, res) => {
   }
 });
 
+// Called by the client right after a chat message is written to
+// Firestore. Looks up the recipient's Telegram ID (stored on their
+// users/{uid} doc) and pings them via the Bot API — the client SDK
+// can't call Telegram directly (no bot token there), and we don't
+// have Cloud Functions/Firestore triggers on the free Spark plan.
+app.post('/notifyNewMessage', async (req, res) => {
+  try {
+    if (!BOT_TOKEN) return res.status(500).json({ error: 'Bot token not configured on the server.' });
+    const { recipientUid, senderName, listingTitle, text, chatId } = req.body || {};
+    if (!recipientUid || !text) return res.status(400).json({ error: 'recipientUid and text are required.' });
+
+    // "support" is a virtual participant (no Firebase Auth user, no
+    // Telegram ID to notify) — nothing to send.
+    if (recipientUid === 'support') return res.json({ ok: true, skipped: 'support' });
+
+    const userSnap = await db.collection('users').doc(recipientUid).get();
+    const telegramId = userSnap.exists ? userSnap.data().telegramId : null;
+    if (!telegramId) return res.json({ ok: true, skipped: 'no telegramId on file' });
+
+    const preview = text.length > 120 ? `${text.slice(0, 117)}...` : text;
+    const messageText = `💬 New message from ${senderName || 'someone'}`
+      + (listingTitle ? `\nAbout: "${listingTitle}"` : '')
+      + `\n\n${preview}`;
+
+    const webAppUrl = process.env.MINI_APP_URL
+      ? `${process.env.MINI_APP_URL}#/chat/${chatId}`
+      : undefined;
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: telegramId,
+        text: messageText,
+        ...(webAppUrl && chatId ? {
+          reply_markup: {
+            inline_keyboard: [[{ text: 'Open chat', web_app: { url: webAppUrl } }]],
+          },
+        } : {}),
+      }),
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('notifyNewMessage failed:', err);
+    // Never fail the chat send over a notification hiccup.
+    res.json({ ok: false });
+  }
+});
+
 app.post('/incrementListingView', async (req, res) => {
   try {
     const id = req.body.listingId;

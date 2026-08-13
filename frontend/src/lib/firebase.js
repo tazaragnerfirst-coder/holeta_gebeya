@@ -20,6 +20,7 @@ const firebaseConfig = {
 // backend/server/index.js. Set VITE_BACKEND_URL in a .env file
 // (frontend/.env) or in Vite's build-time env vars.
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+export { BACKEND_URL };
 
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
@@ -60,4 +61,14 @@ export function ensureLoggedIn() {
     .finally(() => { loginPromise = null; });
 
   return loginPromise;
+}
+
+// Best-effort — never blocks or breaks message sending if it fails
+// (e.g. Render free-tier cold start). Fire-and-forget from callers.
+export function notifyNewMessage({ recipientUid, senderName, listingTitle, text, chatId }) {
+  return fetch(`${BACKEND_URL}/notifyNewMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipientUid, senderName, listingTitle, text, chatId }),
+  }).catch((err) => console.error('notifyNewMessage failed:', err));
 }

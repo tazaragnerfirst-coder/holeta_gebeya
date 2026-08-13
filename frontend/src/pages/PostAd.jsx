@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db, ensureLoggedIn } from '../lib/firebase';
+import { getUnsafeUserPreview } from '../lib/telegram';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { CATEGORIES, getSubcategory } from '../data/categories';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
@@ -60,8 +61,15 @@ export default function PostAd() {
       }
 
       setStatusMsg('Publishing...');
+      // Display name is taken from Telegram's own client-side preview
+      // (not a Firestore read of another user's doc — that's blocked
+      // by firestore.rules) and stored on the listing so buyers can
+      // see who they'd be chatting with without any extra reads.
+      const sellerName = getUnsafeUserPreview()?.first_name || 'Seller';
+
       const ref2 = await addDoc(collection(db, 'listings'), {
         sellerId: user.uid,
+        sellerName,
         title,
         price: Number(price),
         description,

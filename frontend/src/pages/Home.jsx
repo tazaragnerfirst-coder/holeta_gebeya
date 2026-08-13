@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CATEGORIES } from '../data/categories';
 import Icon from '../components/Icon.jsx';
+import SearchHeader from '../components/SearchHeader.jsx';
+import FilterSheet from '../components/FilterSheet.jsx';
+import EmptyState from '../components/EmptyState.jsx';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
 function colorFor(id) {
@@ -12,15 +15,17 @@ function colorFor(id) {
   return SWATCHES[h];
 }
 
+const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
+
 export default function Home() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
-  const [sortBy, setSortBy] = useState('newest'); // 'newest' | 'price-asc'
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   useEffect(() => {
-    // Public read — no auth required. See firestore.rules.
     const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(30));
     getDocs(q)
       .then((snap) => setListings(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
@@ -30,60 +35,76 @@ export default function Home() {
   const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());
 
   const term = search.trim().toLowerCase();
-  let filtered = listings.filter((l) => {
-    const matchesTerm = !term || l.title?.toLowerCase().includes(term);
-    const matchesCategory = !activeCategory || l.category === activeCategory;
-    return matchesTerm && matchesCategory;
-  });
-  if (sortBy === 'price-asc') {
-    filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
-  }
 
-  const filtering = term || activeCategory;
+  const filtered = useMemo(() => {
+    return listings.filter((l) => {
+      const matchesTerm = !term || l.title?.toLowerCase().includes(term);
+      const matchesCategory = !activeCategory || l.category === activeCategory;
+      const matchesMin = filters.minPrice == null || (l.price || 0) >= filters.minPrice;
+      const matchesMax = filters.maxPrice == null || (l.price || 0) <= filters.maxPrice;
+      const matchesCondition = filters.conditions.length === 0 || filters.conditions.includes(l.condition);
+      return matchesTerm && matchesCategory && matchesMin && matchesMax && matchesCondition;
+    });
+  }, [listings, term, activeCategory, filters]);
+
+  const suggestions = useMemo(() => {
+    if (!term) return [];
+    const seen = new Set();
+    const out = [];
+    for (const l of listings) {
+      const title = l.title?.trim();
+      if (title && title.toLowerCase().includes(term) && !seen.has(title)) {
+        seen.add(title);
+        out.push(title);
+      }
+    }
+    return out;
+  }, [listings, term]);
+
+  const popularTags = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const l of [...boosted, ...listings]) {
+      const title = l.title?.trim();
+      if (title && !seen.has(title)) {
+        seen.add(title);
+        out.push(title);
+      }
+      if (out.length >= 6) break;
+    }
+    return out;
+  }, [listings, boosted]);
+
+  const filtering = Boolean(term || activeCategory || filters.minPrice != null || filters.maxPrice != null || filters.conditions.length > 0);
+  const activeFilterCount = (filters.minPrice != null ? 1 : 0) + (filters.maxPrice != null ? 1 : 0) + (filters.conditions.length > 0 ? 1 : 0);
+
+  function clearAll() {
+    setSearch('');
+    setActiveCategory(null);
+    setFilters(EMPTY_FILTERS);
+  }
 
   return (
     <div className="page">
-      <div className="search-bar">
-        <Icon name="search" size={17} style={{ color: 'var(--ink-faint)' }} />
-        <input
-          placeholder="Search — e.g. iPhone, sofa, Vitz..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        {search && (
-          <Icon name="x" size={16} style={{ color: 'var(--ink-faint)', cursor: 'pointer' }} onClick={() => setSearch('')} />
-        )}
-      </div>
+      <SearchHeader
+        value={search}
+        onChange={setSearch}
+        onSubmit={() => {}}
+        suggestions={suggestions}
+        popularTags={popularTags}
+        categories={CATEGORIES}
+        activeCategory={activeCategory}
+        onCategoryChange={setActiveCategory}
+        onOpenFilters={() => setFilterSheetOpen(true)}
+        activeFilterCount={activeFilterCount}
+      />
 
-      <div className="chip-row">
-        <div className="chip active"><Icon name="mapPin" size={14} /> Holeta</div>
-        <div
-          className={`chip ${sortBy === 'price-asc' ? 'active' : ''}`}
-          onClick={() => setSortBy(sortBy === 'price-asc' ? 'newest' : 'price-asc')}
-        >
-          {sortBy === 'price-asc' ? 'Price: Low to High' : 'All prices'}
-        </div>
-        <div className="chip" onClick={() => setSortBy('newest')}>Newest</div>
-        {activeCategory && (
-          <div className="chip active" onClick={() => setActiveCategory(null)}>
-            {CATEGORIES.find((c) => c.id === activeCategory)?.name} <Icon name="x" size={12} />
-          </div>
-        )}
-      </div>
-
-      <h3 className="section-title">Categories</h3>
-      <div className="cat-grid">
-        {CATEGORIES.map((c) => (
-          <div
-            className={`cat-item ${activeCategory === c.id ? 'active' : ''}`}
-            key={c.id}
-            onClick={() => setActiveCategory(activeCategory === c.id ? null : c.id)}
-          >
-            <div className="cat-icon"><Icon name={c.icon || 'grid'} size={19} /></div>
-            <span>{c.name}</span>
-          </div>
-        ))}
-      </div>
+      <FilterSheet
+        open={filterSheetOpen}
+        onClose={() => setFilterSheetOpen(false)}
+        filters={filters}
+        onApply={setFilters}
+      />
 
       {!filtering && boosted.length > 0 && (
         <>
@@ -96,11 +117,20 @@ export default function Home() {
 
       <h3 className="section-title">{filtering ? 'Results' : 'Recent Listings'}</h3>
       {loading && <p className="helper-text">Loading...</p>}
+
       {!loading && filtered.length === 0 && (
-        <p className="helper-text">
-          {filtering ? 'No listings match your search or filter.' : 'No listings yet — be the first to post one.'}
-        </p>
+        filtering ? (
+          <EmptyState
+            term={search.trim()}
+            suggestions={popularTags.slice(0, 4)}
+            onSuggestionClick={(s) => setSearch(s)}
+            onClear={clearAll}
+          />
+        ) : (
+          <p className="helper-text">No listings yet — be the first to post one.</p>
+        )
       )}
+
       <div className="listing-grid">
         {filtered.map((item) => <ListingCard key={item.id} item={item} />)}
       </div>
