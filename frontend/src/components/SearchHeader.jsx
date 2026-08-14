@@ -64,10 +64,6 @@ export default function SearchHeader({
 
   return (
     <div className="search-header" ref={wrapRef}>
-      <div className="app-header-row">
-        <h1 className="app-title">Holeta Gebeya</h1>
-      </div>
-
       <div className={`search-bar ${focused ? 'is-focused' : ''}`}>
         <Icon name="search" size={17} style={{ color: 'var(--ink-faint)', flex: '0 0 auto' }} />
         <input

@@ -8,6 +8,7 @@ const PATHS = {
   grid: '<rect x="3" y="3" width="8" height="8" rx="2"/><rect x="13" y="3" width="8" height="8" rx="2"/><rect x="3" y="13" width="8" height="8" rx="2"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
   chevronLeft: '<path d="M15 18l-6-6 6-6"/>',
   chevronRight: '<path d="M9 18l6-6-6-6"/>',
+  chevronDown: '<path d="M6 9l6 6 6-6"/>',
   phone: '<path d="M6.6 10.8a15.6 15.6 0 006.6 6.6l2.2-2.2a1.4 1.4 0 011.4-.34c1.1.36 2.3.56 3.5.56a1.4 1.4 0 011.4 1.4V20a1.4 1.4 0 01-1.4 1.4C10.6 21.4 2.6 13.4 2.6 3.7A1.4 1.4 0 014 2.3h3.2a1.4 1.4 0 011.4 1.4c0 1.2.2 2.4.56 3.5a1.4 1.4 0 01-.35 1.44l-2.2 2.16z"/>',
   chat: '<path d="M21 11.5a8.4 8.4 0 01-8.9 8.4 8.7 8.7 0 01-3.8-.9L3 20l1.1-4.5A8.4 8.4 0 1121 11.5z"/>',
   flag: '<path d="M5 3v18"/><path d="M5 4.5c2.5-1.4 5-1.4 7.5 0s5 1.4 7.5 0v9c-2.5 1.4-5 1.4-7.5 0s-5-1.4-7.5 0"/>',
@@ -34,6 +35,7 @@ const PATHS = {
   xCircle: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>',
   history: '<path d="M3 12a9 9 0 109-9 9.7 9.7 0 00-7 3"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/>',
   frown: '<circle cx="12" cy="12" r="9"/><path d="M8.5 15.5c1-1.2 2.2-1.8 3.5-1.8s2.5.6 3.5 1.8"/><circle cx="9" cy="9.5" r=".5" fill="currentColor" stroke="none"/><circle cx="15" cy="9.5" r=".5" fill="currentColor" stroke="none"/>',
+  check: '<path d="M20 6L9 17l-5-5"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {

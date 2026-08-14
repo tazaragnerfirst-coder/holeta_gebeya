@@ -8,6 +8,7 @@ import SearchHeader from '../components/SearchHeader.jsx';
 import FilterSheet from '../components/FilterSheet.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ListingGridSkeleton } from '../components/Skeletons.jsx';
+import { getCached, setCached } from '../lib/pageCache';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
 function colorFor(id) {
@@ -19,8 +20,8 @@ function colorFor(id) {
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 
 export default function Home() {
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [listings, setListings] = useState(() => getCached('home:listings') || []);
+  const [loading, setLoading] = useState(() => getCached('home:listings') === undefined);
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -29,7 +30,11 @@ export default function Home() {
   useEffect(() => {
     const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(30));
     getDocs(q)
-      .then((snap) => setListings(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+      .then((snap) => {
+        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setListings(data);
+        setCached('home:listings', data);
+      })
       .finally(() => setLoading(false));
   }, []);
 

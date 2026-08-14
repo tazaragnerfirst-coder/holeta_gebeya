@@ -6,20 +6,28 @@ import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
 import { ProductDetailSkeleton } from '../components/Skeletons.jsx';
+import { getCached, setCached } from '../lib/pageCache';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
-  const [item, setItem] = useState(null);
+  const [item, setItem] = useState(() => getCached(`product:${id}`) || null);
   const [notFound, setNotFound] = useState(false);
   const [chatError, setChatError] = useState('');
   const [startingChat, setStartingChat] = useState(false);
 
   useEffect(() => {
+    setItem(getCached(`product:${id}`) || null);
+    setNotFound(false);
     getDoc(doc(db, 'listings', id)).then((snap) => {
-      if (snap.exists()) setItem({ id: snap.id, ...snap.data() });
-      else setNotFound(true);
+      if (snap.exists()) {
+        const data = { id: snap.id, ...snap.data() };
+        setItem(data);
+        setCached(`product:${id}`, data);
+      } else {
+        setNotFound(true);
+      }
     }).catch(() => setNotFound(true));
   }, [id]);
 
