@@ -7,6 +7,7 @@ import Icon from '../components/Icon.jsx';
 import SearchHeader from '../components/SearchHeader.jsx';
 import FilterSheet from '../components/FilterSheet.jsx';
 import EmptyState from '../components/EmptyState.jsx';
+import { ListingGridSkeleton } from '../components/Skeletons.jsx';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
 function colorFor(id) {
@@ -116,7 +117,8 @@ export default function Home() {
       )}
 
       <h3 className="section-title">{filtering ? 'Results' : 'Recent Listings'}</h3>
-      {loading && <p className="helper-text">Loading...</p>}
+
+      {loading && <ListingGridSkeleton />}
 
       {!loading && filtered.length === 0 && (
         filtering ? (
@@ -131,9 +133,11 @@ export default function Home() {
         )
       )}
 
-      <div className="listing-grid">
-        {filtered.map((item) => <ListingCard key={item.id} item={item} />)}
-      </div>
+      {!loading && filtered.length > 0 && (
+        <div className="listing-grid">
+          {filtered.map((item) => <ListingCard key={item.id} item={item} />)}
+        </div>
+      )}
     </div>
   );
 }

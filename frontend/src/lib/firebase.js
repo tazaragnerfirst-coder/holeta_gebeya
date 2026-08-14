@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, signInWithCustomToken } from 'firebase/auth';
-import { getInitData } from './telegram';
+import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
+import { getInitData, getUnsafeUserPreview } from './telegram';
 
 // Fill these in from Firebase Console → Project Settings → General.
 // Safe to keep in the client bundle (these are public identifiers,
@@ -28,6 +28,15 @@ export const auth = getAuth(app);
 
 let loginPromise = null;
 
+// Backend mints uids as `tg_<telegram id>` (see server/index.js
+// telegramAuth handler) — mirror that here so we can tell whether a
+// cached Firebase session actually belongs to the Telegram user
+// currently using this device.
+function expectedUidForCurrentTelegramUser() {
+  const tgUser = getUnsafeUserPreview();
+  return tgUser ? `tg_${tgUser.id}` : null;
+}
+
 /**
  * Browsing (home, search, product detail) needs NO auth.
  * Call this lazily — only right before an action that requires an
@@ -35,19 +44,39 @@ let loginPromise = null;
  * Sends Telegram initData to the Render backend for HMAC
  * verification, then signs in with the returned custom token.
  *
+ * IMPORTANT: Firebase Auth persists sessions in IndexedDB across page
+ * reloads. If a different Telegram user opens this Mini App on the
+ * same device/browser storage (shared device, testing, etc.) without
+ * this check, they would silently inherit the PREVIOUS person's
+ * signed-in identity — seeing and sending messages as them. So we
+ * always confirm the cached session's uid still matches the current
+ * Telegram user before reusing it, and force a fresh sign-in
+ * (via signOut) if it doesn't.
+ *
  * NOTE: the Render free tier sleeps after inactivity — the first
  * call after a while can take 20-50s to wake up. Callers should
  * show a loading state while this resolves.
  */
 export function ensureLoggedIn() {
-  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  const expectedUid = expectedUidForCurrentTelegramUser();
+
+  if (auth.currentUser && (!expectedUid || auth.currentUser.uid === expectedUid)) {
+    return Promise.resolve(auth.currentUser);
+  }
+
   if (loginPromise) return loginPromise;
 
-  loginPromise = fetch(`${BACKEND_URL}/telegramAuth`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ initData: getInitData() }),
-  })
+  const mismatchedSession = auth.currentUser && expectedUid && auth.currentUser.uid !== expectedUid;
+  if (mismatchedSession) {
+    console.warn('Cached Firebase session belongs to a different Telegram user — signing out before re-authenticating.');
+  }
+
+  loginPromise = (mismatchedSession ? signOut(auth) : Promise.resolve())
+    .then(() => fetch(`${BACKEND_URL}/telegramAuth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData: getInitData() }),
+    }))
     .then((r) => {
       if (!r.ok) return r.json().then((e) => { throw new Error(e.error || `Login failed (${r.status})`); });
       return r.json();

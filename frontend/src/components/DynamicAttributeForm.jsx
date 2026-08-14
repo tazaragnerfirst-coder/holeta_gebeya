@@ -1,53 +1,74 @@
 import React from 'react';
+import ChipSelect from './ChipSelect.jsx';
+import ColorSwatchSelect from './ColorSwatchSelect.jsx';
 
 /**
  * Renders form fields from a subcategory's `attributes` schema
  * (see src/data/categories.js). Keeps values in a flat object keyed
  * by attribute.key, passed up via onChange.
+ *
+ * `select` / `select-dependent` / `color` render as inline chips or
+ * swatches (never a native <select> popup). `select-dependent` and
+ * `color` (when given a `dependsOn`) narrow their option list to the
+ * chosen parent value (e.g. brand -> model -> storage/ram/color),
+ * falling back to `fallbackOptions` when the specific parent value
+ * isn't in `optionsByParent`.
  */
-export default function DynamicAttributeForm({ attributes, values, onChange }) {
+export default function DynamicAttributeForm({ attributes, values, onChange, errors = {} }) {
   const setField = (key, value) => onChange({ ...values, [key]: value });
+  const labelFor = (key) => attributes.find((a) => a.key === key)?.label || key;
 
   return (
     <div className="attr-form">
-      {attributes.map((attr) => (
-        <div className="field-group" key={attr.key}>
-          <label className="field-label">
-            {attr.label}
-            {attr.required && <span className="req">*</span>}
-          </label>
-          {renderInput(attr, values, setField)}
-        </div>
-      ))}
+      {attributes.map((attr) => {
+        const error = errors[attr.key];
+        return (
+          <div className={`field-group ${error ? 'has-error' : ''}`} key={attr.key}>
+            <label className="field-label">
+              {attr.label}
+              {attr.required && <span className="req">*</span>}
+            </label>
+            {renderInput(attr, values, setField, labelFor)}
+            {error && <p className="field-error">{error}</p>}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function renderInput(attr, values, setField) {
+function renderInput(attr, values, setField, labelFor) {
   const value = values[attr.key] ?? '';
 
   switch (attr.type) {
     case 'select': {
-      return (
-        <select className="field" value={value} onChange={(e) => setField(attr.key, e.target.value)}>
-          <option value="">Select...</option>
-          {attr.options.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
-      );
+      return <ChipSelect options={attr.options} value={value} onChange={(v) => setField(attr.key, v)} />;
     }
     case 'select-dependent': {
       const parentValue = values[attr.dependsOn];
-      const options = (parentValue && attr.optionsByParent[parentValue]) || [];
+      const options = parentValue ? (attr.optionsByParent[parentValue] || attr.fallbackOptions || []) : [];
       return (
-        <select
-          className="field"
+        <ChipSelect
+          options={options}
           value={value}
+          onChange={(v) => setField(attr.key, v)}
           disabled={!parentValue}
-          onChange={(e) => setField(attr.key, e.target.value)}
-        >
-          <option value="">{parentValue ? 'Select model...' : `Select ${attr.dependsOn} first`}</option>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
-        </select>
+          placeholder={parentValue ? `No ${attr.label.toLowerCase()} options for this ${labelFor(attr.dependsOn).toLowerCase()} yet.` : `Select ${labelFor(attr.dependsOn).toLowerCase()} first`}
+        />
+      );
+    }
+    case 'color': {
+      const parentValue = attr.dependsOn ? values[attr.dependsOn] : null;
+      const options = attr.dependsOn
+        ? (parentValue ? (attr.optionsByParent[parentValue] || attr.fallbackOptions || []) : [])
+        : (attr.options || []);
+      return (
+        <ColorSwatchSelect
+          options={options}
+          value={value}
+          onChange={(v) => setField(attr.key, v)}
+          placeholder={attr.dependsOn && !parentValue ? `Select ${labelFor(attr.dependsOn).toLowerCase()} first` : ''}
+        />
       );
     }
     case 'number':

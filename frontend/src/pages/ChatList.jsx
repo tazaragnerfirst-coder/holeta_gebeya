@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db, ensureLoggedIn } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { useRequireRegistered } from '../lib/authGate.jsx';
 import { SUPPORT_NAME } from '../lib/constants';
 import Icon from '../components/Icon.jsx';
 
@@ -27,9 +28,10 @@ export default function ChatList() {
   const [chats, setChats] = useState([]);
   const [ready, setReady] = useState(false);
   const [uid, setUid] = useState(null);
+  const requireRegistered = useRequireRegistered();
 
   useEffect(() => {
-    ensureLoggedIn().then((user) => {
+    requireRegistered().then((user) => {
       setUid(user.uid);
       const q = query(
         collection(db, 'chats'),

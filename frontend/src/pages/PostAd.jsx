@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, ensureLoggedIn } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { CATEGORIES, getSubcategory } from '../data/categories';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
 import ImageUploader from '../components/ImageUploader.jsx';
+import ChipSelect from '../components/ChipSelect.jsx';
 
 export default function PostAd() {
   const navigate = useNavigate();
+  const requireRegistered = useRequireRegistered();
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
   const [attrs, setAttrs] = useState({});
@@ -20,6 +23,7 @@ export default function PostAd() {
   const [images, setImages] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [errors, setErrors] = useState({});
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
   const subcategory = category && subcategoryId ? getSubcategory(categoryId, subcategoryId) : null;
@@ -28,24 +32,52 @@ export default function PostAd() {
     setCategoryId(id);
     setSubcategoryId('');
     setAttrs({});
+    setErrors((e) => ({ ...e, categoryId: undefined, subcategoryId: undefined }));
   }
   function onSubcategoryChange(id) {
     setSubcategoryId(id);
     setAttrs({});
+    setErrors((e) => ({ ...e, subcategoryId: undefined }));
+  }
+
+  // Validates every required field and returns a map of field key ->
+  // human-readable message explaining what's missing and how to fix
+  // it. Dynamic attribute errors are nested under `attrs`.
+  function validate() {
+    const errs = {};
+    if (!categoryId) errs.categoryId = 'Select a category to continue.';
+    if (categoryId && !subcategoryId) errs.subcategoryId = 'Select a subcategory to continue.';
+    if (!title.trim()) errs.title = 'Title is required — give buyers a short, clear name for the item.';
+    if (!price || Number(price) <= 0) errs.price = 'Enter a valid price greater than 0.';
+
+    const attrErrs = {};
+    if (subcategory) {
+      for (const attr of subcategory.attributes) {
+        if (attr.required && !attrs[attr.key]) {
+          attrErrs[attr.key] = `${attr.label} is required — select it above.`;
+        }
+      }
+    }
+    if (Object.keys(attrErrs).length > 0) errs.attrs = attrErrs;
+    return errs;
   }
 
   async function submit() {
-    if (!title || !price || !categoryId || !subcategoryId) {
-      alert('Please fill in title, price and category.');
+    const errs = validate();
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      // Scroll the first invalid field into view so the person isn't
+      // left guessing which one needs attention.
+      document.querySelector('.field-group.has-error, .has-error .field')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+
     setSubmitting(true);
     setStatusMsg('Signing in...');
     try {
-      // Login is only requested at the moment of posting — browsing
-      // and viewing never require it. The backend can take ~30s to
-      // wake up on its first request after being idle (free tier).
-      const user = await ensureLoggedIn();
+      // Registration (Telegram sign-in + phone/full name) is only
+      // requested at the moment of posting — browsing never requires it.
+      const user = await requireRegistered();
 
       // Photos are resized + compressed client-side and stored as
       // base64 strings directly on the listing document — no
@@ -87,7 +119,8 @@ export default function PostAd() {
       navigate(`/product/${ref2.id}`);
     } catch (err) {
       console.error(err);
-      alert(`Couldn't post your ad: ${err.message || err}\n\nIf this is the first request in a while, the server may still be waking up — please try again in 30 seconds.`);
+      const isColdStart = /fetch|network|failed/i.test(err.message || '');
+      setErrors({ submit: `Couldn't post your ad: ${err.message || err}.${isColdStart ? ' If this is the first request in a while, the server may still be waking up — please try again in 30 seconds.' : ''}` });
     } finally {
       setSubmitting(false);
       setStatusMsg('');
@@ -104,21 +137,25 @@ export default function PostAd() {
           <ImageUploader files={images} onChange={setImages} maxImages={5} />
         </div>
 
-        <div className="field-group">
-          <label className="field-label">Category</label>
-          <select className="field" value={categoryId} onChange={(e) => onCategoryChange(e.target.value)}>
-            <option value="">Select category...</option>
-            {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+        <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
+          <label className="field-label">Category<span className="req">*</span></label>
+          <ChipSelect
+            options={CATEGORIES.map((c) => ({ label: c.name, value: c.id }))}
+            value={categoryId}
+            onChange={onCategoryChange}
+          />
+          {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
         </div>
 
         {category && (
-          <div className="field-group">
-            <label className="field-label">Subcategory</label>
-            <select className="field" value={subcategoryId} onChange={(e) => onSubcategoryChange(e.target.value)}>
-              <option value="">Select subcategory...</option>
-              {category.subcategories.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+          <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
+            <label className="field-label">Subcategory<span className="req">*</span></label>
+            <ChipSelect
+              options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
+              value={subcategoryId}
+              onChange={onSubcategoryChange}
+            />
+            {errors.subcategoryId && <p className="field-error">{errors.subcategoryId}</p>}
           </div>
         )}
 
@@ -127,16 +164,18 @@ export default function PostAd() {
             src/data/categories.js — add a subcategory there and its
             form appears here automatically. */}
         {subcategory && (
-          <DynamicAttributeForm attributes={subcategory.attributes} values={attrs} onChange={setAttrs} />
+          <DynamicAttributeForm attributes={subcategory.attributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
         )}
 
-        <div className="field-group">
-          <label className="field-label">Title</label>
+        <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
+          <label className="field-label">Title<span className="req">*</span></label>
           <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Samsung Galaxy A54, 128GB" />
+          {errors.title && <p className="field-error">{errors.title}</p>}
         </div>
-        <div className="field-group">
-          <label className="field-label">Price (ETB)</label>
+        <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
+          <label className="field-label">Price (ETB)<span className="req">*</span></label>
           <input className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
+          {errors.price && <p className="field-error">{errors.price}</p>}
         </div>
         <div className="field-group">
           <label className="field-label">Description</label>
@@ -148,6 +187,12 @@ export default function PostAd() {
             {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
           </select>
         </div>
+
+        {errors.submit && (
+          <div className="error-banner">
+            <span>{errors.submit}</span>
+          </div>
+        )}
 
         <button className="btn btn-primary" disabled={submitting} onClick={submit}>
           {submitting ? (statusMsg || 'Posting...') : 'Continue'}

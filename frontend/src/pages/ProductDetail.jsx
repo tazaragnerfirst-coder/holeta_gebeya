@@ -1,31 +1,36 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, collection, addDoc, query, where, getDocs, limit, serverTimestamp } from 'firebase/firestore';
-import { db, ensureLoggedIn } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
+import { ProductDetailSkeleton } from '../components/Skeletons.jsx';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const requireRegistered = useRequireRegistered();
   const [item, setItem] = useState(null);
+  const [notFound, setNotFound] = useState(false);
   const [chatError, setChatError] = useState('');
   const [startingChat, setStartingChat] = useState(false);
 
   useEffect(() => {
     getDoc(doc(db, 'listings', id)).then((snap) => {
       if (snap.exists()) setItem({ id: snap.id, ...snap.data() });
-    });
+      else setNotFound(true);
+    }).catch(() => setNotFound(true));
   }, [id]);
 
-  // Auth is only requested HERE — the moment the user wants to act
-  // (message the seller), never before this point.
+  // Registration is only requested HERE — the moment the user wants
+  // to act (message the seller), never before this point.
   async function startChat() {
     if (startingChat) return;
     setChatError('');
     setStartingChat(true);
     try {
-      const user = await ensureLoggedIn();
+      const user = await requireRegistered();
 
       // Reuse an existing thread for this listing+buyer instead of
       // creating a duplicate every time "Chat with Seller" is tapped.
@@ -63,7 +68,27 @@ export default function ProductDetail() {
     }
   }
 
-  if (!item) return <div className="page"><p className="helper-text">Loading...</p></div>;
+  async function call() {
+    setChatError('');
+    try {
+      await requireRegistered();
+      alert('Calling — number revealed after login.');
+    } catch (err) {
+      setChatError(err.message || "Couldn't verify your account. Please try again.");
+    }
+  }
+
+  if (notFound) {
+    return (
+      <div className="page">
+        <div className="error-banner">
+          <Icon name="x" size={14} />
+          <span>This listing couldn't be found — it may have been removed.</span>
+        </div>
+      </div>
+    );
+  }
+  if (!item) return <ProductDetailSkeleton />;
 
   return (
     <div className="page" style={{ padding: 0 }}>
@@ -107,7 +132,7 @@ export default function ProductDetail() {
         )}
       </div>
       <div className="sticky-actions">
-        <button className="btn btn-outline-primary" onClick={() => ensureLoggedIn().then(() => alert('Calling — number revealed after login.')).catch((e) => setChatError(e.message))}>
+        <button className="btn btn-outline-primary" onClick={call}>
           <Icon name="phone" size={16} /> Call
         </button>
         <button className="btn btn-primary" onClick={startChat} disabled={startingChat}>

@@ -6,11 +6,33 @@ export function getTelegramWebApp() {
   return typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
 }
 
+// Mini Apps render full-screen under Telegram's own native header bar
+// (the Close/chevron/more-options row). That bar's height is exposed
+// via `contentSafeAreaInset.top` on modern clients (Bot API 8.0+).
+// We mirror it into a CSS var so our own header can pad below it
+// instead of being covered by it. Falls back to a sensible constant
+// on older clients that don't expose the API yet.
+function applySafeArea(tg) {
+  const root = document.documentElement;
+  const content = tg?.contentSafeAreaInset;
+  const device = tg?.safeAreaInset;
+  const top = (content?.top ?? 0) + (device?.top ?? 0);
+  const bottom = (content?.bottom ?? 0) + (device?.bottom ?? 0);
+  // Older Telegram clients report 0/undefined even though the native
+  // header is still drawn on top of the webview — 44px covers that
+  // bar comfortably without over-padding on clients that do report it.
+  root.style.setProperty('--tg-safe-top', `${top > 0 ? top : 44}px`);
+  root.style.setProperty('--tg-safe-bottom', `${bottom}px`);
+}
+
 export function initTelegramApp() {
   const tg = getTelegramWebApp();
   if (!tg) return null;
   tg.ready();
   tg.expand();
+  applySafeArea(tg);
+  tg.onEvent?.('safeAreaChanged', () => applySafeArea(tg));
+  tg.onEvent?.('contentSafeAreaChanged', () => applySafeArea(tg));
   return tg;
 }
 

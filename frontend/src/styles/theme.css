@@ -187,3 +187,25 @@ textarea.field{min-height:84px;resize:vertical;}
 .sheet-actions button{flex:1;border:none;border-radius:14px;padding:13px 16px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--font-ui);}
 .sheet-actions .btn-ghost{background:var(--surface-sunken);color:var(--ink-soft);}
 .sheet-actions .btn-primary{background:var(--primary);color:#fff;}
+.sheet-actions button:disabled{opacity:.6;cursor:default;}
+
+/* --- Inline chip/swatch selectors (replace native <select> popups) --- */
+.chip-select-row{display:flex;flex-wrap:wrap;gap:8px;}
+.chip-select-empty{font-size:12.5px;color:var(--ink-faint);border:1.5px dashed var(--line);border-radius:12px;padding:11px 13px;}
+
+.swatch-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.swatch{width:30px;height:30px;border-radius:9px;border:2px solid var(--line);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 2px rgba(0,0,0,.08) inset;}
+.swatch.active{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary);}
+.swatch-selected-label{font-size:12px;font-weight:600;color:var(--ink-soft);}
+
+/* --- Inline field errors --- */
+.field-group.has-error .field,
+.field-group.has-error .chip-select-empty{border-color:var(--safety);}
+.field-error{display:flex;gap:5px;align-items:flex-start;font-size:11.5px;color:var(--safety);margin:6px 0 0;font-weight:500;line-height:1.4;}
+
+/* --- Skeleton loading --- */
+.skeleton-shimmer{position:relative;overflow:hidden;background:var(--surface-sunken);}
+.skeleton-shimmer::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:skeleton-sweep 1.3s ease-in-out infinite;}
+@keyframes skeleton-sweep{100%{transform:translateX(100%);}}
+.skeleton-card .card-body{display:flex;flex-direction:column;}
+.skeleton-line{border-radius:6px;}

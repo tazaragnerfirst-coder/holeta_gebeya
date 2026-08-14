@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db, ensureLoggedIn } from '../lib/firebase';
+import { db } from '../lib/firebase';
+import { useRequireRegistered } from '../lib/authGate.jsx';
 import Icon from '../components/Icon.jsx';
 
 export default function Dashboard() {
   const [ads, setAds] = useState([]);
   const [ready, setReady] = useState(false);
+  const requireRegistered = useRequireRegistered();
 
   useEffect(() => {
-    ensureLoggedIn().then((user) => {
+    requireRegistered().then((user) => {
       const q = query(collection(db, 'listings'), where('sellerId', '==', user.uid));
       return onSnapshot(q, (snap) => {
         setAds(snap.docs.map((d) => ({ id: d.id, ...d.data() })));

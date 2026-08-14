@@ -80,6 +80,31 @@ app.post('/telegramAuth', async (req, res) => {
   }
 });
 
+// Called from the signup sheet the first time a user takes an
+// account-required action (post, chat, call) and has no phone number
+// on file yet. Verifies the Firebase ID token (not just a client-
+// supplied uid) before writing, since users/{uid} is admin-write-only.
+app.post('/completeProfile', async (req, res) => {
+  try {
+    const { idToken, phone, fullName } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    if (!phone || !phone.trim()) return res.status(400).json({ error: 'Phone number is required.' });
+    if (!fullName || !fullName.trim()) return res.status(400).json({ error: 'Full name is required.' });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    await db.collection('users').doc(decoded.uid).set({
+      phone: phone.trim(),
+      fullName: fullName.trim(),
+      profileCompletedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('completeProfile failed:', err);
+    res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
 // Called by the client right after a chat message is written to
 // Firestore. Looks up the recipient's Telegram ID (stored on their
 // users/{uid} doc) and pings them via the Bot API — the client SDK
