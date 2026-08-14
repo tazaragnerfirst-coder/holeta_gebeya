@@ -1,0 +1,191 @@
+diff --git a/frontend/src/App.jsx b/frontend/src/App.jsx
+index 95412cf..a3a8a22 100644
+--- a/frontend/src/App.jsx
++++ b/frontend/src/App.jsx
+@@ -1,5 +1,5 @@
+ import React, { useEffect } from 'react';
+-import { Routes, Route, NavLink } from 'react-router-dom';
++import { Routes, Route, NavLink, useLocation, matchPath } from 'react-router-dom';
+ import Home from './pages/Home.jsx';
+ import ProductDetail from './pages/ProductDetail.jsx';
+ import PostAd from './pages/PostAd.jsx';
+@@ -20,10 +20,16 @@ export default function App() {
+     fetch(`${BACKEND_URL}/health`).catch(() => {});
+   }, []);
+ 
++  const location = useLocation();
++  // The open-conversation screen (chat thread) owns the full viewport
++  // with its own fixed header/composer, so the global bottom nav is
++  // hidden there instead of floating on top of the message list.
++  const inThread = !!matchPath('/chat/:id', location.pathname);
++
+   return (
+     <AuthGateProvider>
+       <div className="app-shell">
+-        <div className="screen-container">
++        <div className={`screen-container ${inThread ? 'no-nav' : ''}`}>
+           <Routes>
+             <Route path="/" element={<Home />} />
+             <Route path="/product/:id" element={<ProductDetail />} />
+@@ -34,7 +40,7 @@ export default function App() {
+             <Route path="/profile" element={<Profile />} />
+           </Routes>
+         </div>
+-        <BottomNav />
++        {!inThread && <BottomNav />}
+       </div>
+     </AuthGateProvider>
+   );
+diff --git a/frontend/src/pages/ChatThread.jsx b/frontend/src/pages/ChatThread.jsx
+index 28a634a..31e1df0 100644
+--- a/frontend/src/pages/ChatThread.jsx
++++ b/frontend/src/pages/ChatThread.jsx
+@@ -38,6 +38,7 @@ export default function ChatThread() {
+   const [sending, setSending] = useState(false);
+   const bottomRef = useRef(null);
+   const textareaRef = useRef(null);
++  const composerRef = useRef(null);
+   const requireRegistered = useRequireRegistered();
+ 
+   // Keep the input row aligned with the on-screen keyboard inside the
+@@ -105,12 +106,20 @@ export default function ChatThread() {
+     updateDoc(doc(db, 'chats', id), { [`lastReadAt.${auth.currentUser.uid}`]: serverTimestamp() }).catch(() => {});
+   }, [messages.length, id]);
+ 
+-  // Auto-grow the textarea up to a max height.
++  // Auto-grow the textarea up to a max height, Telegram-style — as it
++  // grows, the whole fixed composer bar grows with it and rises up
++  // over the message list. We publish its live height as a CSS var so
++  // the scrollable thread can reserve exactly that much space at the
++  // bottom and never gets hidden underneath it.
+   useEffect(() => {
+     const el = textareaRef.current;
+     if (!el) return;
+     el.style.height = 'auto';
+-    el.style.height = `${Math.min(el.scrollHeight, 110)}px`;
++    el.style.height = `${Math.min(el.scrollHeight, 130)}px`;
++    const bar = composerRef.current;
++    if (bar) {
++      document.documentElement.style.setProperty('--composer-h', `${bar.offsetHeight}px`);
++    }
+   }, [text]);
+ 
+   async function send() {
+@@ -170,7 +179,7 @@ export default function ChatThread() {
+           <Icon name="chevronLeft" size={19} />
+         </Link>
+         <div className={`thumb-mini ${chatInfo?.isSupport ? 'support-thumb' : ''}`}>
+-          {chatInfo?.isSupport && <Icon name="helpCircle" size={16} />}
++          {chatInfo?.isSupport ? <Icon name="helpCircle" size={16} /> : (otherName?.[0]?.toUpperCase() || '?')}
+         </div>
+         <div className="info">
+           <div className="n">{otherName}</div>
+@@ -216,19 +225,21 @@ export default function ChatThread() {
+         </div>
+       )}
+ 
+-      <div className="chat-input-row">
+-        <textarea
+-          ref={textareaRef}
+-          className="field"
+-          rows={1}
+-          value={text}
+-          onChange={(e) => setText(e.target.value)}
+-          onKeyDown={onKeyDown}
+-          placeholder="Type a message..."
+-        />
+-        <button className="send-btn" onClick={send} disabled={sending || !text.trim()}>
+-          <Icon name="send" size={17} />
+-        </button>
++      <div className="chat-input-bar" ref={composerRef}>
++        <div className="chat-input-row">
++          <textarea
++            ref={textareaRef}
++            className="field"
++            rows={1}
++            value={text}
++            onChange={(e) => setText(e.target.value)}
++            onKeyDown={onKeyDown}
++            placeholder="Type a message..."
++          />
++          <button className="send-btn" onClick={send} disabled={sending || !text.trim()}>
++            <Icon name="send" size={17} />
++          </button>
++        </div>
+       </div>
+     </div>
+   );
+diff --git a/frontend/src/styles/theme.css b/frontend/src/styles/theme.css
+index 66a47d6..723650c 100644
+--- a/frontend/src/styles/theme.css
++++ b/frontend/src/styles/theme.css
+@@ -16,6 +16,7 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
+ 
+ .app-shell{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-app);}
+ .screen-container{flex:1;overflow-y:auto;padding-bottom:78px;}
++.screen-container.no-nav{padding-bottom:0;}
+ .page{padding:14px 16px 6px;}
+ .page.px{padding-left:0;padding-right:0;}
+ .px{padding:0 16px;}
+@@ -99,30 +100,42 @@ textarea.field{min-height:84px;resize:vertical;}
+ .chat-info .msg{font-size:12px;color:var(--ink-soft);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+ .unread-dot{position:absolute;right:0;top:16px;width:9px;height:9px;border-radius:50%;background:var(--primary);flex:0 0 auto;}
+ 
+-.chat-context{display:flex;align-items:center;gap:10px;background:var(--surface-sunken);margin:0 0 10px;padding:9px 10px;border-radius:12px;}
+-.chat-back{display:flex;align-items:center;justify-content:center;width:28px;height:28px;flex:0 0 auto;color:var(--ink-soft);text-decoration:none;}
+-.chat-context .thumb-mini{width:36px;height:36px;border-radius:9px;background:var(--surface);flex:0 0 auto;}
++/* Fixed to the viewport (not the scroll container) so it never drifts
++   while the message list scrolls underneath it. */
++.chat-context{display:flex;align-items:center;gap:10px;position:fixed;top:var(--tg-safe-top,0px);left:50%;transform:translateX(-50%);width:100%;max-width:480px;box-sizing:border-box;background:var(--bg-app);padding:11px 16px;border-bottom:1px solid var(--line);z-index:30;}
++.chat-back{display:flex;align-items:center;justify-content:center;width:30px;height:30px;flex:0 0 auto;color:var(--ink-soft);text-decoration:none;border-radius:50%;transition:background .15s;}
++.chat-back:active{background:var(--surface-sunken);}
++.chat-context .thumb-mini{width:38px;height:38px;border-radius:50%;background:var(--primary-tint);color:var(--primary);flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;}
+ .chat-context .info{flex:1;min-width:0;}
+-.chat-context .n{font-size:12.5px;font-weight:700;}
++.chat-context .n{font-size:13.5px;font-weight:700;}
+ .chat-context .t{font-size:11px;color:var(--ink-faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+-.chat-context .p{font-size:12px;font-weight:800;color:var(--primary);}
+-
+-.thread-page{display:flex;flex-direction:column;min-height:calc(var(--app-vh, 100vh) - 0px);padding-bottom:0;}
+-.thread{display:flex;flex-direction:column;gap:2px;flex:1;padding:6px 0;}
+-.date-sep{display:flex;justify-content:center;margin:14px 0 8px;}
+-.date-sep span{font-size:11px;font-weight:600;color:var(--ink-faint);background:var(--surface-sunken);padding:4px 11px;border-radius:20px;}
+-.bubble{max-width:75%;padding:10px 13px;border-radius:16px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;}
+-.bubble.first{margin-top:8px;}
++.chat-context .p{font-size:11.5px;font-weight:700;color:var(--primary);background:var(--primary-tint);padding:6px 12px;border-radius:100px;flex:0 0 auto;}
++
++/* Reserve space at the top (fixed header) and bottom (fixed, growing
++   composer) so messages scroll in the gap between them and are never
++   hidden underneath either bar. */
++.thread-page{display:flex;flex-direction:column;min-height:calc(var(--app-vh, 100vh) - 0px);padding:calc(var(--tg-safe-top,0px) + 64px) 16px calc(var(--composer-h,80px) + 8px);}
++.thread{display:flex;flex-direction:column;gap:2px;flex:1;padding:10px 2px 6px;}
++.date-sep{display:flex;justify-content:center;margin:16px 0 10px;}
++.date-sep span{font-size:10.5px;font-weight:700;color:var(--ink-faint);background:var(--surface-sunken);padding:5px 13px;border-radius:20px;letter-spacing:.2px;}
++.bubble{max-width:78%;padding:9px 14px;border-radius:18px;font-size:13.5px;line-height:1.48;white-space:pre-wrap;word-break:break-word;animation:bubble-in .18s ease-out;}
++@keyframes bubble-in{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
++.bubble.first{margin-top:10px;}
+ .bubble.grouped{margin-top:2px;}
+-.bubble.them{background:var(--surface);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:5px;}
+-.bubble.me{background:var(--primary);color:#fff;align-self:flex-end;border-bottom-right-radius:5px;}
+-.bubble-time{font-size:10px;color:var(--ink-faint);margin:2px 2px 6px;}
++.bubble.them{background:var(--surface);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px;box-shadow:0 1px 1px rgba(32,36,31,.03);}
++.bubble.me{background:linear-gradient(155deg,var(--primary),var(--primary-dark));color:#fff;align-self:flex-end;border-bottom-right-radius:4px;box-shadow:0 2px 8px -3px rgba(18,51,42,.45);}
++.bubble-time{font-size:10px;color:var(--ink-faint);margin:3px 4px 8px;}
+ .bubble-time.me{align-self:flex-end;}
+ .bubble-time.them{align-self:flex-start;}
+-.chat-input-row{display:flex;align-items:flex-end;gap:9px;padding:10px 0 14px;position:sticky;bottom:0;background:var(--bg-app);}
+-.chat-input-row .field{flex:1;resize:none;max-height:110px;line-height:1.4;}
+-.send-btn{background:var(--primary);color:#fff;border:none;border-radius:50%;width:42px;height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+-.send-btn:disabled{opacity:.45;cursor:default;}
++
++/* Fixed footer bar; grows in place as the textarea grows (Telegram-
++   style), rising up over the message list instead of pushing layout. */
++.chat-input-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:480px;box-sizing:border-box;z-index:30;background:var(--bg-app);border-top:1px solid var(--line);padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));}
++.chat-input-row{display:flex;align-items:flex-end;gap:8px;padding:6px 6px 6px 16px;background:var(--surface);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-card);}
++.chat-input-row .field{flex:1;resize:none;max-height:130px;line-height:1.5;border:none;background:transparent;padding:8px 0;font-size:14px;outline:none;}
++.send-btn{background:var(--primary);color:#fff;border:none;border-radius:50%;width:38px;height:38px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .12s,opacity .12s;}
++.send-btn:active{transform:scale(.92);}
++.send-btn:disabled{opacity:.35;cursor:default;}
+ 
+ .error-banner{display:flex;gap:8px;align-items:center;background:#FDECEA;color:#9B2C1F;border:1px solid #F3C4BC;border-radius:var(--radius-md);padding:10px 12px;font-size:12px;font-weight:500;margin:8px 0;}
+ 

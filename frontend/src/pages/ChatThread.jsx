@@ -96,7 +96,7 @@ export default function ChatThread() {
 
   // Auto-scroll to the newest message.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages.length]);
 
   // Mark the thread as read while it's open.
@@ -181,32 +181,36 @@ export default function ChatThread() {
         )}
       </div>
 
-      {!chatInfo?.isSupport && (
-        <div className="safety-banner">
-          <Icon name="shield" size={16} />
-          <span>Meet the seller in person and inspect the item before you pay. Never send money in advance.</span>
-        </div>
-      )}
+      {/* Only this middle section scrolls — header above and input
+          row below stay put, like Telegram. */}
+      <div className="thread-scroll">
+        {!chatInfo?.isSupport && (
+          <div className="safety-banner">
+            <Icon name="shield" size={16} />
+            <span>Meet the seller in person and inspect the item before you pay. Never send money in advance.</span>
+          </div>
+        )}
 
-      <div className="thread">
-        {messages.map((m, i) => {
-          const prev = messages[i - 1];
-          const next = messages[i + 1];
-          const newDay = !prev || dayKey(m.createdAt) !== dayKey(prev.createdAt);
-          const firstInGroup = newDay || !prev || prev.senderId !== m.senderId;
-          const lastInGroup = !next || next.senderId !== m.senderId || dayKey(next.createdAt) !== dayKey(m.createdAt);
-          const mine = m.senderId === myUid;
-          return (
-            <React.Fragment key={m.id}>
-              {newDay && <div className="date-sep"><span>{formatDaySeparator(m.createdAt)}</span></div>}
-              <div className={`bubble ${mine ? 'me' : 'them'} ${firstInGroup ? 'first' : 'grouped'}`}>
-                {m.text}
-              </div>
-              {lastInGroup && <div className={`bubble-time ${mine ? 'me' : 'them'}`}>{formatClock(m.createdAt)}</div>}
-            </React.Fragment>
-          );
-        })}
-        <div ref={bottomRef} />
+        <div className="thread">
+          {messages.map((m, i) => {
+            const prev = messages[i - 1];
+            const next = messages[i + 1];
+            const newDay = !prev || dayKey(m.createdAt) !== dayKey(prev.createdAt);
+            const firstInGroup = newDay || !prev || prev.senderId !== m.senderId;
+            const lastInGroup = !next || next.senderId !== m.senderId || dayKey(next.createdAt) !== dayKey(m.createdAt);
+            const mine = m.senderId === myUid;
+            return (
+              <React.Fragment key={m.id}>
+                {newDay && <div className="date-sep"><span>{formatDaySeparator(m.createdAt)}</span></div>}
+                <div className={`bubble ${mine ? 'me' : 'them'} ${firstInGroup ? 'first' : 'grouped'}`}>
+                  {m.text}
+                </div>
+                {lastInGroup && <div className={`bubble-time ${mine ? 'me' : 'them'}`}>{formatClock(m.createdAt)}</div>}
+              </React.Fragment>
+            );
+          })}
+          <div ref={bottomRef} />
+        </div>
       </div>
 
       {error && (

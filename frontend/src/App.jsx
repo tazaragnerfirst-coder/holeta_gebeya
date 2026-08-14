@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, NavLink } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import PostAd from './pages/PostAd.jsx';
@@ -34,10 +34,20 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
           </Routes>
         </div>
-        <BottomNav />
+        <ConditionalBottomNav />
       </div>
     </AuthGateProvider>
   );
+}
+
+// An open chat thread takes over the full screen (fixed header +
+// input, only the message list scrolls) — the bottom nav would just
+// sit awkwardly on top of the input row, so it's hidden there.
+function ConditionalBottomNav() {
+  const { pathname } = useLocation();
+  const inThread = /^\/chat\/.+/.test(pathname);
+  if (inThread) return null;
+  return <BottomNav />;
 }
 
 function BottomNav() {
