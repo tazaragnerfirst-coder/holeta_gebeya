@@ -34,6 +34,7 @@ export default function SearchHeader({
   onCategoryChange,
   onOpenFilters,
   activeFilterCount = 0,
+  onSearchFocus,
 }) {
   const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState(getRecentSearches());
@@ -69,7 +70,7 @@ export default function SearchHeader({
         <input
           placeholder="Search listings..."
           value={value}
-          onFocus={() => setFocused(true)}
+          onFocus={() => { setFocused(true); onSearchFocus?.(); }}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && value.trim()) commit(value);
@@ -89,7 +90,7 @@ export default function SearchHeader({
           type="button"
           className="filter-btn"
           aria-label="Advanced filters"
-          onClick={onOpenFilters}
+          onClick={() => { setFocused(false); onOpenFilters(); }}
         >
           <Icon name="sliders" size={17} />
           {activeFilterCount > 0 && <span className="filter-dot" />}

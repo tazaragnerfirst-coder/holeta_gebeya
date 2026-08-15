@@ -103,6 +103,7 @@ export default function Home() {
           onCategoryChange={setActiveCategory}
           onOpenFilters={openFilters}
           activeFilterCount={activeFilterCount}
+          onSearchFocus={() => setFilterSheetOpen(false)}
         />
       </div>
 
