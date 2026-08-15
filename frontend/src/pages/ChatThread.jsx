@@ -9,6 +9,7 @@ import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getUnsafeUserPreview, getTelegramWebApp } from '../lib/telegram';
 import { SUPPORT_UID, SUPPORT_NAME } from '../lib/constants';
 import Icon from '../components/Icon.jsx';
+import { getCached, setCached } from '../lib/pageCache';
 
 function formatClock(ts) {
   if (!ts?.toDate) return '';
@@ -31,18 +32,15 @@ function formatDaySeparator(ts) {
 export default function ChatThread() {
   const { id } = useParams();
   const isSupport = id.startsWith('support_');
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState(() => getCached(`thread:${id}:messages`) || []);
   const [text, setText] = useState('');
-  const [chatInfo, setChatInfo] = useState(null);
+  const [chatInfo, setChatInfo] = useState(() => getCached(`thread:${id}:info`) || null);
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
   const requireRegistered = useRequireRegistered();
 
-  // Keep the input row aligned with the on-screen keyboard inside the
-  // Telegram WebView (and as a fallback in a regular mobile browser),
-  // by tracking the live viewport height in a CSS variable.
   useEffect(() => {
     const tg = getTelegramWebApp();
     function updateViewport() {
@@ -59,11 +57,11 @@ export default function ChatThread() {
   }, []);
 
   useEffect(() => {
+    setMessages(getCached(`thread:${id}:messages`) || []);
+    setChatInfo(getCached(`thread:${id}:info`) || null);
     let unsubChat = () => {};
     let unsubMsgs = () => {};
     requireRegistered().then(async (user) => {
-      // The support thread has a deterministic ID and is created
-      // lazily the first time the user opens it.
       if (isSupport) {
         const chatRef = doc(db, 'chats', id);
         const snap = await getDoc(chatRef);
@@ -86,26 +84,30 @@ export default function ChatThread() {
       }
 
       unsubChat = onSnapshot(doc(db, 'chats', id), (snap) => {
-        if (snap.exists()) setChatInfo(snap.data());
+        if (snap.exists()) {
+          setChatInfo(snap.data());
+          setCached(`thread:${id}:info`, snap.data());
+        }
       });
       const q = query(collection(db, 'chats', id, 'messages'), orderBy('createdAt', 'asc'));
-      unsubMsgs = onSnapshot(q, (snap) => setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+      unsubMsgs = onSnapshot(q, (snap) => {
+        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setMessages(data);
+        setCached(`thread:${id}:messages`, data);
+      });
     }).catch((err) => setError(err.message || "Couldn't open this chat."));
     return () => { unsubChat(); unsubMsgs(); };
   }, [id, isSupport]);
 
-  // Auto-scroll to the newest message.
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [messages.length]);
 
-  // Mark the thread as read while it's open.
   useEffect(() => {
     if (!messages.length || !auth.currentUser) return;
     updateDoc(doc(db, 'chats', id), { [`lastReadAt.${auth.currentUser.uid}`]: serverTimestamp() }).catch(() => {});
   }, [messages.length, id]);
 
-  // Auto-grow the textarea up to a max height.
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -181,8 +183,6 @@ export default function ChatThread() {
         )}
       </div>
 
-      {/* Only this middle section scrolls — header above and input
-          row below stay put, like Telegram. */}
       <div className="thread-scroll">
         {!chatInfo?.isSupport && (
           <div className="safety-banner">

@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { SUPPORT_NAME } from '../lib/constants';
 import Icon from '../components/Icon.jsx';
+import { getCached, setCached } from '../lib/pageCache';
 
 function formatTime(ts) {
   if (!ts?.toDate) return '';
@@ -25,9 +26,10 @@ function isUnread(chat, uid) {
 }
 
 export default function ChatList() {
-  const [chats, setChats] = useState([]);
-  const [ready, setReady] = useState(false);
-  const [uid, setUid] = useState(null);
+  const cached = getCached('chatlist');
+  const [chats, setChats] = useState(() => cached?.chats || []);
+  const [ready, setReady] = useState(() => cached !== undefined);
+  const [uid, setUid] = useState(() => cached?.uid || null);
   const requireRegistered = useRequireRegistered();
 
   useEffect(() => {
@@ -39,8 +41,10 @@ export default function ChatList() {
         orderBy('lastMessageAt', 'desc')
       );
       const unsub = onSnapshot(q, (snap) => {
-        setChats(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setChats(data);
         setReady(true);
+        setCached('chatlist', { uid: user.uid, chats: data });
       });
       return unsub;
     }).catch((err) => { console.error(err); setReady(true); });

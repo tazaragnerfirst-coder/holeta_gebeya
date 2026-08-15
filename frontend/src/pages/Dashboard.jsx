@@ -4,18 +4,22 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import Icon from '../components/Icon.jsx';
+import { getCached, setCached } from '../lib/pageCache';
 
 export default function Dashboard() {
-  const [ads, setAds] = useState([]);
-  const [ready, setReady] = useState(false);
+  const cached = getCached('dashboard:ads');
+  const [ads, setAds] = useState(() => cached || []);
+  const [ready, setReady] = useState(() => cached !== undefined);
   const requireRegistered = useRequireRegistered();
 
   useEffect(() => {
     requireRegistered().then((user) => {
       const q = query(collection(db, 'listings'), where('sellerId', '==', user.uid));
       return onSnapshot(q, (snap) => {
-        setAds(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        setAds(data);
         setReady(true);
+        setCached('dashboard:ads', data);
       });
     }).catch((err) => { console.error(err); setReady(true); });
   }, []);
@@ -53,4 +57,4 @@ export default function Dashboard() {
       })}
     </div>
   );
-      }
+}
