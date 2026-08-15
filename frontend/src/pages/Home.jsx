@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { CATEGORIES } from '../data/categories';
 import Icon from '../components/Icon.jsx';
@@ -24,6 +24,18 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
+  const headerWrapRef = useRef(null);
+  const [filterAnchorTop, setFilterAnchorTop] = useState(null);
+
+  // Measures the real, rendered bottom edge of the search bar at the
+  // moment it's tapped, so the dropdown lands exactly under it —
+  // no guessed pixel offset that could drift and overlap other
+  // content depending on screen size / notch / status bar height.
+  function openFilters() {
+    const bar = headerWrapRef.current?.querySelector('.search-bar');
+    if (bar) setFilterAnchorTop(Math.round(bar.getBoundingClientRect().bottom + 8));
+    setFilterSheetOpen(true);
+  }
 
   const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());
 
@@ -79,24 +91,27 @@ export default function Home() {
 
   return (
     <div className="page">
-      <SearchHeader
-        value={search}
-        onChange={setSearch}
-        onSubmit={() => {}}
-        suggestions={suggestions}
-        popularTags={popularTags}
-        categories={CATEGORIES}
-        activeCategory={activeCategory}
-        onCategoryChange={setActiveCategory}
-        onOpenFilters={() => setFilterSheetOpen(true)}
-        activeFilterCount={activeFilterCount}
-      />
+      <div ref={headerWrapRef}>
+        <SearchHeader
+          value={search}
+          onChange={setSearch}
+          onSubmit={() => {}}
+          suggestions={suggestions}
+          popularTags={popularTags}
+          categories={CATEGORIES}
+          activeCategory={activeCategory}
+          onCategoryChange={setActiveCategory}
+          onOpenFilters={openFilters}
+          activeFilterCount={activeFilterCount}
+        />
+      </div>
 
       <FilterSheet
         open={filterSheetOpen}
         onClose={() => setFilterSheetOpen(false)}
         filters={filters}
         onApply={setFilters}
+        anchorTop={filterAnchorTop}
       />
 
       {!filtering && boosted.length > 0 && (

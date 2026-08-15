@@ -3,7 +3,7 @@ import Icon from './Icon.jsx';
 
 const CONDITIONS = ['New', 'Used - Like New', 'Used - Good', 'Used - Fair'];
 
-export default function FilterSheet({ open, onClose, filters, onApply }) {
+export default function FilterSheet({ open, onClose, filters, onApply, anchorTop }) {
   const [minPrice, setMinPrice] = useState(filters.minPrice ?? '');
   const [maxPrice, setMaxPrice] = useState(filters.maxPrice ?? '');
   const [conditions, setConditions] = useState(filters.conditions || []);
@@ -43,7 +43,7 @@ export default function FilterSheet({ open, onClose, filters, onApply }) {
     // category row / listings down. Tapping the dimmed backdrop
     // closes it, same as the search suggestions panel.
     <div className="filter-backdrop" onClick={onClose}>
-      <div className="filter-dropdown" onClick={(e) => e.stopPropagation()}>
+      <div className="filter-dropdown" style={anchorTop ? { top: anchorTop } : undefined} onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <h3>Filters</h3>
           <button type="button" className="icon-btn" onClick={onClose}><Icon name="x" size={18} /></button>

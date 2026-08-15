@@ -251,7 +251,7 @@ textarea.field{min-height:84px;resize:vertical;}
    anchored just under the header, instead of an inline block that
    pushes the category row / listings down. --- */
 .filter-backdrop{position:fixed;inset:0;z-index:90;background:rgba(20,22,18,.28);}
-.filter-dropdown{position:fixed;top:112px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;z-index:91;background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 18px 44px rgba(20,22,18,.3);padding:16px;max-height:min(72vh,520px);overflow-y:auto;animation:panel-fade .18s ease-out;}
+.filter-dropdown{position:fixed;top:70px;left:50%;transform:translateX(-50%);width:calc(100% - 32px);max-width:448px;z-index:91;background:var(--surface);border-radius:var(--radius-lg);box-shadow:0 18px 44px rgba(20,22,18,.3);padding:16px;max-height:min(72vh,520px);overflow-y:auto;animation:panel-fade .18s ease-out;}
 
 .filter-block{margin-bottom:18px;}
 .filter-label{font-size:12.5px;font-weight:700;color:var(--ink-soft);margin-bottom:9px;}
