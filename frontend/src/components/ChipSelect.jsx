@@ -22,8 +22,9 @@ export default function ChipSelect({ options = [], value, onChange, disabled = f
 
   return (
     <div className="inline-select">
-      <button type="button" className="inline-select-trigger" onClick={() => setOpen((o) => !o)}>
-        <span className={selected ? '' : 'placeholder'}>{selected ? selected.label : (placeholder || 'Select...')}</span>
+      <button type="button" className={`inline-select-trigger ${selected ? 'has-value' : ''} ${open ? 'is-open' : ''}`} onClick={() => setOpen((o) => !o)}>
+        {selected && <Icon name="checkCircle" size={16} className="inline-select-check" />}
+        <span className={selected ? 'selected-label' : 'placeholder'}>{selected ? selected.label : (placeholder || 'Select...')}</span>
         <Icon name="chevronDown" size={16} className={open ? 'rotated' : ''} />
       </button>
       {open && (

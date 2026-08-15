@@ -8,6 +8,7 @@ export const CATEGORIES = [
     id: 'electronics',
     name: 'Electronics',
     icon: 'cpu',
+    popular: true,
     subcategories: [
       {
         id: 'phones',
@@ -92,7 +93,6 @@ export const CATEGORIES = [
               'A60s': ['4GB'],
             },
             fallbackOptions: ['2GB', '3GB', '4GB', '6GB', '8GB', '12GB'] },
-          { key: 'screenSize', label: 'Screen Size (inches)', type: 'number', required: false },
           { key: 'color', label: 'Color', type: 'color', dependsOn: 'model', required: false,
             optionsByParent: {
               'Galaxy S24 Ultra': ['Titanium Black', 'Titanium Gray', 'Titanium Violet', 'Titanium Yellow'],
@@ -206,12 +206,13 @@ export const CATEGORIES = [
     ],
   },
   {
-    id: 'fashion', name: 'Fashion', icon: 'shirt',
+    id: 'fashion', name: 'Fashion', icon: 'shirt', popular: true,
     subcategories: [
       {
         id: 'clothing', name: 'Clothing',
         attributes: [
-          { key: 'gender', label: 'For', type: 'select', required: true, options: ['Men', 'Women', 'Unisex', 'Kids'] },
+          { key: 'gender', label: 'For', type: 'select', required: true, options: ['Men', 'Women', 'Kids'] },
+          { key: 'ageRange', label: 'Age Range', type: 'select', required: false, options: ['Baby (0-2)', 'Kids (2-12)', 'Teen (13-19)', 'Adult'] },
           { key: 'itemType', label: 'Item Type', type: 'text', required: true, placeholder: 'e.g. Jacket, Dress, Suit' },
           { key: 'size', label: 'Size', type: 'select', required: false, options: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
           { key: 'color', label: 'Color', type: 'text', required: false },
@@ -221,7 +222,8 @@ export const CATEGORIES = [
       {
         id: 'shoes', name: 'Shoes',
         attributes: [
-          { key: 'gender', label: 'For', type: 'select', required: true, options: ['Men', 'Women', 'Unisex', 'Kids'] },
+          { key: 'gender', label: 'For', type: 'select', required: true, options: ['Men', 'Women', 'Kids'] },
+          { key: 'ageRange', label: 'Age Range', type: 'select', required: false, options: ['Baby (0-2)', 'Kids (2-12)', 'Teen (13-19)', 'Adult'] },
           { key: 'brand', label: 'Brand', type: 'text', required: false },
           { key: 'size', label: 'Size (EU)', type: 'number', required: false },
           { key: 'color', label: 'Color', type: 'text', required: false },
@@ -231,7 +233,7 @@ export const CATEGORIES = [
     ],
   },
   {
-    id: 'home', name: 'Home & Furniture', icon: 'home',
+    id: 'home', name: 'Home & Furniture', icon: 'home', popular: true,
     subcategories: [
       {
         id: 'furniture', name: 'Furniture',
@@ -266,3 +268,30 @@ export function getSubcategory(categoryId, subcategoryId) {
   if (!cat) return null;
   return cat.subcategories.find((s) => s.id === subcategoryId) || null;
 }
+
+// Categories flagged `popular: true` are shown first (Jiji-style),
+// with the rest following in their original file order.
+export function sortByPopular(list) {
+  return [...list].sort((a, b) => (b.popular ? 1 : 0) - (a.popular ? 1 : 0));
+}
+
+// Builds a sensible default title from whatever's been picked so far
+// — brand + model when present (phones/laptops/cars), else item type
+// + brand, else just the subcategory name. The person can always
+// edit it afterwards; this only fills the field automatically.
+export function buildSuggestedTitle(category, subcategory, attrs) {
+  if (!subcategory) return '';
+  const parts = [];
+  if (attrs.brand && attrs.brand !== 'Other') parts.push(attrs.brand);
+  if (attrs.model && attrs.model !== 'Other') parts.push(attrs.model);
+  if (attrs.itemType) parts.push(attrs.itemType);
+  if (attrs.storage) parts.push(attrs.storage);
+  if (parts.length === 0) return subcategory.name;
+  return parts.join(' ');
+}
+
+export const DESCRIPTION_MIN_WORDS = 10;
+export const DESCRIPTION_HINTS = [
+  'Condition & any defects', 'Reason for selling', 'Accessories included',
+  'Purchase date / warranty', 'Reason for the price', 'Usage history',
+];
