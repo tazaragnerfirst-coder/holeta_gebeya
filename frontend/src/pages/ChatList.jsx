@@ -1,11 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
+import { useAppData } from '../lib/appData';
 import { SUPPORT_NAME } from '../lib/constants';
 import Icon from '../components/Icon.jsx';
-import { getCached, setCached } from '../lib/pageCache';
 
 function formatTime(ts) {
   if (!ts?.toDate) return '';
@@ -26,30 +24,18 @@ function isUnread(chat, uid) {
 }
 
 export default function ChatList() {
-  const cached = getCached('chatlist');
-  const [chats, setChats] = useState(() => cached?.chats || []);
-  const [ready, setReady] = useState(() => cached !== undefined);
-  const [uid, setUid] = useState(() => cached?.uid || null);
+  const { chats, chatsReady, registeredUid } = useAppData();
   const requireRegistered = useRequireRegistered();
 
+  // Data itself now comes from the app-wide store (already warming
+  // up in the background) — this call only handles prompting signup
+  // if the visitor isn't registered yet.
   useEffect(() => {
-    requireRegistered().then((user) => {
-      setUid(user.uid);
-      const q = query(
-        collection(db, 'chats'),
-        where('participants', 'array-contains', user.uid),
-        orderBy('lastMessageAt', 'desc')
-      );
-      const unsub = onSnapshot(q, (snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setChats(data);
-        setReady(true);
-        setCached('chatlist', { uid: user.uid, chats: data });
-      });
-      return unsub;
-    }).catch((err) => { console.error(err); setReady(true); });
+    requireRegistered().catch((err) => console.error(err));
   }, []);
 
+  const uid = registeredUid;
+  const ready = uid ? chatsReady : false;
   const supportChatId = uid ? `support_${uid}` : null;
   const supportChat = chats.find((c) => c.id === supportChatId);
   const otherChats = chats.filter((c) => c.id !== supportChatId);

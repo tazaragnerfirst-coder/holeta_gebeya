@@ -1,28 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
+import { useAppData } from '../lib/appData';
 import Icon from '../components/Icon.jsx';
-import { getCached, setCached } from '../lib/pageCache';
 
 export default function Dashboard() {
-  const cached = getCached('dashboard:ads');
-  const [ads, setAds] = useState(() => cached || []);
-  const [ready, setReady] = useState(() => cached !== undefined);
+  const { ads, adsReady, registeredUid } = useAppData();
   const requireRegistered = useRequireRegistered();
 
+  // Data itself now comes from the app-wide store (already warming
+  // up in the background) — this call only handles prompting signup
+  // if the visitor isn't registered yet.
   useEffect(() => {
-    requireRegistered().then((user) => {
-      const q = query(collection(db, 'listings'), where('sellerId', '==', user.uid));
-      return onSnapshot(q, (snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setAds(data);
-        setReady(true);
-        setCached('dashboard:ads', data);
-      });
-    }).catch((err) => { console.error(err); setReady(true); });
+    requireRegistered().catch((err) => console.error(err));
   }, []);
+
+  const ready = registeredUid ? adsReady : false;
 
   const totalViews = ads.reduce((s, a) => s + (a.views || 0), 0);
   const active = ads.filter((a) => a.status === 'active');

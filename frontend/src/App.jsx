@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Profile from './pages/Profile.jsx';
 import Icon from './components/Icon.jsx';
 import { AuthGateProvider } from './lib/authGate.jsx';
+import { AppDataProvider } from './lib/appData.jsx';
 import { BACKEND_URL } from './lib/firebase';
 
 export default function App() {
@@ -21,22 +22,24 @@ export default function App() {
   }, []);
 
   return (
-    <AuthGateProvider>
-      <div className="app-shell">
-        <div className="screen-container">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/post" element={<PostAd />} />
-            <Route path="/chat" element={<ChatList />} />
-            <Route path="/chat/:id" element={<ChatThread />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-          </Routes>
+    <AppDataProvider>
+      <AuthGateProvider>
+        <div className="app-shell">
+          <div className="screen-container">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/post" element={<PostAd />} />
+              <Route path="/chat" element={<ChatList />} />
+              <Route path="/chat/:id" element={<ChatThread />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+            </Routes>
+          </div>
+          <ConditionalBottomNav />
         </div>
-        <ConditionalBottomNav />
-      </div>
-    </AuthGateProvider>
+      </AuthGateProvider>
+    </AppDataProvider>
   );
 }
 

@@ -1,14 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 import { CATEGORIES } from '../data/categories';
 import Icon from '../components/Icon.jsx';
 import SearchHeader from '../components/SearchHeader.jsx';
 import FilterSheet from '../components/FilterSheet.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ListingGridSkeleton } from '../components/Skeletons.jsx';
-import { getCached, setCached } from '../lib/pageCache';
+import { useAppData } from '../lib/appData';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
 function colorFor(id) {
@@ -20,23 +18,12 @@ function colorFor(id) {
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 
 export default function Home() {
-  const [listings, setListings] = useState(() => getCached('home:listings') || []);
-  const [loading, setLoading] = useState(() => getCached('home:listings') === undefined);
+  const { listings, listingsReady } = useAppData();
+  const loading = !listingsReady;
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
-
-  useEffect(() => {
-    const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(30));
-    const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setListings(data);
-      setCached('home:listings', data);
-      setLoading(false);
-    }, () => setLoading(false));
-    return unsub;
-  }, []);
 
   const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());
 
