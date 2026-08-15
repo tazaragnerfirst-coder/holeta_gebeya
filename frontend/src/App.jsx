@@ -61,6 +61,7 @@ function BottomNav() {
     <nav className="bottom-nav">
       {item('/', 'Home', 'home')}
       {item('/chat', 'Chat', 'chat')}
+      <div className="nav-space-holder"></div>
       {item('/dashboard', 'Dashboard', 'briefcase')}
       {item('/profile', 'Profile', 'user')}
       <div className="nav-fab-wrapper">
