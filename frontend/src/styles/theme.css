@@ -42,6 +42,28 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .boost-card{flex:0 0 152px;}
 .thumb{height:118px;position:relative;background:var(--surface-sunken);}
 .carousel{height:270px;position:relative;background:var(--surface-sunken);}
+
+/* --- Product detail: image carousel + lightbox --- */
+.pd-page{padding:0;margin-bottom:-78px;}
+.carousel-wrap{position:relative;}
+.carousel-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;height:300px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.carousel-track::-webkit-scrollbar{display:none;}
+.carousel-slide{flex:0 0 100%;scroll-snap-align:start;background:var(--surface-sunken);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.carousel-overlay-row{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;pointer-events:none;}
+.carousel-overlay-side{display:flex;}
+.carousel-overlay-side.right{justify-content:flex-end;}
+.pd-hero-btn{pointer-events:auto;width:38px;height:38px;border-radius:50%;background:rgba(20,22,18,.45);color:#fff;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(3px);}
+.carousel-dots{position:absolute;bottom:12px;left:0;right:0;display:flex;justify-content:center;gap:6px;}
+.carousel-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.55);cursor:pointer;transition:width .15s,background .15s;}
+.carousel-dot.active{width:16px;border-radius:4px;background:#fff;}
+
+.lightbox-overlay{position:fixed;inset:0;background:rgba(10,12,9,.94);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.lightbox-close{position:absolute;top:calc(16px + env(safe-area-inset-top,0px));right:16px;width:36px;height:36px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.lightbox-track{width:100%;display:flex;align-items:center;justify-content:center;padding:0 20px;}
+.lightbox-img{max-width:100%;max-height:75vh;border-radius:8px;object-fit:contain;}
+.lightbox-nav{display:flex;align-items:center;gap:16px;margin-top:18px;}
+.lightbox-nav .icon-btn{background:rgba(255,255,255,.12);color:#fff;}
+.lightbox-count{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);}
 .thumb-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);}
 .badge-boost{position:absolute;top:8px;left:8px;background:var(--accent);color:#4A2E05;font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:100px;display:flex;align-items:center;gap:4px;}
 .card-body{padding:9px 10px 11px;}
@@ -49,13 +71,43 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .card-title{font-size:12px;color:var(--ink-soft);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card-meta{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink-faint);margin-top:6px;}
 
-.pd-body{padding:16px 0 4px;}
+.pd-body{padding:16px 16px 20px;}
 .pd-price-row{display:flex;justify-content:space-between;align-items:center;}
 .pd-price{font-size:23px;font-weight:800;}
 .cond-badge{background:var(--primary-tint);color:var(--primary);font-size:11px;font-weight:700;padding:5px 10px;border-radius:100px;}
 .pd-title{font-size:15.5px;font-weight:600;margin-top:8px;line-height:1.5;}
 .pd-meta-row{display:flex;gap:14px;font-size:11.5px;color:var(--ink-faint);margin-top:9px;}
 .pd-meta-row span{display:flex;align-items:center;gap:4px;}
+.pd-stats-row{display:flex;gap:14px;font-size:11px;color:var(--ink-faint);margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
+.pd-stats-row span{display:flex;align-items:center;gap:4px;}
+
+.seller-card{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:13px 14px;margin-top:16px;box-shadow:var(--shadow-card);}
+.seller-avatar{width:44px;height:44px;border-radius:50%;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex:0 0 auto;}
+.seller-info{flex:1;min-width:0;}
+.seller-name{font-size:13.5px;font-weight:700;}
+.seller-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-faint);margin-top:4px;}
+
+.star-row{display:inline-flex;gap:2px;}
+.star-row svg{color:var(--line);}
+.star-row svg.filled{color:var(--accent);fill:var(--accent);}
+.star-input{display:flex;gap:8px;justify-content:center;}
+.star-input button{background:none;border:none;padding:2px;cursor:pointer;}
+.star-input svg{color:var(--line);}
+.star-input svg.filled{color:var(--accent);fill:var(--accent);}
+
+.pd-reviews{margin-top:22px;}
+.pd-reviews-head{display:flex;align-items:center;justify-content:space-between;}
+.pd-reviews-head h4{font-size:13.5px;font-weight:700;margin:0;}
+.link-btn{background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;padding:0;font-family:var(--font-ui);}
+.no-reviews{font-size:12.5px;color:var(--ink-faint);margin-top:8px;}
+.review-item{padding:12px 0;border-bottom:1px solid var(--line);}
+.review-item:last-child{border-bottom:none;}
+.review-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.review-name{font-size:12.5px;font-weight:700;}
+.review-date{font-size:11px;color:var(--ink-faint);}
+.review-comment{font-size:12.5px;color:var(--ink-soft);line-height:1.6;margin-top:5px;}
+
+.ok-banner{display:flex;gap:8px;align-items:center;background:var(--primary-tint);color:var(--primary);border:1px solid #C9DED4;border-radius:var(--radius-md);padding:10px 12px;font-size:12px;font-weight:600;margin:8px 0;}
 .attr-list{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);}
 .attr-row{display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12.5px;}
 .attr-row:last-child{border-bottom:none;}

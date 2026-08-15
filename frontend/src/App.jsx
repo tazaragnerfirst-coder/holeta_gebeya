@@ -49,7 +49,8 @@ export default function App() {
 function ConditionalBottomNav() {
   const { pathname } = useLocation();
   const inThread = /^\/chat\/.+/.test(pathname);
-  if (inThread) return null;
+  const inProduct = /^\/product\/.+/.test(pathname);
+  if (inThread || inProduct) return null;
   return <BottomNav />;
 }
 

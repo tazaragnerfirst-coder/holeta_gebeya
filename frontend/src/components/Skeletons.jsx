@@ -27,9 +27,11 @@ export function ListingGridSkeleton({ count = 6 }) {
 // listing doc is being fetched.
 export function ProductDetailSkeleton() {
   return (
-    <div className="page" style={{ padding: 0 }}>
-      <div className="carousel skeleton-shimmer" />
-      <div className="pd-body px">
+    <div className="pd-page">
+      <div className="carousel-wrap">
+        <div className="carousel-slide skeleton-shimmer" style={{ height: 300 }} />
+      </div>
+      <div className="pd-body">
         <div className="skeleton-line skeleton-shimmer" style={{ width: '30%', height: 22 }} />
         <div className="skeleton-line skeleton-shimmer" style={{ width: '70%', height: 16, marginTop: 12 }} />
         <div className="skeleton-line skeleton-shimmer" style={{ width: '45%', height: 12, marginTop: 12 }} />

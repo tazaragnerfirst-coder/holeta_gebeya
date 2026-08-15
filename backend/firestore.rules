@@ -6,7 +6,32 @@ service cloud.firestore {
     match /listings/{listingId} {
       allow read: if true;
       allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
+      // Sellers can edit their own listing normally. Anyone (even
+      // signed-out browsers) may also bump the public `views` counter
+      // by exactly +1 and nothing else — it's a low-stakes public
+      // stat, not sensitive data, so it isn't gated behind an account.
+      allow update: if (request.auth != null && resource.data.sellerId == request.auth.uid)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
+            && request.resource.data.views == resource.data.views + 1);
+      allow delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
+    }
+
+    // Seller reviews: publicly readable (shown on the listing page),
+    // but only the reviewer can create/update their own review. The
+    // client always writes with doc id `${listingId}_${buyerId}`, so
+    // a resubmission overwrites the same review instead of stacking
+    // duplicates.
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.resource.data.buyerId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Listing reports: write-only from the client (an admin reviews
+    // these manually) — never readable back by regular users.
+    match /reports/{reportId} {
+      allow read, update, delete: if false;
+      allow create: if request.auth != null && request.resource.data.reporterId == request.auth.uid;
     }
 
     // Users can read/write only their own profile doc.
