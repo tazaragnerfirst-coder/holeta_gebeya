@@ -61,7 +61,9 @@ function BottomNav() {
     <nav className="bottom-nav">
       {item('/', 'Home', 'home')}
       {item('/chat', 'Chat', 'chat')}
-      <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
+      <div className="center-btn-wrapper">
+        <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
+      </div>
       {item('/dashboard', 'Dashboard', 'briefcase')}
       {item('/profile', 'Profile', 'user')}
     </nav>
