@@ -8,7 +8,7 @@ import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { CATEGORIES, getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS } from '../data/categories';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
 import ImageUploader from '../components/ImageUploader.jsx';
-import CategoryPicker from '../components/CategoryPicker.jsx';
+import ChipSelect from '../components/ChipSelect.jsx';
 
 export default function PostAd() {
   const navigate = useNavigate();
@@ -161,8 +161,8 @@ export default function PostAd() {
 
         <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
           <label className="field-label">Category<span className="req">*</span></label>
-          <CategoryPicker
-            options={sortByPopular(CATEGORIES).map((c) => ({ label: c.name, value: c.id, icon: c.icon }))}
+          <ChipSelect
+            options={sortByPopular(CATEGORIES).map((c) => ({ label: c.name, value: c.id }))}
             value={categoryId}
             onChange={onCategoryChange}
           />
@@ -172,11 +172,10 @@ export default function PostAd() {
         {category && (
           <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
             <label className="field-label">Subcategory<span className="req">*</span></label>
-            <CategoryPicker
+            <ChipSelect
               options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
               value={subcategoryId}
               onChange={onSubcategoryChange}
-              icons={false}
             />
             {errors.subcategoryId && <p className="field-error">{errors.subcategoryId}</p>}
           </div>

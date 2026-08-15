@@ -256,10 +256,6 @@ textarea.field{min-height:84px;resize:vertical;}
 .inline-select-trigger.has-value .inline-select-check{color:var(--primary);}
 .inline-select-trigger.has-value svg:not(.inline-select-check){color:var(--primary);}
 .inline-select-trigger.is-open{border-color:var(--primary);}
-
-/* --- Category / subcategory step picker (Post Ad wizard) --- */
-.category-picker-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;}
-.category-picker-grid .cat-item{width:100%;}
 .inline-select-list{margin-top:6px;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);max-height:260px;overflow-y:auto;}
 .inline-select-item{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;font-size:14px;font-family:var(--font-ui);text-align:left;background:none;border:none;border-bottom:1px solid var(--line);cursor:pointer;color:var(--ink);}
 .inline-select-item:last-child{border-bottom:none;}
