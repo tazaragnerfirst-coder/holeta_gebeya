@@ -164,6 +164,7 @@ export default function ChatThread() {
   const otherName = chatInfo?.isSupport
     ? SUPPORT_NAME
     : (amBuyer ? (chatInfo?.sellerName || 'Seller') : (chatInfo?.buyerName || 'Buyer'));
+  const otherInitial = otherName ? otherName[0].toUpperCase() : '?';
 
   return (
     <div className="page thread-page">
@@ -172,7 +173,7 @@ export default function ChatThread() {
           <Icon name="chevronLeft" size={19} />
         </Link>
         <div className={`thumb-mini ${chatInfo?.isSupport ? 'support-thumb' : ''}`}>
-          {chatInfo?.isSupport && <Icon name="helpCircle" size={16} />}
+          {chatInfo?.isSupport ? <Icon name="helpCircle" size={16} /> : otherInitial}
         </div>
         <div className="info">
           <div className="n">{otherName}</div>
@@ -193,11 +194,27 @@ export default function ChatThread() {
 
         <div className="thread">
           {messages.map((m, i) => {
+            if (m.type === 'listing') {
+              return (
+                <Link to={`/product/${m.listingId}`} className="thread-listing-card" key={m.id}>
+                  <div
+                    className="thread-listing-thumb"
+                    style={m.listingPhoto ? { backgroundImage: `url(${m.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                  >
+                    {!m.listingPhoto && <Icon name="image" size={16} />}
+                  </div>
+                  <div className="thread-listing-info">
+                    <div className="t">{m.listingTitle}</div>
+                    <div className="p">{m.listingPrice} ETB</div>
+                  </div>
+                </Link>
+              );
+            }
             const prev = messages[i - 1];
             const next = messages[i + 1];
             const newDay = !prev || dayKey(m.createdAt) !== dayKey(prev.createdAt);
-            const firstInGroup = newDay || !prev || prev.senderId !== m.senderId;
-            const lastInGroup = !next || next.senderId !== m.senderId || dayKey(next.createdAt) !== dayKey(m.createdAt);
+            const firstInGroup = newDay || !prev || prev.senderId !== m.senderId || prev.type === 'listing';
+            const lastInGroup = !next || next.senderId !== m.senderId || next.type === 'listing' || dayKey(next.createdAt) !== dayKey(m.createdAt);
             const mine = m.senderId === myUid;
             return (
               <React.Fragment key={m.id}>

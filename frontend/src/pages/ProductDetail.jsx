@@ -4,7 +4,7 @@ import {
   doc, onSnapshot, collection, addDoc, setDoc, updateDoc, increment,
   query, where, limit, getDocs, serverTimestamp,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, BACKEND_URL } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
@@ -12,6 +12,7 @@ import ImageCarousel from '../components/ImageCarousel.jsx';
 import StarRow from '../components/StarRow.jsx';
 import ReviewSheet from '../components/ReviewSheet.jsx';
 import ReportSheet from '../components/ReportSheet.jsx';
+import CallSheet from '../components/CallSheet.jsx';
 import { ProductDetailSkeleton } from '../components/Skeletons.jsx';
 import { getCached, setCached } from '../lib/pageCache';
 
@@ -37,6 +38,10 @@ export default function ProductDetail() {
   const [notFound, setNotFound] = useState(false);
   const [chatError, setChatError] = useState('');
   const [startingChat, setStartingChat] = useState(false);
+
+  const [callSheetOpen, setCallSheetOpen] = useState(false);
+  const [callBusy, setCallBusy] = useState(false);
+  const [sellerPhone, setSellerPhone] = useState('');
 
   const [similar, setSimilar] = useState([]);
 
@@ -146,6 +151,20 @@ export default function ProductDetail() {
         createdAt: serverTimestamp(),
         lastMessageAt: serverTimestamp(),
       });
+
+      // Auto-attach a small listing reference as the first item in
+      // the thread, so the seller immediately knows which item this
+      // conversation is about instead of a bare "hi" with no context.
+      await addDoc(collection(db, 'chats', chatRef.id, 'messages'), {
+        senderId: user.uid,
+        type: 'listing',
+        listingId: id,
+        listingTitle: item.title,
+        listingPhoto: item.images?.[0] || '',
+        listingPrice: item.price,
+        createdAt: serverTimestamp(),
+      });
+
       navigate(`/chat/${chatRef.id}`);
     } catch (err) {
       setChatError(err.message || "Couldn't start chat. Please try again.");
@@ -156,11 +175,23 @@ export default function ProductDetail() {
 
   async function call() {
     setChatError('');
+    setCallBusy(true);
     try {
-      await requireRegistered();
-      alert('Calling — number revealed after login.');
+      const user = await requireRegistered();
+      const idToken = await user.getIdToken();
+      const r = await fetch(`${BACKEND_URL}/getSellerPhone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken, sellerId: item.sellerId }),
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(data.error || "Couldn't get the seller's number.");
+      setSellerPhone(data.phone);
+      setCallSheetOpen(true);
     } catch (err) {
       setChatError(err.message || "Couldn't verify your account. Please try again.");
+    } finally {
+      setCallBusy(false);
     }
   }
 
@@ -318,11 +349,6 @@ export default function ProductDetail() {
           </>
         )}
 
-        <div className="safety-banner">
-          <Icon name="shield" size={16} />
-          <span>Meet the seller in person and inspect the item before you pay. Never send money in advance.</span>
-        </div>
-
         {reportDone && (
           <div className="ok-banner">
             <Icon name="checkCircle" size={14} />
@@ -337,9 +363,9 @@ export default function ProductDetail() {
         )}
       </div>
 
-      <div className="sticky-actions">
-        <button className="btn btn-outline-primary" onClick={call}>
-          <Icon name="phone" size={16} /> Call
+      <div className="pd-float-actions">
+        <button className="btn btn-outline-primary" onClick={call} disabled={callBusy}>
+          <Icon name="phone" size={16} /> {callBusy ? 'Loading…' : 'Call'}
         </button>
         <button className="btn btn-primary" onClick={startChat} disabled={startingChat}>
           <Icon name="chat" size={16} /> {startingChat ? 'Opening…' : 'Chat with Seller'}
@@ -359,6 +385,12 @@ export default function ProductDetail() {
         error={reportError}
         onClose={() => setReportSheetOpen(false)}
         onSubmit={submitReport}
+      />
+      <CallSheet
+        open={callSheetOpen}
+        phone={sellerPhone}
+        sellerName={item.sellerName}
+        onClose={() => setCallSheetOpen(false)}
       />
     </div>
   );

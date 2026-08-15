@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import PostAd from './pages/PostAd.jsx';
@@ -11,6 +11,7 @@ import Icon from './components/Icon.jsx';
 import { AuthGateProvider } from './lib/authGate.jsx';
 import { AppDataProvider } from './lib/appData.jsx';
 import { BACKEND_URL } from './lib/firebase';
+import { getTelegramWebApp } from './lib/telegram';
 
 export default function App() {
   // Fire-and-forget: wake the Render backend as soon as the Mini App
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="/profile" element={<Profile />} />
             </Routes>
           </div>
+          <TelegramBackButton />
           <ConditionalBottomNav />
         </div>
       </AuthGateProvider>
@@ -52,6 +54,37 @@ function ConditionalBottomNav() {
   const inProduct = /^\/product\/.+/.test(pathname);
   if (inThread || inProduct) return null;
   return <BottomNav />;
+}
+
+// Telegram's own hardware/gesture back gesture closes the whole Mini
+// App unless we claim it via the native BackButton API. Whenever
+// we're not on Home, show it and route its tap through React
+// Router's own back navigation — so phone-back behaves exactly like
+// tapping our in-page back arrow, instead of exiting the app.
+function TelegramBackButton() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const tg = getTelegramWebApp();
+    if (!tg?.BackButton) return;
+
+    if (pathname === '/') {
+      tg.BackButton.hide();
+      return;
+    }
+
+    function handleBack() {
+      if (window.history.length > 1) navigate(-1);
+      else navigate('/');
+    }
+
+    tg.BackButton.show();
+    tg.BackButton.onClick(handleBack);
+    return () => tg.BackButton.offClick(handleBack);
+  }, [pathname, navigate]);
+
+  return null;
 }
 
 function BottomNav() {

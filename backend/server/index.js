@@ -169,5 +169,36 @@ app.post('/incrementListingView', async (req, res) => {
   }
 });
 
+// Reveals a seller's phone number to a verified, registered caller.
+// Phone numbers are never exposed via Firestore rules (users/{uid}
+// is read-restricted to its own owner) — this endpoint is the only
+// legitimate way a buyer's client learns a seller's number, and it
+// checks the CALLER's own registration status server-side (never
+// trusting the client's requireRegistered() check alone).
+app.post('/getSellerPhone', async (req, res) => {
+  try {
+    const { idToken, sellerId } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    if (!sellerId) return res.status(400).json({ error: 'sellerId is required.' });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+
+    const callerSnap = await db.collection('users').doc(decoded.uid).get();
+    if (!callerSnap.exists || !callerSnap.data().phone) {
+      return res.status(403).json({ error: 'Please complete your profile first.' });
+    }
+
+    const sellerSnap = await db.collection('users').doc(sellerId).get();
+    if (!sellerSnap.exists || !sellerSnap.data().phone) {
+      return res.status(404).json({ error: "This seller hasn't added a phone number yet." });
+    }
+
+    res.json({ phone: sellerSnap.data().phone, fullName: sellerSnap.data().fullName || '' });
+  } catch (err) {
+    console.error('getSellerPhone failed:', err);
+    res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Holeta Gebeya backend listening on ${PORT}`));
