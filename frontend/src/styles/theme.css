@@ -160,8 +160,8 @@ textarea.field{min-height:84px;resize:vertical;}
 .menu-item .chev{color:var(--ink-faint);}
 
 .bottom-nav{display:grid;grid-template-columns:repeat(5,1fr);align-items:center;height:72px;background:var(--surface);border-top:1px solid var(--line);padding:0 0 env(safe-area-inset-bottom,0px);position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;width:100%;}
-.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:var(--ink-faint);font-size:12px;font-weight:600;height:100%;}
-.nav-item.active{color:var(--primary);}
+.nav-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-decoration:none;color:var(--ink-faint);font-size:12px;font-weight:500;height:100%;}
+.nav-item.active{color:var(--primary);font-weight:700;}
 .nav-fab{width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;justify-self:center;margin-top:-34px;border:4px solid var(--bg-app);box-shadow:0 8px 18px -4px rgba(30,75,63,.5);}
 
 /* --- FilterSheet --- */
