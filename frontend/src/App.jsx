@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
@@ -48,11 +48,34 @@ export default function App() {
 // An open chat thread takes over the full screen (fixed header +
 // input, only the message list scrolls) — the bottom nav would just
 // sit awkwardly on top of the input row, so it's hidden there.
+//
+// It's also hidden any time a text field is focused anywhere in the
+// app (search box, post-ad form, etc.) — on mobile, the on-screen
+// keyboard resizes the viewport and a fixed bottom nav would ride up
+// and float in the middle of the screen alongside it otherwise.
 function ConditionalBottomNav() {
   const { pathname } = useLocation();
   const inThread = /^\/chat\/.+/.test(pathname);
   const inProduct = /^\/product\/.+/.test(pathname);
-  if (inThread || inProduct) return null;
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+
+  useEffect(() => {
+    function isTextField(el) {
+      if (!el) return false;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
+    }
+    function onFocusIn(e) { if (isTextField(e.target)) setKeyboardOpen(true); }
+    function onFocusOut(e) { if (isTextField(e.target)) setKeyboardOpen(false); }
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+    };
+  }, []);
+
+  if (inThread || inProduct || keyboardOpen) return null;
   return <BottomNav />;
 }
 
