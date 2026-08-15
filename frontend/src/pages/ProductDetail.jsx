@@ -99,10 +99,13 @@ export default function ProductDetail() {
       .catch(() => {});
   }, [item?.category, item?.id]);
 
-  // Seller's reviews, for the rating summary + review list.
+  // This listing's own reviews (not every listing this seller has —
+  // a rating/comment is tied to the item it was left on; a future
+  // seller-profile page is the right place to aggregate across all
+  // of a seller's listings).
   useEffect(() => {
-    if (!item?.sellerId) return;
-    getDocs(query(collection(db, 'reviews'), where('sellerId', '==', item.sellerId)))
+    if (!item?.id) return;
+    getDocs(query(collection(db, 'reviews'), where('listingId', '==', item.id)))
       .then((snap) => {
         const data = snap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
@@ -110,7 +113,7 @@ export default function ProductDetail() {
         setReviews(data);
       })
       .catch(() => {});
-  }, [item?.sellerId]);
+  }, [item?.id]);
 
   const avgRating = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
@@ -125,10 +128,16 @@ export default function ProductDetail() {
 
       // Reuse an existing thread for this listing+buyer instead of
       // creating a duplicate every time "Chat with Seller" is tapped.
+      // Must include the `participants` array-contains clause here —
+      // Firestore validates security rules against a LIST query's own
+      // filters, not per-document, so a query that doesn't literally
+      // include the field the rule checks is rejected outright even
+      // if every matching document would satisfy it.
       const existing = await getDocs(query(
         collection(db, 'chats'),
         where('listingId', '==', id),
         where('buyerId', '==', user.uid),
+        where('participants', 'array-contains', user.uid),
         limit(1)
       ));
       if (!existing.empty) {
@@ -211,7 +220,7 @@ export default function ProductDetail() {
         createdAt: serverTimestamp(),
       }, { merge: true });
       setReviewSheetOpen(false);
-      const snap = await getDocs(query(collection(db, 'reviews'), where('sellerId', '==', item.sellerId)));
+      const snap = await getDocs(query(collection(db, 'reviews'), where('listingId', '==', item.id)));
       setReviews(snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)));
     } catch (err) {

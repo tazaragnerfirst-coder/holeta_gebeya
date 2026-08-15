@@ -18,7 +18,7 @@ export default function ReviewSheet({ open, busy, error, initial, onClose, onSub
 
   function submit() {
     setTouched(true);
-    if (!rating) return;
+    if (!rating || !comment.trim()) return;
     onSubmit({ rating, comment: comment.trim() });
   }
 
@@ -41,7 +41,7 @@ export default function ReviewSheet({ open, busy, error, initial, onClose, onSub
           </div>
 
           <div className="field-group" style={{ marginTop: 16 }}>
-            <label className="field-label">Comment (optional)</label>
+            <label className="field-label">Comment<span className="req">*</span></label>
             <textarea
               className="field"
               value={comment}
@@ -51,6 +51,7 @@ export default function ReviewSheet({ open, busy, error, initial, onClose, onSub
           </div>
 
           {touched && !rating && <p className="field-error">Please pick a star rating.</p>}
+          {touched && rating && !comment.trim() && <p className="field-error">Please add a short comment.</p>}
           {error && (
             <div className="error-banner" style={{ marginTop: 14 }}>
               <Icon name="x" size={14} />
