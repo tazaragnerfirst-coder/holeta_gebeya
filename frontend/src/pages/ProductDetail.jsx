@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, addDoc, query, where, getDocs, limit, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, collection, addDoc, query, where, getDocs, limit, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getUnsafeUserPreview } from '../lib/telegram';
@@ -20,7 +20,7 @@ export default function ProductDetail() {
   useEffect(() => {
     setItem(getCached(`product:${id}`) || null);
     setNotFound(false);
-    getDoc(doc(db, 'listings', id)).then((snap) => {
+    const unsub = onSnapshot(doc(db, 'listings', id), (snap) => {
       if (snap.exists()) {
         const data = { id: snap.id, ...snap.data() };
         setItem(data);
@@ -28,7 +28,8 @@ export default function ProductDetail() {
       } else {
         setNotFound(true);
       }
-    }).catch(() => setNotFound(true));
+    }, () => setNotFound(true));
+    return unsub;
   }, [id]);
 
   // Registration is only requested HERE — the moment the user wants

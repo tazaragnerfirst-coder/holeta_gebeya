@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { CATEGORIES } from '../data/categories';
 import Icon from '../components/Icon.jsx';
@@ -29,13 +29,13 @@ export default function Home() {
 
   useEffect(() => {
     const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(30));
-    getDocs(q)
-      .then((snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        setListings(data);
-        setCached('home:listings', data);
-      })
-      .finally(() => setLoading(false));
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setListings(data);
+      setCached('home:listings', data);
+      setLoading(false);
+    }, () => setLoading(false));
+    return unsub;
   }, []);
 
   const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());

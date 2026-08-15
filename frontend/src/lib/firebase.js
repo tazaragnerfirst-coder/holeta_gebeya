@@ -1,5 +1,9 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager,
+} from 'firebase/firestore';
 import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
 import { getInitData, getUnsafeUserPreview } from './telegram';
 
@@ -23,7 +27,23 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 export { BACKEND_URL };
 
 export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// IndexedDB-backed local cache. Telegram Mini Apps tear down and
+// recreate the WebView on every open, so an in-memory-only Firestore
+// client (the default) has nothing to show until a fresh network
+// round-trip completes — that's the "loading every single time"
+// experience. With persistent local cache, Firestore serves whatever
+// it last saw straight from IndexedDB immediately, then reconciles
+// with the server in the background (listeners/getDocs still update
+// the UI the moment fresher data arrives — this never shows stale
+// data forever, it just removes the blank wait).
+// persistentSingleTabManager: this app never runs in multiple tabs
+// (it's a Mini App WebView), so the simpler single-tab manager is
+// enough and avoids the multi-tab coordination overhead.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }),
+});
+
 export const auth = getAuth(app);
 
 let loginPromise = null;
