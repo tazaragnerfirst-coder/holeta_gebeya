@@ -61,11 +61,11 @@ function BottomNav() {
     <nav className="bottom-nav">
       {item('/', 'Home', 'home')}
       {item('/chat', 'Chat', 'chat')}
-      <div className="center-btn-wrapper">
-        <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
-      </div>
       {item('/dashboard', 'Dashboard', 'briefcase')}
       {item('/profile', 'Profile', 'user')}
+      <div className="nav-fab-wrapper">
+        <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
+      </div>
     </nav>
   );
 }
