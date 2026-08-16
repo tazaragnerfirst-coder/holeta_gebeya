@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useNavigate, useParams } from 'react-router-dom';
+import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
+import { computeExpiresAt } from '../lib/adStatus';
 import { CATEGORIES, getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS } from '../data/categories';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
 import ImageUploader from '../components/ImageUploader.jsx';
@@ -12,6 +13,8 @@ import ChipSelect from '../components/ChipSelect.jsx';
 
 export default function PostAd() {
   const navigate = useNavigate();
+  const { id: editId } = useParams();
+  const isEdit = !!editId;
   const requireRegistered = useRequireRegistered();
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
@@ -25,6 +28,42 @@ export default function PostAd() {
   const [statusMsg, setStatusMsg] = useState('');
   const [errors, setErrors] = useState({});
   const [titleTouched, setTitleTouched] = useState(false);
+  // Only relevant in edit mode: blocks the form until the existing
+  // listing's fields have loaded, since category/subcategory pickers
+  // need to be pre-selected before rendering makes sense.
+  const [loadingExisting, setLoadingExisting] = useState(isEdit);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    if (!isEdit) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const snap = await getDoc(doc(db, 'listings', editId));
+        if (cancelled) return;
+        if (!snap.exists()) {
+          setLoadError('This ad no longer exists.');
+          return;
+        }
+        const a = snap.data();
+        setCategoryId(a.category || '');
+        setSubcategoryId(a.subcategory || '');
+        setAttrs(a.attributes || {});
+        setTitle(a.title || '');
+        setTitleTouched(true); // don't let the auto-suggest effect overwrite the loaded title
+        setPrice(a.price != null ? String(a.price) : '');
+        setDescription(a.description || '');
+        setLocation(a.location || 'Holeta');
+        setImages(a.images || []); // existing images stay as data-URL strings until re-saved
+      } catch (err) {
+        console.error(err);
+        if (!cancelled) setLoadError("Couldn't load this ad. Check your connection and try again.");
+      } finally {
+        if (!cancelled) setLoadingExisting(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isEdit, editId]);
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
   const subcategory = category && subcategoryId ? getSubcategory(categoryId, subcategoryId) : null;
@@ -103,24 +142,27 @@ export default function PostAd() {
       // Photos are resized + compressed client-side and stored as
       // base64 strings directly on the listing document — no
       // Firebase Storage (which needs the paid Blaze plan) involved.
+      // In edit mode, images already saved from before arrive here as
+      // plain data-URL strings (from the loaded doc) and are kept
+      // as-is; only newly-picked File objects need compressing.
       let compressedImages = [];
       if (images.length > 0) {
         setStatusMsg(`Processing photos (0/${images.length})...`);
         for (let i = 0; i < images.length; i++) {
-          const dataUrl = await fileToCompressedBase64(images[i]);
-          compressedImages.push(dataUrl);
+          const img = images[i];
+          compressedImages.push(typeof img === 'string' ? img : await fileToCompressedBase64(img));
           setStatusMsg(`Processing photos (${i + 1}/${images.length})...`);
         }
       }
 
-      setStatusMsg('Publishing...');
+      setStatusMsg(isEdit ? 'Saving...' : 'Publishing...');
       // Display name is taken from Telegram's own client-side preview
       // (not a Firestore read of another user's doc — that's blocked
       // by firestore.rules) and stored on the listing so buyers can
       // see who they'd be chatting with without any extra reads.
       const sellerName = getUnsafeUserPreview()?.first_name || 'Seller';
 
-      const ref2 = await addDoc(collection(db, 'listings'), {
+      const payload = {
         sellerId: user.uid,
         sellerName,
         title,
@@ -132,25 +174,54 @@ export default function PostAd() {
         attributes: attrs,
         condition: attrs.condition || '',
         images: compressedImages,
-        createdAt: serverTimestamp(),
-        boostedUntil: null,
-        views: 0,
-        status: 'active',
-      });
-      navigate(`/product/${ref2.id}`);
+      };
+
+      if (isEdit) {
+        // Edits don't touch createdAt/views/expiresAt/status — those
+        // are owned by the post flow and the Renew action respectively.
+        await updateDoc(doc(db, 'listings', editId), payload);
+        navigate(`/product/${editId}`);
+      } else {
+        const ref2 = await addDoc(collection(db, 'listings'), {
+          ...payload,
+          createdAt: serverTimestamp(),
+          expiresAt: computeExpiresAt(),
+          boostedUntil: null,
+          views: 0,
+          status: 'active',
+        });
+        navigate(`/product/${ref2.id}`);
+      }
     } catch (err) {
       console.error(err);
       const isColdStart = /fetch|network|failed/i.test(err.message || '');
-      setErrors({ submit: `Couldn't post your ad: ${err.message || err}.${isColdStart ? ' If this is the first request in a while, the server may still be waking up — please try again in 30 seconds.' : ''}` });
+      setErrors({ submit: `Couldn't ${isEdit ? 'save' : 'post'} your ad: ${err.message || err}.${isColdStart ? ' If this is the first request in a while, the server may still be waking up — please try again in 30 seconds.' : ''}` });
     } finally {
       setSubmitting(false);
       setStatusMsg('');
     }
   }
 
+  if (isEdit && loadingExisting) {
+    return (
+      <div className="page">
+        <h2 className="page-title">Edit Ad</h2>
+        <p className="helper-text">Loading...</p>
+      </div>
+    );
+  }
+  if (isEdit && loadError) {
+    return (
+      <div className="page">
+        <h2 className="page-title">Edit Ad</h2>
+        <p className="helper-text error-text">{loadError}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="page">
-      <h2 className="page-title">Post an Ad</h2>
+      <h2 className="page-title">{isEdit ? 'Edit Ad' : 'Post an Ad'}</h2>
 
       <div className="form-block">
         <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
@@ -234,7 +305,7 @@ export default function PostAd() {
         )}
 
         <button className="btn btn-primary" disabled={submitting} onClick={submit}>
-          {submitting ? (statusMsg || 'Posting...') : 'Continue'}
+          {submitting ? (statusMsg || (isEdit ? 'Saving...' : 'Posting...')) : (isEdit ? 'Save Changes' : 'Continue')}
         </button>
         {submitting && <p className="helper-text" style={{ textAlign: 'center' }}>First post after a while can take up to 30s while the server wakes up.</p>}
       </div>

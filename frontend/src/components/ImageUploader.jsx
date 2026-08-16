@@ -16,7 +16,7 @@ export default function ImageUploader({ files, onChange, maxImages = 8 }) {
     <div>
       <div className="upload-grid">
         {files.map((f, i) => (
-          <div className="upload-slot filled" key={i} style={{ backgroundImage: `url(${URL.createObjectURL(f)})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+          <div className="upload-slot filled" key={i} style={{ backgroundImage: `url(${typeof f === 'string' ? f : URL.createObjectURL(f)})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
             <span className="x" onClick={() => removeAt(i)}><Icon name="x" size={12} /></span>
           </div>
         ))}

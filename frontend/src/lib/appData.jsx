@@ -2,8 +2,32 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { collection, query, orderBy, limit, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { getUnsafeUserPreview } from './telegram';
+import { getCached, setCached } from './pageCache';
 
 const AppDataContext = createContext(null);
+
+const REG_KEY = 'hg_registered:';
+
+function expectedUid() {
+  const tgUser = getUnsafeUserPreview();
+  return tgUser ? `tg_${tgUser.id}` : null;
+}
+
+// A past session already confirmed this uid has a phone on file.
+// Trust that optimistically so chats/ads can start warming up the
+// instant the app opens, instead of every cold start waiting on a
+// fresh auth-restore + Firestore round trip first. The real check in
+// the effect below still runs in the background and corrects this
+// (clears it) if anything's actually changed.
+function knownRegisteredUid() {
+  const uid = expectedUid();
+  if (!uid) return null;
+  try {
+    return localStorage.getItem(REG_KEY + uid) === '1' ? uid : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Single source of truth for the data pages need, fetched once here
@@ -24,48 +48,63 @@ const AppDataContext = createContext(null);
  *   never stop, so every later visit to Chat/Dashboard is instant.
  */
 export function AppDataProvider({ children }) {
-  const [listings, setListings] = useState([]);
-  const [listingsReady, setListingsReady] = useState(false);
+  const [listings, setListings] = useState(() => getCached('listings') || []);
+  const [listingsReady, setListingsReady] = useState(() => getCached('listings') != null);
 
-  const [registeredUid, setRegisteredUid] = useState(null);
-  const [chats, setChats] = useState([]);
-  const [chatsReady, setChatsReady] = useState(false);
-  const [ads, setAds] = useState([]);
-  const [adsReady, setAdsReady] = useState(false);
+  const initialUid = knownRegisteredUid();
+  const [registeredUid, setRegisteredUid] = useState(initialUid);
+  const [chats, setChats] = useState(() => (initialUid ? getCached(`chats:${initialUid}`) || [] : []));
+  const [chatsReady, setChatsReady] = useState(() => (initialUid ? getCached(`chats:${initialUid}`) != null : false));
+  const [ads, setAds] = useState(() => (initialUid ? getCached(`ads:${initialUid}`) || [] : []));
+  const [adsReady, setAdsReady] = useState(() => (initialUid ? getCached(`ads:${initialUid}`) != null : false));
 
   const checkedSession = useRef(false);
 
   useEffect(() => {
     const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(30));
     const unsub = onSnapshot(q, (snap) => {
-      setListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setListings(data);
       setListingsReady(true);
+      setCached('listings', data);
     }, () => setListingsReady(true));
     return unsub;
   }, []);
 
+  // Background re-verification of the optimistic localStorage flag
+  // above. Doesn't gate the UI — by the time this resolves, chats/ads
+  // are usually already showing last-known data. Only corrects things
+  // (signs the account out of the trusted state) if it turns out the
+  // phone-on-file check no longer holds.
   useEffect(() => {
     const unsub = auth.onAuthStateChanged(async (user) => {
       if (checkedSession.current || !user) return;
       checkedSession.current = true;
-      const tgUser = getUnsafeUserPreview();
-      const expectedUid = tgUser ? `tg_${tgUser.id}` : null;
-      if (expectedUid && user.uid !== expectedUid) return;
+      const uid = expectedUid();
+      if (uid && user.uid !== uid) return;
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
-        if (snap.exists() && snap.data().phone) setRegisteredUid(user.uid);
+        if (snap.exists() && snap.data().phone) {
+          markRegistered(user.uid);
+        } else if (registeredUid === user.uid) {
+          try { localStorage.removeItem(REG_KEY + user.uid); } catch {}
+          setRegisteredUid(null);
+        }
       } catch {
         // Stay silent — page-level requireRegistered() flows still work normally.
       }
     });
     return unsub;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Called by the signup flow the instant a user completes
   // registration this session, so Chat/Dashboard start warming up
-  // right away instead of waiting for a future app reload.
+  // right away instead of waiting for a future app reload — and
+  // persisted so the NEXT app open skips the wait entirely too.
   function markRegistered(uid) {
     setRegisteredUid((prev) => prev || uid);
+    try { localStorage.setItem(REG_KEY + uid, '1'); } catch {}
   }
 
   useEffect(() => {
@@ -76,8 +115,10 @@ export function AppDataProvider({ children }) {
       orderBy('lastMessageAt', 'desc')
     );
     const unsub = onSnapshot(q, (snap) => {
-      setChats(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setChats(data);
       setChatsReady(true);
+      setCached(`chats:${registeredUid}`, data);
     }, () => setChatsReady(true));
     return unsub;
   }, [registeredUid]);
@@ -86,8 +127,10 @@ export function AppDataProvider({ children }) {
     if (!registeredUid) return;
     const q = query(collection(db, 'listings'), where('sellerId', '==', registeredUid));
     const unsub = onSnapshot(q, (snap) => {
-      setAds(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setAds(data);
       setAdsReady(true);
+      setCached(`ads:${registeredUid}`, data);
     }, () => setAdsReady(true));
     return unsub;
   }, [registeredUid]);

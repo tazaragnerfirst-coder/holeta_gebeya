@@ -2,35 +2,48 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
+import { useLoadTimeout } from '../lib/useLoadTimeout';
+import { isActiveAd } from '../lib/adStatus';
 import Icon from '../components/Icon.jsx';
 
 export default function Dashboard() {
   const { ads, adsReady, registeredUid } = useAppData();
   const requireRegistered = useRequireRegistered();
 
-  // Data itself now comes from the app-wide store (already warming
-  // up in the background) — this call only handles prompting signup
-  // if the visitor isn't registered yet.
   useEffect(() => {
+    if (registeredUid) return;
     requireRegistered().catch((err) => console.error(err));
-  }, []);
+  }, [registeredUid]);
 
-  const ready = registeredUid ? adsReady : false;
+  const ready = adsReady;
+  const timedOut = useLoadTimeout(ready, 3000);
 
   const totalViews = ads.reduce((s, a) => s + (a.views || 0), 0);
-  const active = ads.filter((a) => a.status === 'active');
+  const active = ads.filter(isActiveAd);
 
   return (
     <div className="page">
       <h2 className="page-title">Seller Dashboard</h2>
       <div className="stat-row">
-        <div className="stat-card"><div className="val">{totalViews}</div><div className="lbl">Total Views</div></div>
-        <div className="stat-card"><div className="val">{active.length}</div><div className="lbl">Active Ads</div></div>
-        <div className="stat-card"><div className="val">{ads.length - active.length}</div><div className="lbl">Expired</div></div>
+        <Link to="/dashboard/views" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="val">{totalViews}</div><div className="lbl">Total Views</div>
+        </Link>
+        <Link to="/dashboard/ads" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="val">{active.length}</div><div className="lbl">Active Ads</div>
+        </Link>
+        <Link to="/dashboard/expired" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="val">{ads.length - active.length}</div><div className="lbl">Expired</div>
+        </Link>
       </div>
 
       <h3 className="section-title">My Ads</h3>
-      {!ready && <p className="helper-text">Loading...</p>}
+      {!ready && !timedOut && <p className="helper-text">Loading...</p>}
+      {!ready && timedOut && (
+        <p className="helper-text error-text">
+          Couldn't load your ads. Check your connection and{' '}
+          <a href="#" onClick={(e) => { e.preventDefault(); window.location.reload(); }}>try again</a>.
+        </p>
+      )}
       {ready && ads.length === 0 && <p className="helper-text">You haven't posted anything yet.</p>}
       {ads.map((a) => {
         const photo = a.images && a.images[0];
