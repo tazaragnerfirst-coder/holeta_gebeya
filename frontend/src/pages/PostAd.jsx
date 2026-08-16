@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth, BACKEND_URL } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
@@ -190,12 +190,29 @@ export default function PostAd() {
           views: 0,
           status: 'active',
         });
+        // Records lastPostAt on the user's profile so the 2-minute
+        // cooldown (enforced in firestore.rules) applies to the next
+        // post attempt. Best-effort — the post above already
+        // succeeded, so a failure here shouldn't block navigation.
+        try {
+          const idToken = await auth.currentUser.getIdToken();
+          fetch(`${BACKEND_URL}/recordPost`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+          }).catch(() => {});
+        } catch {}
         navigate(`/product/${ref2.id}`);
       }
     } catch (err) {
       console.error(err);
       const isColdStart = /fetch|network|failed/i.test(err.message || '');
-      setErrors({ submit: `Couldn't ${isEdit ? 'save' : 'post'} your ad: ${err.message || err}.${isColdStart ? ' If this is the first request in a while, the server may still be waking up — please try again in 30 seconds.' : ''}` });
+      const isCooldown = err.code === 'permission-denied' && !isEdit;
+      setErrors({
+        submit: isCooldown
+          ? "You're posting a bit too quickly — please wait a couple of minutes and try again."
+          : `Couldn't ${isEdit ? 'save' : 'post'} your ad: ${err.message || err}.${isColdStart ? ' If this is the first request in a while, the server may still be waking up — please try again in 30 seconds.' : ''}`,
+      });
     } finally {
       setSubmitting(false);
       setStatusMsg('');

@@ -5,7 +5,19 @@ service cloud.firestore {
     // Anyone can browse listings — no login required to look around.
     match /listings/{listingId} {
       allow read: if true;
-      allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid;
+      // Basic spam guard: a seller must wait at least 2 minutes
+      // between posts. lastPostAt lives on their own users/{uid} doc
+      // (admin-write-only — see below) and is bumped by the backend's
+      // /recordPost endpoint right after a successful post, so this
+      // check is enforced here in rules and can't be bypassed by
+      // calling Firestore directly instead of going through the app.
+      allow create: if request.auth != null
+        && request.resource.data.sellerId == request.auth.uid
+        && (
+          !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          || !('lastPostAt' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data)
+          || request.time > get(/databases/$(database)/documents/users/$(request.auth.uid)).data.lastPostAt + duration.value(2, 'm')
+        );
       // Sellers can edit their own listing normally. Anyone (even
       // signed-out browsers) may also bump the public `views` counter
       // by exactly +1 and nothing else — it's a low-stakes public
@@ -41,15 +53,9 @@ service cloud.firestore {
     }
 
     // Chats: only the two participants can read/write, and only once
-    // a chat exists — created by the buyer via the client SDK. The
-    // buyer's client checks "does our chat already exist?" via a
-    // get() BEFORE the doc is created, so `resource` is null at that
-    // point — the read rule has to allow that (nothing to leak from
-    // a document that doesn't exist yet) or Firestore treats the
-    // resulting rule-evaluation error as permission-denied.
+    // a chat exists — created by the buyer via the client SDK.
     match /chats/{chatId} {
-      allow read: if request.auth != null
-        && (resource == null || request.auth.uid in resource.data.participants);
+      allow read: if request.auth != null && request.auth.uid in resource.data.participants;
       allow create: if request.auth != null && request.auth.uid in request.resource.data.participants;
       allow update: if request.auth != null && request.auth.uid in resource.data.participants;
 

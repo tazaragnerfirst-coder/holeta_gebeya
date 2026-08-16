@@ -155,6 +155,28 @@ app.post('/notifyNewMessage', async (req, res) => {
   }
 });
 
+// Called by the client right after a listing is successfully
+// created, so the next post attempt's cooldown (enforced in
+// firestore.rules against users/{uid}.lastPostAt) has something to
+// check against. users/{uid} is admin-write-only, so this has to
+// happen from the backend rather than the client SDK.
+app.post('/recordPost', async (req, res) => {
+  try {
+    const { idToken } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    await db.collection('users').doc(decoded.uid).set({
+      lastPostAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('recordPost failed:', err);
+    // Never block the person on this — the post itself already
+    // succeeded by the time this is called.
+    res.json({ ok: false });
+  }
+});
+
 app.post('/incrementListingView', async (req, res) => {
   try {
     const id = req.body.listingId;

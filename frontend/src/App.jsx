@@ -1,20 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home.jsx';
-import ProductDetail from './pages/ProductDetail.jsx';
-import PostAd from './pages/PostAd.jsx';
-import ChatList from './pages/ChatList.jsx';
-import ChatThread from './pages/ChatThread.jsx';
-import Dashboard from './pages/Dashboard.jsx';
-import ViewsDetail from './pages/ViewsDetail.jsx';
-import AdsManage from './pages/AdsManage.jsx';
-import ExpiredItems from './pages/ExpiredItems.jsx';
-import Profile from './pages/Profile.jsx';
 import Icon from './components/Icon.jsx';
 import { AuthGateProvider } from './lib/authGate.jsx';
 import { AppDataProvider } from './lib/appData.jsx';
 import { BACKEND_URL } from './lib/firebase';
 import { getTelegramWebApp } from './lib/telegram';
+
+// Home loads eagerly (it's the landing screen, needed immediately).
+// Everything else splits into its own chunk and loads on first visit
+// — trims the initial bundle for the common case of someone just
+// browsing listings without ever opening Chat/Dashboard/Post.
+const ProductDetail = lazy(() => import('./pages/ProductDetail.jsx'));
+const PostAd = lazy(() => import('./pages/PostAd.jsx'));
+const ChatList = lazy(() => import('./pages/ChatList.jsx'));
+const ChatThread = lazy(() => import('./pages/ChatThread.jsx'));
+const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
+const ViewsDetail = lazy(() => import('./pages/ViewsDetail.jsx'));
+const AdsManage = lazy(() => import('./pages/AdsManage.jsx'));
+const ExpiredItems = lazy(() => import('./pages/ExpiredItems.jsx'));
+const Profile = lazy(() => import('./pages/Profile.jsx'));
+
+function RouteFallback() {
+  return (
+    <div className="page">
+      <p className="helper-text">Loading...</p>
+    </div>
+  );
+}
 
 export default function App() {
   // Fire-and-forget: wake the Render backend as soon as the Mini App
@@ -30,19 +43,21 @@ export default function App() {
       <AuthGateProvider>
         <div className="app-shell">
           <div className="screen-container">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/product/:id" element={<ProductDetail />} />
-              <Route path="/post" element={<PostAd />} />
-              <Route path="/edit/:id" element={<PostAd />} />
-              <Route path="/chat" element={<ChatList />} />
-              <Route path="/chat/:id" element={<ChatThread />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard/views" element={<ViewsDetail />} />
-              <Route path="/dashboard/ads" element={<AdsManage />} />
-              <Route path="/dashboard/expired" element={<ExpiredItems />} />
-              <Route path="/profile" element={<Profile />} />
-            </Routes>
+            <Suspense fallback={<RouteFallback />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/product/:id" element={<ProductDetail />} />
+                <Route path="/post" element={<PostAd />} />
+                <Route path="/edit/:id" element={<PostAd />} />
+                <Route path="/chat" element={<ChatList />} />
+                <Route path="/chat/:id" element={<ChatThread />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/dashboard/views" element={<ViewsDetail />} />
+                <Route path="/dashboard/ads" element={<AdsManage />} />
+                <Route path="/dashboard/expired" element={<ExpiredItems />} />
+                <Route path="/profile" element={<Profile />} />
+              </Routes>
+            </Suspense>
           </div>
           <TelegramBackButton />
           <ConditionalBottomNav />
