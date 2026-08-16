@@ -6,6 +6,9 @@ import PostAd from './pages/PostAd.jsx';
 import ChatList from './pages/ChatList.jsx';
 import ChatThread from './pages/ChatThread.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import ViewsDetail from './pages/ViewsDetail.jsx';
+import AdsManage from './pages/AdsManage.jsx';
+import ExpiredItems from './pages/ExpiredItems.jsx';
 import Profile from './pages/Profile.jsx';
 import Icon from './components/Icon.jsx';
 import { AuthGateProvider } from './lib/authGate.jsx';
@@ -34,6 +37,9 @@ export default function App() {
               <Route path="/chat" element={<ChatList />} />
               <Route path="/chat/:id" element={<ChatThread />} />
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard/views" element={<ViewsDetail />} />
+              <Route path="/dashboard/ads" element={<AdsManage />} />
+              <Route path="/dashboard/expired" element={<ExpiredItems />} />
               <Route path="/profile" element={<Profile />} />
             </Routes>
           </div>

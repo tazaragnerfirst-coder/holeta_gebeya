@@ -32,9 +32,15 @@ export default function Dashboard() {
     <div className="page">
       <h2 className="page-title">Seller Dashboard</h2>
       <div className="stat-row">
-        <div className="stat-card"><div className="val">{totalViews}</div><div className="lbl">Total Views</div></div>
-        <div className="stat-card"><div className="val">{active.length}</div><div className="lbl">Active Ads</div></div>
-        <div className="stat-card"><div className="val">{ads.length - active.length}</div><div className="lbl">Expired</div></div>
+        <Link to="/dashboard/views" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="val">{totalViews}</div><div className="lbl">Total Views</div>
+        </Link>
+        <Link to="/dashboard/ads" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="val">{active.length}</div><div className="lbl">Active Ads</div>
+        </Link>
+        <Link to="/dashboard/expired" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+          <div className="val">{ads.length - active.length}</div><div className="lbl">Expired</div>
+        </Link>
       </div>
 
       <h3 className="section-title">My Ads</h3>
