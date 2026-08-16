@@ -184,6 +184,12 @@ textarea.field{min-height:84px;resize:vertical;}
 .chat-context .t{font-size:11px;color:var(--ink-faint);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .chat-context .p{font-size:12px;font-weight:800;color:var(--primary);}
 
+.chat-topics-strip{display:flex;gap:8px;overflow-x:auto;padding:9px 16px;background:var(--surface);border-bottom:1px solid var(--line);flex:0 0 auto;scrollbar-width:none;}
+.chat-topics-strip::-webkit-scrollbar{display:none;}
+.chat-topic-chip{display:flex;align-items:center;gap:6px;flex:0 0 auto;background:var(--surface-sunken);border-radius:100px;padding:5px 12px 5px 5px;text-decoration:none;color:inherit;}
+.chat-topic-thumb{width:26px;height:26px;border-radius:50%;background:var(--line);flex:0 0 auto;}
+.chat-topic-chip span:last-child{font-size:11.5px;font-weight:600;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
 .thread-page{position:fixed;top:0;left:0;right:0;margin:0 auto;max-width:480px;height:var(--app-vh, 100vh);display:flex;flex-direction:column;padding:0;background:var(--bg-app);z-index:30;}
 .thread-scroll{flex:1;overflow-y:auto;padding:0 16px;-webkit-overflow-scrolling:touch;}
 .thread{display:flex;flex-direction:column;gap:2px;padding:6px 0;}

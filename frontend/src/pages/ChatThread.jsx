@@ -166,6 +166,19 @@ export default function ChatThread() {
     : (amBuyer ? (chatInfo?.sellerName || 'Seller') : (chatInfo?.buyerName || 'Buyer'));
   const otherInitial = otherName ? otherName[0].toUpperCase() : '?';
 
+  // Every distinct item raised in this conversation, in a pinned
+  // strip that never scrolls out of view — so which products have
+  // come up stays visible no matter how long the conversation gets,
+  // instead of only living in a listing card buried in the scrollback.
+  const topics = [];
+  const seenTopics = new Set();
+  for (const m of messages) {
+    if (m.type === 'listing' && !seenTopics.has(m.listingId)) {
+      seenTopics.add(m.listingId);
+      topics.push(m);
+    }
+  }
+
   return (
     <div className="page thread-page">
       <div className="chat-context">
@@ -183,6 +196,20 @@ export default function ChatThread() {
           <Link to={`/product/${chatInfo.listingId}`} className="p" style={{ textDecoration: 'none' }}>View</Link>
         )}
       </div>
+
+      {topics.length > 1 && (
+        <div className="chat-topics-strip">
+          {topics.map((t) => (
+            <Link to={`/product/${t.listingId}`} className="chat-topic-chip" key={t.listingId}>
+              <span
+                className="chat-topic-thumb"
+                style={t.listingPhoto ? { backgroundImage: `url(${t.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+              />
+              <span>{t.listingTitle}</span>
+            </Link>
+          ))}
+        </div>
+      )}
 
       <div className="thread-scroll">
         {!chatInfo?.isSupport && (

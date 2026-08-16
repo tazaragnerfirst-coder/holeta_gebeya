@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  doc, onSnapshot, collection, addDoc, setDoc, updateDoc, increment,
+  doc, getDoc, onSnapshot, collection, addDoc, setDoc, updateDoc, increment,
   query, where, limit, getDocs, serverTimestamp,
 } from 'firebase/firestore';
 import { db, BACKEND_URL } from '../lib/firebase';
@@ -126,55 +126,61 @@ export default function ProductDetail() {
     try {
       const user = await requireRegistered();
 
-      // Reuse an existing thread for this listing+buyer instead of
-      // creating a duplicate every time "Chat with Seller" is tapped.
-      // Must include the `participants` array-contains clause here —
-      // Firestore validates security rules against a LIST query's own
-      // filters, not per-document, so a query that doesn't literally
-      // include the field the rule checks is rejected outright even
-      // if every matching document would satisfy it.
-      const existing = await getDocs(query(
-        collection(db, 'chats'),
-        where('listingId', '==', id),
-        where('buyerId', '==', user.uid),
-        where('participants', 'array-contains', user.uid),
-        limit(1)
-      ));
-      if (!existing.empty) {
-        navigate(`/chat/${existing.docs[0].id}`);
-        return;
+      // One thread per buyer↔seller pair, not per listing — so
+      // asking about a second item later continues the same
+      // conversation instead of starting a disconnected new one. A
+      // deterministic id (sorted uid pair) means we can look this up
+      // directly instead of running a query.
+      const chatId = [item.sellerId, user.uid].sort().join('_');
+      const chatRef = doc(db, 'chats', chatId);
+      const snap = await getDoc(chatRef);
+      const buyerName = getUnsafeUserPreview()?.first_name || 'Buyer';
+
+      // Only attach a fresh listing card when this is a new thread,
+      // or the buyer is now asking about a different item than the
+      // one the thread was last about — reopening the same item's
+      // chat again shouldn't spam a duplicate card every time.
+      const isNewListingContext = !snap.exists() || snap.data().listingId !== id;
+
+      if (!snap.exists()) {
+        await setDoc(chatRef, {
+          listingId: id,
+          listingTitle: item.title,
+          listingPhoto: item.images?.[0] || '',
+          sellerId: item.sellerId,
+          sellerName: item.sellerName || 'Seller',
+          buyerId: user.uid,
+          buyerName,
+          participants: [item.sellerId, user.uid],
+          lastMessage: '',
+          lastSenderId: '',
+          createdAt: serverTimestamp(),
+          lastMessageAt: serverTimestamp(),
+        });
+      } else if (isNewListingContext) {
+        await updateDoc(chatRef, {
+          listingId: id,
+          listingTitle: item.title,
+          listingPhoto: item.images?.[0] || '',
+        });
       }
 
-      const buyerName = getUnsafeUserPreview()?.first_name || 'Buyer';
-      const chatRef = await addDoc(collection(db, 'chats'), {
-        listingId: id,
-        listingTitle: item.title,
-        listingPhoto: item.images?.[0] || '',
-        sellerId: item.sellerId,
-        sellerName: item.sellerName || 'Seller',
-        buyerId: user.uid,
-        buyerName,
-        participants: [item.sellerId, user.uid],
-        lastMessage: '',
-        lastSenderId: '',
-        createdAt: serverTimestamp(),
-        lastMessageAt: serverTimestamp(),
-      });
+      // Auto-attach a small listing reference so the seller (and the
+      // buyer, scrolling back later) can see exactly which item this
+      // part of the conversation is about.
+      if (isNewListingContext) {
+        await addDoc(collection(db, 'chats', chatId, 'messages'), {
+          senderId: user.uid,
+          type: 'listing',
+          listingId: id,
+          listingTitle: item.title,
+          listingPhoto: item.images?.[0] || '',
+          listingPrice: item.price,
+          createdAt: serverTimestamp(),
+        });
+      }
 
-      // Auto-attach a small listing reference as the first item in
-      // the thread, so the seller immediately knows which item this
-      // conversation is about instead of a bare "hi" with no context.
-      await addDoc(collection(db, 'chats', chatRef.id, 'messages'), {
-        senderId: user.uid,
-        type: 'listing',
-        listingId: id,
-        listingTitle: item.title,
-        listingPhoto: item.images?.[0] || '',
-        listingPrice: item.price,
-        createdAt: serverTimestamp(),
-      });
-
-      navigate(`/chat/${chatRef.id}`);
+      navigate(`/chat/${chatId}`);
     } catch (err) {
       setChatError(err.message || "Couldn't start chat. Please try again.");
     } finally {
