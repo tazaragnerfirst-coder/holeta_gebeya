@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
+import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { SUPPORT_NAME } from '../lib/constants';
 import Icon from '../components/Icon.jsx';
 
@@ -28,14 +29,19 @@ export default function ChatList() {
   const requireRegistered = useRequireRegistered();
 
   // Data itself now comes from the app-wide store (already warming
-  // up in the background) — this call only handles prompting signup
-  // if the visitor isn't registered yet.
+  // up in the background, and seeded from last-known cache on cold
+  // start) — this call only handles prompting signup if the visitor
+  // isn't registered yet. Skipped once registeredUid is already trusted.
   useEffect(() => {
+    if (registeredUid) return;
     requireRegistered().catch((err) => console.error(err));
-  }, []);
+  }, [registeredUid]);
 
   const uid = registeredUid;
-  const ready = uid ? chatsReady : false;
+  // chatsReady alone: cached chats from a previous session render
+  // immediately instead of waiting on registeredUid to re-resolve.
+  const ready = chatsReady;
+  const timedOut = useLoadTimeout(ready, 3000);
   const supportChatId = uid ? `support_${uid}` : null;
   const supportChat = chats.find((c) => c.id === supportChatId);
   const otherChats = chats.filter((c) => c.id !== supportChatId);
@@ -60,7 +66,13 @@ export default function ChatList() {
         </Link>
       )}
 
-      {!ready && <p className="helper-text">Loading conversations...</p>}
+      {!ready && !timedOut && <p className="helper-text">Loading conversations...</p>}
+      {!ready && timedOut && (
+        <p className="helper-text error-text">
+          Couldn't load your conversations. Check your connection and{' '}
+          <a href="#" onClick={(e) => { e.preventDefault(); window.location.reload(); }}>try again</a>.
+        </p>
+      )}
       {ready && otherChats.length === 0 && (
         <p className="helper-text">No conversations yet. Message a seller from a product page to start one.</p>
       )}

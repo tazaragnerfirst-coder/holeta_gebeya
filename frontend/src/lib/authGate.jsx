@@ -22,10 +22,12 @@ export function AuthGateProvider({ children }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const pendingRef = useRef(null);
-  const { markRegistered } = useAppData();
+  const { registeredUid, markRegistered } = useAppData();
 
   const requireRegistered = useCallback(async () => {
     const user = await ensureLoggedIn();
+    if (registeredUid && registeredUid === user.uid) return user;
+
     const snap = await getDoc(doc(db, 'users', user.uid));
     if (snap.exists() && snap.data().phone) {
       markRegistered(user.uid);
@@ -37,7 +39,7 @@ export function AuthGateProvider({ children }) {
       setError('');
       setOpen(true);
     });
-  }, [markRegistered]);
+  }, [registeredUid, markRegistered]);
 
   async function handleSubmit({ fullName, phone }) {
     setBusy(true);

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
+import { useLoadTimeout } from '../lib/useLoadTimeout';
 import Icon from '../components/Icon.jsx';
 
 export default function Dashboard() {
@@ -9,13 +10,20 @@ export default function Dashboard() {
   const requireRegistered = useRequireRegistered();
 
   // Data itself now comes from the app-wide store (already warming
-  // up in the background) — this call only handles prompting signup
-  // if the visitor isn't registered yet.
+  // up in the background, and seeded from last-known cache on cold
+  // start) — this call only handles prompting signup if the visitor
+  // isn't registered yet. Skipped entirely once we already trust a
+  // registeredUid, so this doesn't re-hit Firestore on every visit.
   useEffect(() => {
+    if (registeredUid) return;
     requireRegistered().catch((err) => console.error(err));
-  }, []);
+  }, [registeredUid]);
 
-  const ready = registeredUid ? adsReady : false;
+  // adsReady alone (no extra gate on registeredUid): cached ads from
+  // a previous session render immediately, and the listener quietly
+  // refreshes them once it attaches.
+  const ready = adsReady;
+  const timedOut = useLoadTimeout(ready, 3000);
 
   const totalViews = ads.reduce((s, a) => s + (a.views || 0), 0);
   const active = ads.filter((a) => a.status === 'active');
@@ -30,7 +38,13 @@ export default function Dashboard() {
       </div>
 
       <h3 className="section-title">My Ads</h3>
-      {!ready && <p className="helper-text">Loading...</p>}
+      {!ready && !timedOut && <p className="helper-text">Loading...</p>}
+      {!ready && timedOut && (
+        <p className="helper-text error-text">
+          Couldn't load your ads. Check your connection and{' '}
+          <a href="#" onClick={(e) => { e.preventDefault(); window.location.reload(); }}>try again</a>.
+        </p>
+      )}
       {ready && ads.length === 0 && <p className="helper-text">You haven't posted anything yet.</p>}
       {ads.map((a) => {
         const photo = a.images && a.images[0];

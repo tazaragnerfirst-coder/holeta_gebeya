@@ -43,9 +43,9 @@ export default function ProductDetail() {
   const [callBusy, setCallBusy] = useState(false);
   const [sellerPhone, setSellerPhone] = useState('');
 
-  const [similar, setSimilar] = useState([]);
+  const [similar, setSimilar] = useState(() => getCached(`similar:${id}`) || []);
 
-  const [reviews, setReviews] = useState([]);
+  const [reviews, setReviews] = useState(() => getCached(`reviews:${id}`) || []);
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState('');
@@ -56,7 +56,12 @@ export default function ProductDetail() {
   const [reportDone, setReportDone] = useState(false);
 
   useEffect(() => {
+    // Re-seed from cache for the NEW id — without this, navigating
+    // from one product straight to another would keep showing the
+    // previous product's similar/reviews until the new fetch lands.
     setItem(getCached(`product:${id}`) || null);
+    setSimilar(getCached(`similar:${id}`) || []);
+    setReviews(getCached(`reviews:${id}`) || []);
     setNotFound(false);
     const unsub = onSnapshot(doc(db, 'listings', id), (snap) => {
       if (snap.exists()) {
@@ -95,9 +100,10 @@ export default function ProductDetail() {
           .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
           .slice(0, 6);
         setSimilar(data);
+        setCached(`similar:${id}`, data);
       })
       .catch(() => {});
-  }, [item?.category, item?.id]);
+  }, [item?.category, item?.id, id]);
 
   // This listing's own reviews (not every listing this seller has —
   // a rating/comment is tied to the item it was left on; a future
@@ -111,9 +117,10 @@ export default function ProductDetail() {
           .map((d) => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
         setReviews(data);
+        setCached(`reviews:${id}`, data);
       })
       .catch(() => {});
-  }, [item?.id]);
+  }, [item?.id, id]);
 
   const avgRating = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
