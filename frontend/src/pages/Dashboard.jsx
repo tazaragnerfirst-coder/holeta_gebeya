@@ -3,30 +3,23 @@ import { Link } from 'react-router-dom';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
+import { isActiveAd } from '../lib/adStatus';
 import Icon from '../components/Icon.jsx';
 
 export default function Dashboard() {
   const { ads, adsReady, registeredUid } = useAppData();
   const requireRegistered = useRequireRegistered();
 
-  // Data itself now comes from the app-wide store (already warming
-  // up in the background, and seeded from last-known cache on cold
-  // start) — this call only handles prompting signup if the visitor
-  // isn't registered yet. Skipped entirely once we already trust a
-  // registeredUid, so this doesn't re-hit Firestore on every visit.
   useEffect(() => {
     if (registeredUid) return;
     requireRegistered().catch((err) => console.error(err));
   }, [registeredUid]);
 
-  // adsReady alone (no extra gate on registeredUid): cached ads from
-  // a previous session render immediately, and the listener quietly
-  // refreshes them once it attaches.
   const ready = adsReady;
   const timedOut = useLoadTimeout(ready, 3000);
 
   const totalViews = ads.reduce((s, a) => s + (a.views || 0), 0);
-  const active = ads.filter((a) => a.status === 'active');
+  const active = ads.filter(isActiveAd);
 
   return (
     <div className="page">

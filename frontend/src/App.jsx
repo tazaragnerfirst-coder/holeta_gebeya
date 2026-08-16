@@ -34,6 +34,7 @@ export default function App() {
               <Route path="/" element={<Home />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/post" element={<PostAd />} />
+              <Route path="/edit/:id" element={<PostAd />} />
               <Route path="/chat" element={<ChatList />} />
               <Route path="/chat/:id" element={<ChatThread />} />
               <Route path="/dashboard" element={<Dashboard />} />

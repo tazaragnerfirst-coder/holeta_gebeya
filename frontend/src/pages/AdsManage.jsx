@@ -4,6 +4,7 @@ import { doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
+import { isActiveAd } from '../lib/adStatus';
 import Icon from '../components/Icon.jsx';
 
 // Opened from the "Active Ads" card on the Dashboard. Reuses the
@@ -16,7 +17,7 @@ export default function AdsManage() {
   const timedOut = useLoadTimeout(adsReady, 3000);
   const [deletingId, setDeletingId] = useState(null);
 
-  const active = ads.filter((a) => a.status === 'active');
+  const active = ads.filter(isActiveAd);
 
   async function handleDelete(id) {
     if (!window.confirm('ይህን ማስታወቂያ መሰረዝ ይፈልጋሉ?')) return;
@@ -57,15 +58,24 @@ export default function AdsManage() {
                 <div className="metrics"><span><Icon name="eye" size={13} /> {a.views || 0}</span></div>
               </div>
             </Link>
-            <button
-              type="button"
-              onClick={() => handleDelete(a.id)}
-              disabled={deletingId === a.id}
-              aria-label="Delete ad"
-              style={{ background: 'none', border: 'none', padding: 8, cursor: 'pointer', color: 'var(--error, #C0392B)', opacity: deletingId === a.id ? 0.5 : 1 }}
-            >
-              <Icon name="xCircle" size={20} />
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Link
+                to={`/edit/${a.id}`}
+                aria-label="Edit ad"
+                style={{ padding: '6px 10px', color: 'var(--primary)', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
+              >
+                Edit
+              </Link>
+              <button
+                type="button"
+                onClick={() => handleDelete(a.id)}
+                disabled={deletingId === a.id}
+                aria-label="Delete ad"
+                style={{ background: 'none', border: 'none', padding: 8, cursor: 'pointer', color: 'var(--error, #C0392B)', opacity: deletingId === a.id ? 0.5 : 1 }}
+              >
+                <Icon name="xCircle" size={20} />
+              </button>
+            </div>
           </div>
         );
       })}
