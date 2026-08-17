@@ -44,13 +44,16 @@ export default function Dashboard() {
 
   const active = ads.filter(isActiveAd);
 
-  // Range-filtered totals from the daily analytics docs. Falls back
-  // to the all-time counter on listings while analytics data is
-  // still loading, so the card isn't blank on first paint.
+  // Range-filtered totals from the daily analytics docs. For 7d/30d
+  // these are the real numbers. For "All time" the analytics
+  // collection only goes back to when this feature shipped, so we
+  // show the true historical total from the per-listing `views`
+  // counter instead — it's been accumulating since each ad was
+  // posted and is strictly more accurate for that one range.
   const rangeViews = useMemo(() => analytics.reduce((s, a) => s + (a.views || 0), 0), [analytics]);
   const rangeContacts = useMemo(() => analytics.reduce((s, a) => s + (a.contacts || 0), 0), [analytics]);
   const allTimeViews = ads.reduce((s, a) => s + (a.views || 0), 0);
-  const totalViews = analyticsReady ? rangeViews : allTimeViews;
+  const totalViews = !analyticsReady ? allTimeViews : (rangeKey === 'all' ? allTimeViews : rangeViews);
 
   return (
     <div className="page">
@@ -111,7 +114,11 @@ export default function Dashboard() {
           : <div className="chart-empty" style={{ height: 80 }}>Loading…</div>}
       </div>
       {analyticsReady && analytics.length === 0 && (
-        <p className="helper-text">No analytics recorded yet for this period — data builds up as buyers view and contact you.</p>
+        <p className="helper-text">
+          {rangeKey === 'all'
+            ? "No contact-click or daily-view history yet — this tracking started with this update, so it builds up from here."
+            : 'No analytics recorded yet for this period — data builds up as buyers view and contact you.'}
+        </p>
       )}
 
       <h3 className="section-title">My Ads</h3>
