@@ -15,6 +15,7 @@ import ReportSheet from '../components/ReportSheet.jsx';
 import CallSheet from '../components/CallSheet.jsx';
 import { ProductDetailSkeleton } from '../components/Skeletons.jsx';
 import { getCached, setCached } from '../lib/pageCache';
+import { logListingView, logContactClick } from '../lib/analytics';
 
 function timeAgo(ts) {
   if (!ts?.toDate) return '';
@@ -80,12 +81,13 @@ export default function ProductDetail() {
   // bump this counter — it's a public, low-stakes stat, so it isn't
   // gated behind an account (browsing stays account-free).
   useEffect(() => {
-    if (!id) return;
+    if (!id || !item?.sellerId) return;
     const t = setTimeout(() => {
       updateDoc(doc(db, 'listings', id), { views: increment(1) }).catch(() => {});
+      logListingView(item.sellerId);
     }, 1500);
     return () => clearTimeout(t);
-  }, [id]);
+  }, [id, item?.sellerId]);
 
   // Other listings in the same category, for the "You might also
   // like" row. No composite index needed: filter by category only,
@@ -187,6 +189,7 @@ export default function ProductDetail() {
         });
       }
 
+      logContactClick(item.sellerId);
       navigate(`/chat/${chatId}`);
     } catch (err) {
       setChatError(err.message || "Couldn't start chat. Please try again.");
@@ -210,6 +213,7 @@ export default function ProductDetail() {
       if (!r.ok) throw new Error(data.error || "Couldn't get the seller's number.");
       setSellerPhone(data.phone);
       setCallSheetOpen(true);
+      logContactClick(item.sellerId);
     } catch (err) {
       setChatError(err.message || "Couldn't verify your account. Please try again.");
     } finally {

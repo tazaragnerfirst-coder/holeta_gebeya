@@ -28,6 +28,25 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
     }
 
+    // Per-seller daily analytics (dashboard views/contact-click
+    // charts). One doc per seller per day, id `${sellerId}_${date}`.
+    // Private to the seller it belongs to. Anyone (even signed-out
+    // buyers) may log an event — same public, increment-only pattern
+    // as the `views` counter on listings — but only by exactly +1 on
+    // exactly one of the two counters per write.
+    match /sellerAnalytics/{docId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.sellerId;
+      allow create: if request.resource.data.keys().hasOnly(['sellerId', 'date', 'views', 'contacts'])
+        && docId == request.resource.data.sellerId + '_' + request.resource.data.date
+        && ((request.resource.data.views == 1 && request.resource.data.contacts == 0)
+            || (request.resource.data.views == 0 && request.resource.data.contacts == 1));
+      allow update: if request.resource.data.sellerId == resource.data.sellerId
+        && request.resource.data.date == resource.data.date
+        && ((request.resource.data.views == resource.data.views + 1 && request.resource.data.contacts == resource.data.contacts)
+            || (request.resource.data.contacts == resource.data.contacts + 1 && request.resource.data.views == resource.data.views));
+      allow delete: if false;
+    }
+
     // Seller reviews: publicly readable (shown on the listing page),
     // but only the reviewer can create/update their own review. The
     // client always writes with doc id `${listingId}_${buyerId}`, so
