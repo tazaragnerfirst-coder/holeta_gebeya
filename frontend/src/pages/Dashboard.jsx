@@ -8,6 +8,7 @@ import { getSellerAnalytics } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
 import DailyViewsChart from '../components/DailyViewsChart.jsx';
 import ContactFunnelChart from '../components/ContactFunnelChart.jsx';
+import RankedBarChart from '../components/RankedBarChart.jsx';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -54,6 +55,16 @@ export default function Dashboard() {
   const rangeContacts = useMemo(() => analytics.reduce((s, a) => s + (a.contacts || 0), 0), [analytics]);
   const allTimeViews = ads.reduce((s, a) => s + (a.views || 0), 0);
   const totalViews = !analyticsReady ? allTimeViews : (rangeKey === 'all' ? allTimeViews : rangeViews);
+
+  const adRankingItems = useMemo(
+    () => ads.map((a) => ({ label: a.title, value: a.views || 0 })),
+    [ads]
+  );
+  const categoryItems = useMemo(() => {
+    const totals = {};
+    ads.forEach((a) => { totals[a.category || 'Other'] = (totals[a.category || 'Other'] || 0) + (a.views || 0); });
+    return Object.entries(totals).map(([label, value]) => ({ label, value }));
+  }, [ads]);
 
   return (
     <div className="page">
@@ -120,6 +131,16 @@ export default function Dashboard() {
             : 'No analytics recorded yet for this period — data builds up as buyers view and contact you.'}
         </p>
       )}
+
+      <h3 className="section-title"><Icon name="star" size={16} /> Top Ads by Views</h3>
+      <div className="chart-card">
+        <RankedBarChart items={adRankingItems} limit={5} emptyText="Post an ad to see its performance here." />
+      </div>
+
+      <h3 className="section-title"><Icon name="grid" size={16} /> Views by Category</h3>
+      <div className="chart-card">
+        <RankedBarChart items={categoryItems} limit={6} emptyText="No category data yet." />
+      </div>
 
       <h3 className="section-title">My Ads</h3>
       {!ready && !timedOut && <p className="helper-text">Loading...</p>}
