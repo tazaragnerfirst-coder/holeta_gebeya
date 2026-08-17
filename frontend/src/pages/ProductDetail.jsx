@@ -84,7 +84,7 @@ export default function ProductDetail() {
     if (!id || !item?.sellerId) return;
     const t = setTimeout(() => {
       updateDoc(doc(db, 'listings', id), { views: increment(1) }).catch(() => {});
-      logListingView(item.sellerId);
+      logListingView(item.sellerId, id);
     }, 1500);
     return () => clearTimeout(t);
   }, [id, item?.sellerId]);
@@ -189,7 +189,7 @@ export default function ProductDetail() {
         });
       }
 
-      logContactClick(item.sellerId);
+      logContactClick(item.sellerId, id);
       navigate(`/chat/${chatId}`);
     } catch (err) {
       setChatError(err.message || "Couldn't start chat. Please try again.");
@@ -213,7 +213,7 @@ export default function ProductDetail() {
       if (!r.ok) throw new Error(data.error || "Couldn't get the seller's number.");
       setSellerPhone(data.phone);
       setCallSheetOpen(true);
-      logContactClick(item.sellerId);
+      logContactClick(item.sellerId, id);
     } catch (err) {
       setChatError(err.message || "Couldn't verify your account. Please try again.");
     } finally {

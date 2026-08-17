@@ -47,6 +47,25 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Per-listing daily analytics (per-ad sparkline/trend on the
+    // Views detail page). One doc per listing per day, id
+    // `${listingId}_${date}`. Same shape/rules as sellerAnalytics
+    // above, keyed by listing instead of seller so a seller with
+    // several ads can see each ad's own trend.
+    match /listingAnalytics/{docId} {
+      allow read: if request.auth != null && request.auth.uid == resource.data.sellerId;
+      allow create: if request.resource.data.keys().hasOnly(['listingId', 'sellerId', 'date', 'views', 'contacts'])
+        && docId == request.resource.data.listingId + '_' + request.resource.data.date
+        && ((request.resource.data.views == 1 && request.resource.data.contacts == 0)
+            || (request.resource.data.views == 0 && request.resource.data.contacts == 1));
+      allow update: if request.resource.data.listingId == resource.data.listingId
+        && request.resource.data.sellerId == resource.data.sellerId
+        && request.resource.data.date == resource.data.date
+        && ((request.resource.data.views == resource.data.views + 1 && request.resource.data.contacts == resource.data.contacts)
+            || (request.resource.data.contacts == resource.data.contacts + 1 && request.resource.data.views == resource.data.views));
+      allow delete: if false;
+    }
+
     // Seller reviews: publicly readable (shown on the listing page),
     // but only the reviewer can create/update their own review. The
     // client always writes with doc id `${listingId}_${buyerId}`, so

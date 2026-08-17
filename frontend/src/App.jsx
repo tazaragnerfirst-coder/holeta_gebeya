@@ -17,6 +17,7 @@ const ChatList = lazy(() => import('./pages/ChatList.jsx'));
 const ChatThread = lazy(() => import('./pages/ChatThread.jsx'));
 const Dashboard = lazy(() => import('./pages/Dashboard.jsx'));
 const ViewsDetail = lazy(() => import('./pages/ViewsDetail.jsx'));
+const ViewAdDetail = lazy(() => import('./pages/ViewAdDetail.jsx'));
 const AdsManage = lazy(() => import('./pages/AdsManage.jsx'));
 const ExpiredItems = lazy(() => import('./pages/ExpiredItems.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
@@ -53,6 +54,7 @@ export default function App() {
                 <Route path="/chat/:id" element={<ChatThread />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/dashboard/views" element={<ViewsDetail />} />
+                <Route path="/dashboard/views/:id" element={<ViewAdDetail />} />
                 <Route path="/dashboard/ads" element={<AdsManage />} />
                 <Route path="/dashboard/expired" element={<ExpiredItems />} />
                 <Route path="/profile" element={<Profile />} />

@@ -32,12 +32,33 @@ async function bump(sellerId, field) {
   }
 }
 
-export function logListingView(sellerId) {
-  return bump(sellerId, 'views');
+// Same pattern as `bump`, but keyed by listing instead of seller —
+// powers the per-ad sparkline/trend on the Views detail page.
+async function bumpListing(sellerId, listingId, field) {
+  if (!sellerId || !listingId) return;
+  const date = todayStr();
+  const other = field === 'views' ? 'contacts' : 'views';
+  try {
+    await setDoc(doc(db, 'listingAnalytics', docId(listingId, date)), {
+      listingId,
+      sellerId,
+      date,
+      [field]: increment(1),
+      [other]: increment(0),
+    }, { merge: true });
+  } catch {
+    // Best-effort — same as above.
+  }
 }
 
-export function logContactClick(sellerId) {
-  return bump(sellerId, 'contacts');
+// listingId is optional so existing call sites keep working; pass it
+// wherever the listing is known so that ad gets its own trend data.
+export function logListingView(sellerId, listingId) {
+  return Promise.all([bump(sellerId, 'views'), bumpListing(sellerId, listingId, 'views')]);
+}
+
+export function logContactClick(sellerId, listingId) {
+  return Promise.all([bump(sellerId, 'contacts'), bumpListing(sellerId, listingId, 'contacts')]);
 }
 
 // Fetches every daily doc for this seller and filters/sorts
@@ -55,4 +76,48 @@ export async function getSellerAnalytics(sellerId, days = 30) {
     filtered = all.filter((a) => a.date >= cutoffStr);
   }
   return filtered.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Fetches daily docs for one listing (used by the per-ad detail page).
+export async function getListingAnalytics(listingId, days = 30) {
+  if (!listingId) return [];
+  const snap = await getDocs(query(collection(db, 'listingAnalytics'), where('listingId', '==', listingId)));
+  const all = snap.docs.map((d) => d.data());
+  let filtered = all;
+  if (days !== Infinity) {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    filtered = all.filter((a) => a.date >= cutoffStr);
+  }
+  return filtered.sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Bulk fetch for a list of listing ids (the Views list page — one
+// query instead of one per ad). Firestore 'in' caps at 30 values, so
+// this chunks; a seller with 30+ ads is an edge case worth the extra
+// round trip rather than a reason to complicate this further.
+export async function getListingAnalyticsBulk(listingIds, days = 7) {
+  const ids = (listingIds || []).filter(Boolean);
+  if (ids.length === 0) return {};
+  const cutoffStr = days === Infinity ? null : (() => {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    return cutoff.toISOString().slice(0, 10);
+  })();
+
+  const chunks = [];
+  for (let i = 0; i < ids.length; i += 30) chunks.push(ids.slice(i, i + 30));
+
+  const byListing = {};
+  await Promise.all(chunks.map(async (chunk) => {
+    const snap = await getDocs(query(collection(db, 'listingAnalytics'), where('listingId', 'in', chunk)));
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      if (cutoffStr && data.date < cutoffStr) return;
+      (byListing[data.listingId] ||= []).push(data);
+    });
+  }));
+  Object.values(byListing).forEach((arr) => arr.sort((a, b) => a.date.localeCompare(b.date)));
+  return byListing;
 }

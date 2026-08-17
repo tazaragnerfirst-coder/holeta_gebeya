@@ -92,7 +92,8 @@ export default function Dashboard() {
       </div>
 
       <div className="stat-row">
-        <Link to="/dashboard/views" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link to="/dashboard/views" className="stat-card" style={{ textDecoration: 'none', color: 'inherit', position: 'relative' }}>
+          <span className="detail-tag stat-card-tag">Detail</span>
           <div className="val">{totalViews}</div><div className="lbl">Total Views</div>
         </Link>
         <div className="stat-card">
@@ -103,10 +104,12 @@ export default function Dashboard() {
         </div>
       </div>
       <div className="stat-row">
-        <Link to="/dashboard/ads" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link to="/dashboard/ads" className="stat-card" style={{ textDecoration: 'none', color: 'inherit', position: 'relative' }}>
+          <span className="detail-tag stat-card-tag">Detail</span>
           <div className="val">{active.length}</div><div className="lbl">Active Ads</div>
         </Link>
-        <Link to="/dashboard/expired" className="stat-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <Link to="/dashboard/expired" className="stat-card" style={{ textDecoration: 'none', color: 'inherit', position: 'relative' }}>
+          <span className="detail-tag stat-card-tag">Detail</span>
           <div className="val">{ads.length - active.length}</div><div className="lbl">Expired</div>
         </Link>
       </div>
