@@ -5,6 +5,7 @@ import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { getListingAnalyticsBulk } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
 import Sparkline from '../components/Sparkline.jsx';
+import StateMessage from '../components/StateMessage.jsx';
 
 // Opened from the "Total Views" card on the Dashboard. Reuses the
 // same ads/adsReady stream from AppDataProvider (no new Firestore
@@ -37,12 +38,17 @@ export default function ViewsDetail() {
       <h3 className="section-title">By Ad</h3>
       {!adsReady && !timedOut && <p className="helper-text">Loading...</p>}
       {!adsReady && timedOut && (
-        <p className="helper-text error-text">
-          Couldn't load your ads. Check your connection and{' '}
-          <a href="#" onClick={(e) => { e.preventDefault(); window.location.reload(); }}>try again</a>.
-        </p>
+        <StateMessage
+          tone="error"
+          icon="history"
+          text="Couldn't load your ads. Check your connection."
+          actionLabel="Try again"
+          onAction={() => window.location.reload()}
+        />
       )}
-      {adsReady && sorted.length === 0 && <p className="helper-text">You haven't posted anything yet.</p>}
+      {adsReady && sorted.length === 0 && (
+        <StateMessage text="You haven't posted anything yet." actionLabel="Post an ad" actionTo="/post" />
+      )}
       {sorted.map((a) => {
         const photo = a.images && a.images[0];
         const daily = (trends[a.id] || []).map((d) => d.views || 0);

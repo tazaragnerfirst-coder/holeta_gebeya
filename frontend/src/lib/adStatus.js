@@ -18,3 +18,15 @@ export function isExpired(ad) {
 export function isActiveAd(ad) {
   return ad.status === 'active' && !isExpired(ad);
 }
+
+// Whole days since a listing's createdAt timestamp. Used for
+// per-day performance rates (views/day) on the seller dashboard.
+export function daysSincePosted(ad) {
+  const ms = typeof ad?.createdAt?.toMillis === 'function' ? ad.createdAt.toMillis() : null;
+  if (!ms) return null;
+  return Math.max(1, Math.round((Date.now() - ms) / (24 * 60 * 60 * 1000)));
+}
+
+export function isCurrentlyBoosted(ad) {
+  return !!(ad?.boostedUntil && ad.boostedUntil.toDate?.() > new Date());
+}

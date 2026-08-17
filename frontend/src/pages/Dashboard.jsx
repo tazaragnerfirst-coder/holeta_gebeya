@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
-import { isActiveAd } from '../lib/adStatus';
+import { isActiveAd, daysSincePosted, isCurrentlyBoosted } from '../lib/adStatus';
 import { getSellerAnalytics } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
 import DailyViewsChart from '../components/DailyViewsChart.jsx';
 import ContactFunnelChart from '../components/ContactFunnelChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
+import BoostCard from '../components/BoostCard.jsx';
+import StateMessage from '../components/StateMessage.jsx';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -65,6 +67,15 @@ export default function Dashboard() {
     ads.forEach((a) => { totals[a.category || 'Other'] = (totals[a.category || 'Other'] || 0) + (a.views || 0); });
     return Object.entries(totals).map(([label, value]) => ({ label, value }));
   }, [ads]);
+
+  const boostedAds = ads.filter(isCurrentlyBoosted);
+  const regularAds = ads.filter((a) => !isCurrentlyBoosted(a));
+  const avgRate = (list) => list.length > 0
+    ? Math.round((list.reduce((s, a) => s + (a.views || 0) / (daysSincePosted(a) || 1), 0) / list.length) * 10) / 10
+    : null;
+  const boostedAvg = avgRate(boostedAds);
+  const regularAvg = avgRate(regularAds);
+  const showBoostCompare = boostedAvg != null && regularAvg != null;
 
   return (
     <div className="page">
@@ -145,15 +156,32 @@ export default function Dashboard() {
         <RankedBarChart items={categoryItems} limit={6} emptyText="No category data yet." />
       </div>
 
+      {ready && ads.length > 0 && (
+        <BoostCard
+          title={showBoostCompare ? 'Boosted ads get more views' : 'Get more eyes on your ads'}
+          description={showBoostCompare ? undefined : 'Boosted ads are shown as Featured on the home screen.'}
+          compare={showBoostCompare ? [
+            { label: 'Boosted avg views/day', value: boostedAvg },
+            { label: 'Regular avg views/day', value: regularAvg },
+          ] : null}
+          ctaLabel="Boost an ad"
+        />
+      )}
+
       <h3 className="section-title">My Ads</h3>
       {!ready && !timedOut && <p className="helper-text">Loading...</p>}
       {!ready && timedOut && (
-        <p className="helper-text error-text">
-          Couldn't load your ads. Check your connection and{' '}
-          <a href="#" onClick={(e) => { e.preventDefault(); window.location.reload(); }}>try again</a>.
-        </p>
+        <StateMessage
+          tone="error"
+          icon="history"
+          text="Couldn't load your ads. Check your connection."
+          actionLabel="Try again"
+          onAction={() => window.location.reload()}
+        />
       )}
-      {ready && ads.length === 0 && <p className="helper-text">You haven't posted anything yet.</p>}
+      {ready && ads.length === 0 && (
+        <StateMessage text="You haven't posted anything yet." actionLabel="Post an ad" actionTo="/post" />
+      )}
       {ads.map((a) => {
         const photo = a.images && a.images[0];
         return (

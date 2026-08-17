@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useAppData } from '../lib/appData';
 import { getListingAnalytics } from '../lib/analytics';
-import { isActiveAd } from '../lib/adStatus';
+import { isActiveAd, daysSincePosted, isCurrentlyBoosted } from '../lib/adStatus';
 import Icon from '../components/Icon.jsx';
 import DailyViewsChart from '../components/DailyViewsChart.jsx';
 import ContactFunnelChart from '../components/ContactFunnelChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
+import BoostCard from '../components/BoostCard.jsx';
+import StateMessage from '../components/StateMessage.jsx';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -14,11 +16,6 @@ const RANGE_OPTIONS = [
   { key: 'all', label: 'All time', days: Infinity },
 ];
 
-function daysSince(ts) {
-  const ms = typeof ts?.toMillis === 'function' ? ts.toMillis() : null;
-  if (!ms) return null;
-  return Math.max(1, Math.round((Date.now() - ms) / (24 * 60 * 60 * 1000)));
-}
 
 export default function ViewAdDetail() {
   const { id } = useParams();
@@ -51,13 +48,13 @@ export default function ViewAdDetail() {
     ? Math.round(categoryPeers.reduce((s, a) => s + (a.views || 0), 0) / categoryPeers.length)
     : null;
 
-  const isBoosted = !!(ad?.boostedUntil && ad.boostedUntil.toDate?.() > new Date());
-  const thisRate = ad ? (ad.views || 0) / (daysSince(ad.createdAt) || 1) : 0;
-  const boostedPeers = ads.filter((a) => a.id !== id && !!(a.boostedUntil && a.boostedUntil.toDate?.() > new Date()));
-  const regularPeers = ads.filter((a) => a.id !== id && !(a.boostedUntil && a.boostedUntil.toDate?.() > new Date()));
+  const isBoosted = isCurrentlyBoosted(ad);
+  const thisRate = ad ? (ad.views || 0) / (daysSincePosted(ad) || 1) : 0;
+  const boostedPeers = ads.filter((a) => a.id !== id && isCurrentlyBoosted(a));
+  const regularPeers = ads.filter((a) => a.id !== id && !isCurrentlyBoosted(a));
   const otherGroup = isBoosted ? regularPeers : boostedPeers;
   const otherGroupAvgRate = otherGroup.length > 0
-    ? otherGroup.reduce((s, a) => s + (a.views || 0) / (daysSince(a.createdAt) || 1), 0) / otherGroup.length
+    ? otherGroup.reduce((s, a) => s + (a.views || 0) / (daysSincePosted(a) || 1), 0) / otherGroup.length
     : null;
   const showBoostCompare = otherGroupAvgRate != null;
 
@@ -65,7 +62,7 @@ export default function ViewAdDetail() {
   let tip = null;
   if (analyticsReady && rangeViews >= 10 && conversionRate != null && conversionRate < 5) {
     tip = "Views are coming in but few people are reaching out — try a lower price, sharper photos, or a clearer description.";
-  } else if (analyticsReady && rangeViews < 5 && ad && daysSince(ad.createdAt) > 3) {
+  } else if (analyticsReady && rangeViews < 5 && ad && daysSincePosted(ad) > 3) {
     tip = 'Not many views yet — boosting this ad or posting in a more specific category can help it get seen.';
   }
 
@@ -75,8 +72,7 @@ export default function ViewAdDetail() {
   if (adsReady && !ad) {
     return (
       <div className="page">
-        <p className="helper-text">Ad not found.</p>
-        <Link to="/dashboard/views">Back to Views</Link>
+        <StateMessage text="Ad not found." actionLabel="Back to Views" actionTo="/dashboard/views" />
       </div>
     );
   }
@@ -148,20 +144,19 @@ export default function ViewAdDetail() {
         </>
       )}
 
-      {showBoostCompare && (
-        <>
-          <h3 className="section-title"><Icon name="trendingUp" size={16} /> Boosted vs. regular</h3>
-          <div className="chart-card">
-            <RankedBarChart
-              items={[
-                { label: isBoosted ? 'This ad (boosted)' : 'This ad', value: Math.round(thisRate * 10) / 10 },
-                { label: isBoosted ? 'Your regular ads' : 'Your boosted ads', value: Math.round(otherGroupAvgRate * 10) / 10 },
-              ]}
-              limit={2}
-            />
-          </div>
-          <p className="helper-text">Average views per day — based on your own ads.</p>
-        </>
+      <h3 className="section-title"><Icon name="trendingUp" size={16} /> Boost</h3>
+      {isBoosted ? (
+        <div className="state-box"><Icon name="star" size={16} /><span>This ad is currently boosted and featured on the home screen.</span></div>
+      ) : (
+        <BoostCard
+          title="Get more eyes on this ad"
+          description={showBoostCompare ? undefined : 'Boosted ads are shown as Featured on the home screen.'}
+          compare={showBoostCompare ? [
+            { label: 'This ad', value: Math.round(thisRate * 10) / 10 },
+            { label: 'Your boosted ads', value: Math.round(otherGroupAvgRate * 10) / 10 },
+          ] : null}
+          ctaLabel="Boost this ad"
+        />
       )}
 
       {tip && (
