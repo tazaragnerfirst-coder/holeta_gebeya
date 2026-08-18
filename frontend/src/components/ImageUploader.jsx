@@ -29,7 +29,6 @@ export default function ImageUploader({ files, onChange, maxImages = 8 }) {
         type="file"
         accept="image/*"
         multiple
-        capture="environment"
         style={{ display: 'none' }}
         onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
       />

@@ -1,9 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import {
-  initializeFirestore,
-  persistentLocalCache,
-  persistentSingleTabManager,
-} from 'firebase/firestore';
+import { getFirestore } from 'firebase/firestore';
 import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
 import { getInitData, getUnsafeUserPreview } from './telegram';
 
@@ -28,21 +24,16 @@ export { BACKEND_URL };
 
 export const app = initializeApp(firebaseConfig);
 
-// IndexedDB-backed local cache. Telegram Mini Apps tear down and
-// recreate the WebView on every open, so an in-memory-only Firestore
-// client (the default) has nothing to show until a fresh network
-// round-trip completes — that's the "loading every single time"
-// experience. With persistent local cache, Firestore serves whatever
-// it last saw straight from IndexedDB immediately, then reconciles
-// with the server in the background (listeners/getDocs still update
-// the UI the moment fresher data arrives — this never shows stale
-// data forever, it just removes the blank wait).
-// persistentSingleTabManager: this app never runs in multiple tabs
-// (it's a Mini App WebView), so the simpler single-tab manager is
-// enough and avoids the multi-tab coordination overhead.
-export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }),
-});
+// Plain in-memory Firestore client — deliberately NOT using
+// persistentLocalCache (IndexedDB). Telegram Mini Apps tear down and
+// recreate the WebView on every open; that teardown mid-transaction
+// is what was corrupting Firestore's IndexedDB persistence layer and
+// causing the recurring "FIRESTORE INTERNAL ASSERTION FAILED:
+// Unexpected state" crash on posting/loading. Fast first-paint (the
+// original reason persistence was added) is already handled by our
+// own localStorage cache in lib/pageCache.js, so dropping Firestore's
+// own persistence loses nothing and removes the crash at its root.
+export const db = getFirestore(app);
 
 export const auth = getAuth(app);
 
