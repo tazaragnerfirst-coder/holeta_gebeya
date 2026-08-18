@@ -5,6 +5,8 @@ import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { SUPPORT_NAME } from '../lib/constants';
 import Icon from '../components/Icon.jsx';
+import { ChatListSkeleton } from '../components/Skeletons.jsx';
+import { getInitial, getAvatarColor } from '../lib/avatar';
 
 function formatTime(ts) {
   if (!ts?.toDate) return '';
@@ -17,11 +19,12 @@ function formatTime(ts) {
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
-function isUnread(chat, uid) {
-  if (!chat.lastMessageAt || chat.lastSenderId === uid) return false;
-  const readAt = chat.lastReadAt?.[uid];
-  if (!readAt) return true;
-  return readAt.toMillis?.() < chat.lastMessageAt.toMillis?.();
+// Number of messages the given user hasn't read yet in this chat —
+// kept server-side on the chat doc (chats/{id}.unreadCount.{uid}) so
+// the list can show an actual count, like Telegram, instead of just
+// an unread/read dot.
+function unreadCount(chat, uid) {
+  return chat.unreadCount?.[uid] || 0;
 }
 
 export default function ChatList() {
@@ -45,14 +48,15 @@ export default function ChatList() {
   const supportChatId = uid ? `support_${uid}` : null;
   const supportChat = chats.find((c) => c.id === supportChatId);
   const otherChats = chats.filter((c) => c.id !== supportChatId);
+  const supportUnread = supportChat ? unreadCount(supportChat, uid) : 0;
 
   return (
     <div className="page">
       <h2 className="page-title">Messages</h2>
 
       {uid && (
-        <Link to={`/chat/${supportChatId}`} className="chat-list-item support-pin">
-          <div className="chat-thumb support-thumb"><Icon name="helpCircle" size={20} /></div>
+        <Link to={`/chat/${supportChatId}`} className={`chat-list-item support-pin${supportUnread ? ' is-unread' : ''}`}>
+          <div className="chat-thumb avatar-circle support-thumb"><Icon name="helpCircle" size={20} /></div>
           <div className="chat-info">
             <div className="top">
               <span className="name">{SUPPORT_NAME}</span>
@@ -62,11 +66,11 @@ export default function ChatList() {
               {supportChat?.lastMessage || "Need help? We're here for you."}
             </div>
           </div>
-          {supportChat && isUnread(supportChat, uid) && <span className="unread-dot" />}
+          {supportUnread > 0 && <span className="unread-badge">{supportUnread > 99 ? '99+' : supportUnread}</span>}
         </Link>
       )}
 
-      {!ready && !timedOut && <p className="helper-text">Loading conversations...</p>}
+      {!ready && !timedOut && <ChatListSkeleton />}
       {!ready && timedOut && (
         <p className="helper-text error-text">
           Couldn't load your conversations. Check your connection and{' '}
@@ -74,20 +78,35 @@ export default function ChatList() {
         </p>
       )}
       {ready && otherChats.length === 0 && (
-        <p className="helper-text">No conversations yet. Message a seller from a product page to start one.</p>
+        <div className="empty-state">
+          <div className="empty-state-icon"><Icon name="chat" size={26} /></div>
+          <div className="empty-state-title">No conversations yet</div>
+          <div className="empty-state-sub">Message a seller from a product page to start one.</div>
+        </div>
       )}
       {otherChats.map((c) => {
         const amBuyer = c.buyerId === uid;
         const otherName = amBuyer ? (c.sellerName || 'Seller') : (c.buyerName || 'Buyer');
+        const otherPhoto = amBuyer ? c.sellerPhoto : c.buyerPhoto;
         const lastIsMine = c.lastSenderId === uid;
+        const unread = unreadCount(c, uid);
         return (
-          <Link to={`/chat/${c.id}`} className="chat-list-item" key={c.id}>
-            <div
-              className="chat-thumb"
-              style={c.listingPhoto ? { backgroundImage: `url(${c.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-            >
-              {!c.listingPhoto && <Icon name="image" size={18} />}
-            </div>
+          <Link to={`/chat/${c.id}`} className={`chat-list-item${unread ? ' is-unread' : ''}`} key={c.id}>
+            {c.listingPhoto ? (
+              <div
+                className="chat-thumb"
+                style={{ backgroundImage: `url(${c.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              />
+            ) : otherPhoto ? (
+              <div
+                className="chat-thumb avatar-circle"
+                style={{ backgroundImage: `url(${otherPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+              />
+            ) : (
+              <div className="chat-thumb avatar-circle" style={{ background: getAvatarColor(otherName) }}>
+                {getInitial(otherName)}
+              </div>
+            )}
             <div className="chat-info">
               <div className="top">
                 <span className="name">{otherName}</span>
@@ -97,7 +116,7 @@ export default function ChatList() {
                 {lastIsMine && c.lastMessage ? 'You: ' : ''}{c.lastMessage || c.listingTitle || 'No messages yet'}
               </div>
             </div>
-            {isUnread(c, uid) && <span className="unread-dot" />}
+            {unread > 0 && <span className="unread-badge">{unread > 99 ? '99+' : unread}</span>}
           </Link>
         );
       })}

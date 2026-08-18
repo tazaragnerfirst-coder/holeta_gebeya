@@ -69,6 +69,12 @@ app.post('/telegramAuth', async (req, res) => {
       firstName: tgUser.first_name || '',
       lastName: tgUser.last_name || '',
       username: tgUser.username || '',
+      // Telegram only includes this in initData when the user has a
+      // public profile photo. Stored here (not just read from the
+      // unsafe client-side preview) so it can be trusted and reused
+      // anywhere a verified profile picture is needed — e.g. as the
+      // seller's avatar on a listing, or a chat participant's avatar.
+      photoUrl: tgUser.photo_url || '',
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }, { merge: true });
 

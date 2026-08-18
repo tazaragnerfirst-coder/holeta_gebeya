@@ -23,6 +23,28 @@ export function ListingGridSkeleton({ count = 6 }) {
   );
 }
 
+// Placeholder shaped like ChatList.jsx rows — shown while chats are
+// still resolving, so the inbox never flashes an empty "no messages"
+// state before real data (or the real empty state) arrives.
+export function ChatListSkeleton({ count = 5 }) {
+  return (
+    <div>
+      {Array.from({ length: count }).map((_, i) => (
+        <div className="chat-list-item" key={i} style={{ pointerEvents: 'none' }}>
+          <div className="chat-thumb avatar-circle skeleton-shimmer" />
+          <div className="chat-info">
+            <div className="top">
+              <div className="skeleton-line skeleton-shimmer" style={{ width: '38%', height: 11 }} />
+              <div className="skeleton-line skeleton-shimmer" style={{ width: 34, height: 9 }} />
+            </div>
+            <div className="skeleton-line skeleton-shimmer" style={{ width: '62%', height: 10, marginTop: 7 }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Placeholder shaped like ProductDetail.jsx — shown while the single
 // listing doc is being fetched.
 export function ProductDetailSkeleton() {

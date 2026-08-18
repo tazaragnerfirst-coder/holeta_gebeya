@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  doc, getDoc, onSnapshot, collection, addDoc, setDoc, updateDoc, increment,
+  doc, onSnapshot, collection, addDoc, setDoc, updateDoc, increment,
   query, where, limit, getDocs, serverTimestamp,
 } from 'firebase/firestore';
 import { db, BACKEND_URL } from '../lib/firebase';
@@ -127,7 +127,11 @@ export default function ProductDetail() {
   const avgRating = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
 
   // Registration is only requested HERE — the moment the user wants
-  // to act (message the seller), never before this point.
+  // to act (message the seller), never before this point. The chat
+  // itself is NOT created here — only once the buyer actually sends
+  // a first message from ChatThread. This just hands ChatThread the
+  // listing context (via router state) so it knows what to attach
+  // once that happens.
   async function startChat() {
     if (startingChat) return;
     setChatError('');
@@ -141,58 +145,23 @@ export default function ProductDetail() {
       // deterministic id (sorted uid pair) means we can look this up
       // directly instead of running a query.
       const chatId = [item.sellerId, user.uid].sort().join('_');
-      const chatRef = doc(db, 'chats', chatId);
-      const snap = await getDoc(chatRef);
-      const buyerName = getUnsafeUserPreview()?.first_name || 'Buyer';
-
-      // Only attach a fresh listing card when this is a new thread,
-      // or the buyer is now asking about a different item than the
-      // one the thread was last about — reopening the same item's
-      // chat again shouldn't spam a duplicate card every time.
-      const isNewListingContext = !snap.exists() || snap.data().listingId !== id;
-
-      if (!snap.exists()) {
-        await setDoc(chatRef, {
-          listingId: id,
-          listingTitle: item.title,
-          listingPhoto: item.images?.[0] || '',
-          sellerId: item.sellerId,
-          sellerName: item.sellerName || 'Seller',
-          buyerId: user.uid,
-          buyerName,
-          participants: [item.sellerId, user.uid],
-          lastMessage: '',
-          lastSenderId: '',
-          createdAt: serverTimestamp(),
-          lastMessageAt: serverTimestamp(),
-        });
-      } else if (isNewListingContext) {
-        await updateDoc(chatRef, {
-          listingId: id,
-          listingTitle: item.title,
-          listingPhoto: item.images?.[0] || '',
-        });
-      }
-
-      // Auto-attach a small listing reference so the seller (and the
-      // buyer, scrolling back later) can see exactly which item this
-      // part of the conversation is about.
-      if (isNewListingContext) {
-        await addDoc(collection(db, 'chats', chatId, 'messages'), {
-          senderId: user.uid,
-          type: 'listing',
-          listingId: id,
-          listingTitle: item.title,
-          listingPhoto: item.images?.[0] || '',
-          listingPrice: item.price,
-          createdAt: serverTimestamp(),
-        });
-      }
 
       logContactClick(item.sellerId, id);
-      navigate(`/chat/${chatId}`);
+      navigate(`/chat/${chatId}`, {
+        state: {
+          draftListing: {
+            listingId: id,
+            listingTitle: item.title,
+            listingPhoto: item.images?.[0] || '',
+            listingPrice: item.price,
+            sellerId: item.sellerId,
+            sellerName: item.sellerName || 'Seller',
+            sellerPhoto: item.sellerPhoto || '',
+          },
+        },
+      });
     } catch (err) {
-      setChatError(err.message || "Couldn't start chat. Please try again.");
+      setChatError(err.message || "Couldn't open chat. Please try again.");
     } finally {
       setStartingChat(false);
     }
@@ -312,7 +281,11 @@ export default function ProductDetail() {
         </div>
 
         <div className="seller-card">
-          <div className="seller-avatar">{sellerInitial}</div>
+          {item.sellerPhoto ? (
+            <div className="seller-avatar" style={{ backgroundImage: `url(${item.sellerPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+          ) : (
+            <div className="seller-avatar">{sellerInitial}</div>
+          )}
           <div className="seller-info">
             <div className="seller-name">{item.sellerName || 'Seller'}</div>
             <div className="seller-meta">

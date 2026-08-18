@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth, BACKEND_URL } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
-import { getUnsafeUserPreview } from '../lib/telegram';
+import { getMyProfile } from '../lib/profile';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { computeExpiresAt } from '../lib/adStatus';
 import { CATEGORIES, getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS } from '../data/categories';
@@ -156,15 +156,18 @@ export default function PostAd() {
       }
 
       setStatusMsg(isEdit ? 'Saving...' : 'Publishing...');
-      // Display name is taken from Telegram's own client-side preview
-      // (not a Firestore read of another user's doc — that's blocked
-      // by firestore.rules) and stored on the listing so buyers can
-      // see who they'd be chatting with without any extra reads.
-      const sellerName = getUnsafeUserPreview()?.first_name || 'Seller';
+      // Display name + avatar come from the seller's own verified
+      // profile (users/{uid}.fullName / photoUrl, set at signup and
+      // from Telegram) — not just the unsafe client-side preview —
+      // so buyers see who they'd actually be chatting with.
+      const myProfile = await getMyProfile(user.uid);
+      const sellerName = myProfile.name;
+      const sellerPhoto = myProfile.photo;
 
       const payload = {
         sellerId: user.uid,
         sellerName,
+        sellerPhoto,
         title,
         price: Number(price),
         description,

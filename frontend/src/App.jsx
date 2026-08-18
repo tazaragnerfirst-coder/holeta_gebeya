@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-d
 import Home from './pages/Home.jsx';
 import Icon from './components/Icon.jsx';
 import { AuthGateProvider } from './lib/authGate.jsx';
-import { AppDataProvider } from './lib/appData.jsx';
+import { AppDataProvider, useAppData } from './lib/appData.jsx';
 import { BACKEND_URL } from './lib/firebase';
 import { getTelegramWebApp } from './lib/telegram';
 
@@ -135,16 +135,26 @@ function TelegramBackButton() {
 }
 
 function BottomNav() {
-  const item = (to, label, icon) => (
+  const { chats, registeredUid } = useAppData();
+  // Sum of every conversation's unread count for this user — the
+  // same total-unread badge pattern Telegram shows on its chat tab.
+  const totalUnread = registeredUid
+    ? chats.reduce((sum, c) => sum + (c.unreadCount?.[registeredUid] || 0), 0)
+    : 0;
+
+  const item = (to, label, icon, badge) => (
     <NavLink to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end={to === '/'}>
-      <Icon name={icon} size={24} />
+      <span className="nav-icon-wrap">
+        <Icon name={icon} size={24} />
+        {badge > 0 && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
+      </span>
       <span>{label}</span>
     </NavLink>
   );
   return (
     <nav className="bottom-nav">
       {item('/', 'Home', 'home')}
-      {item('/chat', 'Chat', 'chat')}
+      {item('/chat', 'Chat', 'chat', totalUnread)}
       <div className="nav-space-holder"></div>
       {item('/dashboard', 'Dashboard', 'briefcase')}
       {item('/profile', 'Profile', 'user')}
