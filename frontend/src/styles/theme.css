@@ -249,6 +249,11 @@ textarea.field{min-height:84px;resize:vertical;}
 .chart-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:14px 10px;box-shadow:var(--shadow-card);}
 .chart-empty{display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:12.5px;font-weight:500;}
 
+/* Chart title (+ icon) and its range picker, living inside the
+   chart-card itself instead of floating above it as a page header. */
+.chart-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 4px 12px;}
+.chart-card-head .section-title{margin:0;}
+
 .funnel-chart{display:flex;flex-direction:column;gap:12px;padding:4px 4px 2px;}
 .funnel-row{display:flex;flex-direction:column;gap:5px;}
 .funnel-track{background:var(--surface-sunken);border-radius:999px;height:14px;overflow:hidden;}
@@ -257,12 +262,24 @@ textarea.field{min-height:84px;resize:vertical;}
 .funnel-value{color:var(--ink);font-weight:800;}
 .funnel-rate{font-size:11px;color:var(--ink-faint);font-weight:600;margin-top:2px;text-align:center;}
 
-.ranked-bar-chart{display:flex;flex-direction:column;gap:10px;padding:2px 4px;}
+.ranked-bar-chart{display:flex;flex-direction:column;gap:8px;padding:2px 4px;}
+.ranked-bar-rows{display:flex;flex-direction:column;gap:10px;}
+.ranked-bar-scroll{max-height:236px;overflow-y:auto;padding-right:2px;}
 .ranked-bar-row{display:grid;grid-template-columns:84px 1fr 30px;align-items:center;gap:8px;}
+.ranked-bar-row-link{text-decoration:none;color:inherit;cursor:pointer;}
 .ranked-bar-label{font-size:11.5px;font-weight:600;color:var(--ink-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ranked-bar-value{font-size:11.5px;font-weight:800;color:var(--ink);text-align:right;}
+.ranked-bar-more{align-self:center;background:none;border:none;color:var(--primary);font-size:11.5px;font-weight:800;padding:4px 8px;cursor:pointer;font-family:var(--font-ui);}
 .tab-row{display:flex;gap:8px;margin:14px 0 4px;}
+.ad-row-wrap{border-bottom:1px solid var(--line);}
+.ad-row-wrap .ad-row{border-bottom:none;padding-bottom:6px;}
 .ad-row{display:flex;gap:11px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);}
+
+/* Underperforming-ad hint on the Active Ads list — amber, not red,
+   same "try again / take a look" register as .state-box.state-error.
+   Tapping it opens that ad's own detail page for the full analysis. */
+.perf-flag{display:flex;align-items:center;gap:6px;text-decoration:none;background:var(--accent-tint);color:var(--accent-dark);font-size:11px;font-weight:700;padding:7px 10px;border-radius:10px;margin:0 0 10px;}
+.perf-flag-arrow{margin-left:auto;font-weight:800;}
 .ad-thumb{width:54px;height:54px;border-radius:11px;background:var(--surface-sunken);flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);}
 .ad-row .info{flex:1;min-width:0;}
 .ad-row .t{font-size:13px;font-weight:700;}

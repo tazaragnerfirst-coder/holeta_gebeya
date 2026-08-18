@@ -5,8 +5,7 @@ import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
 import Sparkline from '../components/Sparkline.jsx';
-import DailyViewsChart from '../components/DailyViewsChart.jsx';
-import RankedBarChart from '../components/RankedBarChart.jsx';
+import ContactFunnelChart from '../components/ContactFunnelChart.jsx';
 import StateMessage from '../components/StateMessage.jsx';
 
 const RANGE_OPTIONS = [
@@ -15,17 +14,19 @@ const RANGE_OPTIONS = [
   { key: 'all', label: 'All time', days: Infinity },
 ];
 
-// Opened from the "Total Views" card on the Dashboard. Reuses the
-// same ads/adsReady stream from AppDataProvider (no new Firestore
-// listener here) for the list itself, plus one extra bulk query for
-// the last-7-days per-ad trend used in each card's sparkline. Each
-// card is a compact summary — tap "Detail" (or the card) to open the
-// full breakdown for that ad.
-export default function ViewsDetail() {
+// Opened from the "Contact Clicks" card on the Dashboard. Mirrors
+// ViewsDetail's structure but contacts-focused: an all-time contacts
+// total, a Views→Contact funnel with its own range picker, and a
+// per-ad breakdown sorted by contacts instead of views.
+export default function ContactsDetail() {
   const { ads, adsReady, registeredUid } = useAppData();
   const timedOut = useLoadTimeout(adsReady, 3000);
 
-  const [trends, setTrends] = useState({});
+  // One bulk fetch (all-time) per ad — gives both the accurate
+  // all-time contacts total to sort/rank by, and (via the last 7
+  // entries) the sparkline trend, without a second round trip.
+  const [perAd, setPerAd] = useState({});
+  const [perAdReady, setPerAdReady] = useState(false);
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);
@@ -33,8 +34,11 @@ export default function ViewsDetail() {
   const [analyticsReady, setAnalyticsReady] = useState(false);
 
   useEffect(() => {
-    if (!adsReady || ads.length === 0) return;
-    getListingAnalyticsBulk(ads.map((a) => a.id), 7).then(setTrends).catch(() => {});
+    if (!adsReady || ads.length === 0) { setPerAdReady(true); return; }
+    setPerAdReady(false);
+    getListingAnalyticsBulk(ads.map((a) => a.id), Infinity)
+      .then((data) => { setPerAd(data); setPerAdReady(true); })
+      .catch(() => setPerAdReady(true));
   }, [adsReady, ads]);
 
   const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
@@ -47,30 +51,32 @@ export default function ViewsDetail() {
       .catch(() => setAnalyticsReady(true));
   }, [registeredUid, range.days]);
 
-  const totalViews = ads.reduce((s, a) => s + (a.views || 0), 0);
-  const sorted = [...ads].sort((a, b) => (b.views || 0) - (a.views || 0));
+  const rangeViews = useMemo(() => analytics.reduce((s, a) => s + (a.views || 0), 0), [analytics]);
+  const rangeContacts = useMemo(() => analytics.reduce((s, a) => s + (a.contacts || 0), 0), [analytics]);
 
-  const adRankingItems = useMemo(
-    () => ads.map((a) => ({ id: a.id, label: a.title, value: a.views || 0 })),
-    [ads]
+  const totalContacts = useMemo(
+    () => Object.values(perAd).reduce((s, days) => s + days.reduce((s2, d) => s2 + (d.contacts || 0), 0), 0),
+    [perAd]
   );
-  const categoryItems = useMemo(() => {
-    const totals = {};
-    ads.forEach((a) => { totals[a.category || 'Other'] = (totals[a.category || 'Other'] || 0) + (a.views || 0); });
-    return Object.entries(totals).map(([label, value]) => ({ label, value }));
-  }, [ads]);
+  const totalViewsAllAds = ads.reduce((s, a) => s + (a.views || 0), 0);
+  const conversionRate = totalViewsAllAds > 0 ? Math.round((totalContacts / totalViewsAllAds) * 100) : null;
+
+  const sorted = useMemo(() => {
+    const contactsFor = (id) => (perAd[id] || []).reduce((s, d) => s + (d.contacts || 0), 0);
+    return [...ads].sort((a, b) => contactsFor(b.id) - contactsFor(a.id));
+  }, [ads, perAd]);
 
   return (
     <div className="page">
-      <h2 className="page-title">Views</h2>
+      <h2 className="page-title">Contact Clicks</h2>
       <div className="stat-row">
-        <div className="stat-card"><div className="val">{totalViews}</div><div className="lbl">Total Views</div></div>
-        <div className="stat-card"><div className="val">{ads.length}</div><div className="lbl">Ads Posted</div></div>
+        <div className="stat-card"><div className="val">{perAdReady ? totalContacts : '—'}</div><div className="lbl">Total Contact Clicks</div></div>
+        <div className="stat-card"><div className="val">{conversionRate != null ? `${conversionRate}%` : '—'}</div><div className="lbl">Views → Contact Rate</div></div>
       </div>
 
       <div className="chart-card" style={{ marginTop: 6 }}>
         <div className="chart-card-head">
-          <h3 className="section-title" style={{ margin: 0 }}><Icon name="trendingUp" size={16} /> Daily Views</h3>
+          <h3 className="section-title" style={{ margin: 0 }}><Icon name="chat" size={16} /> Views → Contact</h3>
           <div className="range-picker">
             <button type="button" className="range-btn" onClick={() => setRangeOpen((v) => !v)}>
               {range.label} <Icon name="chevronDown" size={14} />
@@ -92,29 +98,15 @@ export default function ViewsDetail() {
           </div>
         </div>
         {analyticsReady
-          ? <DailyViewsChart data={analytics.map((a) => ({ date: a.date, views: a.views || 0 }))} />
-          : <div className="chart-empty" style={{ height: 140 }}>Loading…</div>}
-      </div>
-
-      <div className="chart-card" style={{ marginTop: 14 }}>
-        <div className="chart-card-head">
-          <h3 className="section-title" style={{ margin: 0 }}><Icon name="star" size={16} /> All Ads by Views</h3>
-        </div>
-        <RankedBarChart
-          items={adRankingItems}
-          limit={5}
-          expandable
-          scrollCap={7}
-          linkTo={(item) => `/dashboard/views/${item.id}`}
-          emptyText="Post an ad to see its performance here."
-        />
-      </div>
-
-      <div className="chart-card" style={{ marginTop: 14 }}>
-        <div className="chart-card-head">
-          <h3 className="section-title" style={{ margin: 0 }}><Icon name="grid" size={16} /> Views by Category</h3>
-        </div>
-        <RankedBarChart items={categoryItems} limit={6} emptyText="No category data yet." />
+          ? <ContactFunnelChart views={rangeViews} contacts={rangeContacts} />
+          : <div className="chart-empty" style={{ height: 80 }}>Loading…</div>}
+        {analyticsReady && analytics.length === 0 && (
+          <p className="helper-text" style={{ marginTop: 8 }}>
+            {rangeKey === 'all'
+              ? "No contact-click history yet — this tracking started with this update, so it builds up from here."
+              : 'No contact clicks recorded yet for this period.'}
+          </p>
+        )}
       </div>
 
       <h3 className="section-title">By Ad</h3>
@@ -133,8 +125,9 @@ export default function ViewsDetail() {
       )}
       {sorted.map((a) => {
         const photo = a.images && a.images[0];
-        const daily = (trends[a.id] || []).map((d) => d.views || 0);
-        const contacts7d = (trends[a.id] || []).reduce((s, d) => s + (d.contacts || 0), 0);
+        const days = perAd[a.id] || [];
+        const last7 = days.slice(-7).map((d) => d.contacts || 0);
+        const contactsTotal = days.reduce((s, d) => s + (d.contacts || 0), 0);
         return (
           <Link to={`/dashboard/views/${a.id}`} className="view-ad-card" key={a.id}>
             <div className="view-ad-card-top">
@@ -148,10 +141,10 @@ export default function ViewsDetail() {
               <span className="detail-tag">Detail</span>
             </div>
             <div className="view-ad-card-bottom">
-              <Sparkline data={daily} />
+              <Sparkline data={last7} />
               <div className="view-ad-card-stats">
+                <span><Icon name="chat" size={13} /> {contactsTotal}</span>
                 <span><Icon name="eye" size={13} /> {a.views || 0}</span>
-                <span><Icon name="chat" size={13} /> {contacts7d}</span>
               </div>
             </div>
           </Link>
