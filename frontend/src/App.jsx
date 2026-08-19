@@ -22,6 +22,7 @@ const ViewAdDetail = lazy(() => import('./pages/ViewAdDetail.jsx'));
 const AdsManage = lazy(() => import('./pages/AdsManage.jsx'));
 const ExpiredItems = lazy(() => import('./pages/ExpiredItems.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
+const Favorites = lazy(() => import('./pages/Favorites.jsx'));
 
 function RouteFallback() {
   return (
@@ -60,6 +61,7 @@ export default function App() {
                 <Route path="/dashboard/ads" element={<AdsManage />} />
                 <Route path="/dashboard/expired" element={<ExpiredItems />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/favorites" element={<Favorites />} />
               </Routes>
             </Suspense>
           </div>

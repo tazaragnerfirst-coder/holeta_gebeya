@@ -3,6 +3,7 @@ import { collection, query, orderBy, limit, where, onSnapshot, doc, getDoc } fro
 import { auth, db } from './firebase';
 import { getUnsafeUserPreview } from './telegram';
 import { getCached, setCached } from './pageCache';
+import { subscribeFavorites } from './favorites';
 
 const AppDataContext = createContext(null);
 
@@ -57,6 +58,8 @@ export function AppDataProvider({ children }) {
   const [chatsReady, setChatsReady] = useState(() => (initialUid ? getCached(`chats:${initialUid}`) != null : false));
   const [ads, setAds] = useState(() => (initialUid ? getCached(`ads:${initialUid}`) || [] : []));
   const [adsReady, setAdsReady] = useState(() => (initialUid ? getCached(`ads:${initialUid}`) != null : false));
+  const [favorites, setFavorites] = useState(() => (initialUid ? getCached(`favorites:${initialUid}`) || [] : []));
+  const [favoritesReady, setFavoritesReady] = useState(() => (initialUid ? getCached(`favorites:${initialUid}`) != null : false));
 
   const checkedSession = useRef(false);
 
@@ -107,6 +110,18 @@ export function AppDataProvider({ children }) {
     try { localStorage.setItem(REG_KEY + uid, '1'); } catch {}
   }
 
+  // Called on logout — drops the trusted-session flag so the next
+  // action (browsing itself needs nothing) re-runs the full
+  // requireRegistered() flow instead of silently reusing this
+  // device's last known account.
+  function clearRegistered(uid) {
+    try { localStorage.removeItem(REG_KEY + uid); } catch {}
+    setRegisteredUid(null);
+    setChats([]); setChatsReady(false);
+    setAds([]); setAdsReady(false);
+    setFavorites([]); setFavoritesReady(false);
+  }
+
   useEffect(() => {
     if (!registeredUid) return;
     const q = query(
@@ -135,12 +150,23 @@ export function AppDataProvider({ children }) {
     return unsub;
   }, [registeredUid]);
 
+  useEffect(() => {
+    if (!registeredUid) return;
+    const unsub = subscribeFavorites(registeredUid, (data) => {
+      setFavorites(data);
+      setFavoritesReady(true);
+      setCached(`favorites:${registeredUid}`, data);
+    });
+    return unsub;
+  }, [registeredUid]);
+
   return (
     <AppDataContext.Provider value={{
       listings, listingsReady,
-      registeredUid, markRegistered,
+      registeredUid, markRegistered, clearRegistered,
       chats, chatsReady,
       ads, adsReady,
+      favorites, favoritesReady,
     }}>
       {children}
     </AppDataContext.Provider>

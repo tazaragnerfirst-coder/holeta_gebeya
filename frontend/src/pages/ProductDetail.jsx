@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore';
 import { db, BACKEND_URL } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
+import { useAppData } from '../lib/appData';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
 import ImageCarousel from '../components/ImageCarousel.jsx';
@@ -16,6 +17,7 @@ import CallSheet from '../components/CallSheet.jsx';
 import { ProductDetailSkeleton } from '../components/Skeletons.jsx';
 import { getCached, setCached } from '../lib/pageCache';
 import { logListingView, logContactClick } from '../lib/analytics';
+import { setFavorite } from '../lib/favorites';
 
 function timeAgo(ts) {
   if (!ts?.toDate) return '';
@@ -35,10 +37,12 @@ export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
+  const { registeredUid, favorites } = useAppData();
   const [item, setItem] = useState(() => getCached(`product:${id}`) || null);
   const [notFound, setNotFound] = useState(false);
   const [chatError, setChatError] = useState('');
   const [startingChat, setStartingChat] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
 
   const [callSheetOpen, setCallSheetOpen] = useState(false);
   const [callBusy, setCallBusy] = useState(false);
@@ -167,6 +171,19 @@ export default function ProductDetail() {
     }
   }
 
+  async function toggleFavorite() {
+    if (favBusy) return;
+    setFavBusy(true);
+    try {
+      const user = await requireRegistered();
+      await setFavorite(user.uid, item, isFavorited);
+    } catch (err) {
+      setChatError(err.message || "Couldn't update favorites. Please try again.");
+    } finally {
+      setFavBusy(false);
+    }
+  }
+
   async function call() {
     setChatError('');
     setCallBusy(true);
@@ -254,6 +271,7 @@ export default function ProductDetail() {
   }
   if (!item) return <ProductDetailSkeleton />;
 
+  const isFavorited = registeredUid ? favorites.some((f) => f.listingId === id) : false;
   const hasAttrs = item.attributes && Object.values(item.attributes).some((v) => v !== '' && v !== undefined);
   const sellerInitial = (item.sellerName || 'S')[0].toUpperCase();
 
@@ -268,7 +286,19 @@ export default function ProductDetail() {
       <div className="pd-body">
         <div className="pd-price-row">
           <div className="pd-price">{item.price} ETB</div>
-          <div className="cond-badge">{item.condition}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div className="cond-badge">{item.condition}</div>
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={toggleFavorite}
+              disabled={favBusy}
+              aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
+              style={isFavorited ? { color: 'var(--safety)' } : undefined}
+            >
+              <Icon name="heart" size={17} {...(isFavorited ? { fill: 'currentColor' } : {})} />
+            </button>
+          </div>
         </div>
         <div className="pd-title">{item.title}</div>
         <div className="pd-meta-row">

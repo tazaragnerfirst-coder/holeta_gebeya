@@ -17,9 +17,13 @@ export async function getMyProfile(uid) {
     const data = snap.exists() ? snap.data() : {};
     return {
       name: data.fullName || fallbackName || 'User',
-      photo: data.photoUrl || fallbackPhoto || '',
+      // customPhotoUrl (uploaded via Edit Profile) takes priority
+      // over photoUrl (Telegram's own picture, re-synced on every
+      // login) so a custom photo sticks even after the next sign-in.
+      photo: data.customPhotoUrl || data.photoUrl || fallbackPhoto || '',
+      phone: data.phone || '',
     };
   } catch {
-    return { name: fallbackName || 'User', photo: fallbackPhoto };
+    return { name: fallbackName || 'User', photo: fallbackPhoto, phone: '' };
   }
 }

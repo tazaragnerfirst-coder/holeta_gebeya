@@ -111,6 +111,38 @@ app.post('/completeProfile', async (req, res) => {
   }
 });
 
+// Called from the Edit Profile sheet, any time after signup, to
+// change name/phone/photo. Separate from /completeProfile (which is
+// the one-time signup flow) so the two can't interfere with each
+// other. photoUrl, if sent, is stored as `customPhotoUrl` — a
+// distinct field from `photoUrl` (which /telegramAuth re-derives
+// from Telegram's own profile photo on every login) so a
+// custom-uploaded picture here never gets silently overwritten by
+// the next Telegram sign-in.
+app.post('/updateProfile', async (req, res) => {
+  try {
+    const { idToken, phone, fullName, photoUrl } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    if (!phone || !phone.trim()) return res.status(400).json({ error: 'Phone number is required.' });
+    if (!fullName || !fullName.trim()) return res.status(400).json({ error: 'Full name is required.' });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const update = {
+      phone: phone.trim(),
+      fullName: fullName.trim(),
+    };
+    if (typeof photoUrl === 'string' && photoUrl.startsWith('data:image')) {
+      update.customPhotoUrl = photoUrl;
+    }
+    await db.collection('users').doc(decoded.uid).set(update, { merge: true });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('updateProfile failed:', err);
+    res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
 // Called by the client right after a chat message is written to
 // Firestore. Looks up the recipient's Telegram ID (stored on their
 // users/{uid} doc) and pings them via the Bot API — the client SDK
