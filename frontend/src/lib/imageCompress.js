@@ -32,45 +32,37 @@ function scaledSize(sourceWidth, sourceHeight, maxDim) {
   return { width, height };
 }
 
-// Decodes the file straight into a canvas. Prefers createImageBitmap,
-// which decodes a Blob directly — no full-file base64 string ever
-// held in memory, which is what was crashing on large (10-25MB)
-// full-resolution camera photos inside Telegram's WebView. Falls
-// back to the FileReader+<img> approach for older browsers that
-// lack createImageBitmap.
+// Decodes the file straight into a canvas via a blob URL + <img>
+// element. Deliberately NOT using FileReader.readAsDataURL (loads
+// the entire raw file into memory as base64 before decoding — what
+// crashed on large camera photos) and NOT using createImageBitmap
+// (has a known bug on some Android/Chromium hardware-decode paths
+// where it silently produces a black canvas for certain photos).
+// URL.createObjectURL is a cheap in-place reference to the blob, no
+// full-file memory copy, while <img> decoding is the most broadly
+// reliable path across devices.
 async function drawToCanvas(file, maxDim) {
-  if (typeof createImageBitmap === 'function') {
-    let bitmap;
-    try {
-      bitmap = await createImageBitmap(file);
-    } catch {
-      throw new Error('Could not decode image.');
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('Could not decode image.'));
+    });
+    // decode() (where available) waits for the image to be fully
+    // ready for drawImage, avoiding a partially-decoded/black frame
+    // on some devices even after onload has fired.
+    if (img.decode) {
+      try { await img.decode(); } catch { /* onload already confirmed it's usable */ }
     }
-    const { width, height } = scaledSize(bitmap.width, bitmap.height, maxDim);
+    const { width, height } = scaledSize(img.naturalWidth || img.width, img.naturalHeight || img.height, maxDim);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
-    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
-    bitmap.close?.();
+    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
     return { canvas, width, height };
+  } finally {
+    URL.revokeObjectURL(url);
   }
-
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Could not read file.'));
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Could not decode image.'));
-      img.onload = () => {
-        const { width, height } = scaledSize(img.width, img.height, maxDim);
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        resolve({ canvas, width, height });
-      };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  });
 }
