@@ -98,6 +98,14 @@ service cloud.firestore {
       }
     }
 
+    // App-wide config docs (e.g. the seasonal Profile-page banner
+    // image). Publicly readable; updated manually via the Firebase
+    // console for now — no admin panel yet, no client writes.
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // Chats: only the two participants can read/write, and only once
     // a chat exists — created by the buyer via the client SDK. The
     // buyer's client checks "does our chat already exist?" via a

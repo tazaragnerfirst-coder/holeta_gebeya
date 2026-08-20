@@ -7,14 +7,19 @@ import { useRequireRegistered } from '../lib/authGate.jsx';
 import { auth, BACKEND_URL } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { SUPPORT_UID } from '../lib/constants';
+import { getAppBannerUrl, getCachedAppBannerUrl } from '../lib/appBanner';
+import { getSellerRating } from '../lib/rating';
 import Icon from '../components/Icon.jsx';
+import StarRow from '../components/StarRow.jsx';
 import EditProfileSheet from '../components/EditProfileSheet.jsx';
 
 export default function Profile() {
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
-  const { registeredUid, clearRegistered, ads, favorites } = useAppData();
+  const { registeredUid, clearRegistered, ads } = useAppData();
   const [profile, setProfile] = useState(null);
+  const [bannerUrl, setBannerUrl] = useState(() => getCachedAppBannerUrl());
+  const [rating, setRating] = useState({ avg: 0, count: 0 });
 
   const [editOpen, setEditOpen] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
@@ -32,6 +37,11 @@ export default function Profile() {
   }
 
   useEffect(() => { loadProfile(); }, [registeredUid]);
+  useEffect(() => { getAppBannerUrl().then(setBannerUrl); }, []);
+  useEffect(() => {
+    if (registeredUid) getSellerRating(registeredUid).then(setRating);
+    else setRating({ avg: 0, count: 0 });
+  }, [registeredUid]);
 
   const name = profile?.name || [preview?.first_name, preview?.last_name].filter(Boolean).join(' ') || 'Guest';
   const photo = profile?.photo || preview?.photo_url || '';
@@ -96,58 +106,104 @@ export default function Profile() {
     navigate('/subscription');
   }
 
+  async function goBoost() {
+    await requireRegistered().catch(() => {});
+    navigate('/boost');
+  }
+
   async function goMyStore() {
     await requireRegistered().catch(() => {});
     navigate('/my-store');
   }
 
-  const menu = [
+  const quickActions = [
     { icon: 'edit', t: 'Edit Info', onClick: openEdit },
+    { icon: 'heart', t: 'Favorites', onClick: goFavorites },
+    { icon: 'sliders', t: 'Settings', onClick: () => navigate('/settings') },
+  ];
+
+  const box1 = [
     { icon: 'crown', t: 'Subscription', onClick: goSubscription },
+    { icon: 'trendingUp', t: 'Boost', onClick: goBoost },
+    { icon: 'coin', t: 'Holeta Coin', sub: 'Soon', onClick: () => navigate('/holeta-coin') },
+  ];
+
+  const box2 = [
+    { icon: 'briefcase', t: 'My Ads', sub: registeredUid ? `${ads.length} listing${ads.length === 1 ? '' : 's'}` : null, onClick: goMyAds },
     { icon: 'store', t: 'My Store', onClick: goMyStore },
     { icon: 'shieldLock', t: 'Privacy Policy', onClick: () => navigate('/privacy-policy') },
-    { icon: 'sliders', t: 'Settings', onClick: () => navigate('/settings') },
-    { icon: 'coin', t: 'Holeta Coin', sub: 'Soon', onClick: () => navigate('/holeta-coin') },
-    { icon: 'briefcase', t: 'My Ads', sub: registeredUid ? `${ads.length} listing${ads.length === 1 ? '' : 's'}` : null, onClick: goMyAds },
-    { icon: 'heart', t: 'Favorites', sub: registeredUid ? `${favorites.length} saved` : null, onClick: goFavorites },
     { icon: 'helpCircle', t: 'Help & Support', onClick: goSupport },
   ];
 
   return (
-    <div className="page">
-      <div className="profile-head">
+    <div className="page px">
+      <div className="profile-hero">
+        {bannerUrl
+          ? <img className="profile-hero-img" src={bannerUrl} alt="" />
+          : <div className="profile-hero-fallback" />}
+      </div>
+
+      <div className="profile-card">
         <div
           className="avatar-lg"
           style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
         >
           {!photo && initial}
         </div>
-        <h2>{name}</h2>
-        {profile?.phone && <div className="tg"><Icon name="phone" size={12} /> {profile.phone}</div>}
-        {!profile?.phone && preview?.username && <div className="tg"><Icon name="send" size={13} /> @{preview.username}</div>}
-      </div>
-
-      <div className="menu-list">
-        {menu.map((m) => (
-          <div className="menu-item" key={m.t} onClick={m.onClick}>
-            <div className="menu-icon"><Icon name={m.icon} size={17} /></div>
-            <div className="t">
-              {m.t}
-              {m.sub && <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--ink-faint)', marginTop: 1 }}>{m.sub}</span>}
-            </div>
-            <div className="chev"><Icon name="chevronLeft" size={16} /></div>
-          </div>
-        ))}
-      </div>
-
-      {registeredUid && (
-        <div className="menu-list" style={{ marginTop: 12 }}>
-          <div className="menu-item" onClick={handleLogout}>
-            <div className="menu-icon" style={{ color: 'var(--safety)' }}><Icon name="logOut" size={17} /></div>
-            <div className="t" style={{ color: 'var(--safety)' }}>Logout</div>
+        <div className="info">
+          <h2>{name}</h2>
+          <div className="stars">
+            <StarRow value={rating.avg} size={15} />
+            {rating.count > 0 && <span className="rating-count">{rating.avg.toFixed(1)} ({rating.count})</span>}
           </div>
         </div>
-      )}
+      </div>
+
+      <div className="px16">
+        <div className="quick-row">
+          {quickActions.map((q) => (
+            <div className="quick-card" key={q.t} onClick={q.onClick}>
+              <div className="qi"><Icon name={q.icon} size={18} /></div>
+              <span>{q.t}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="menu-list" style={{ marginTop: 14 }}>
+          {box1.map((m) => (
+            <div className="menu-item" key={m.t} onClick={m.onClick}>
+              <div className="menu-icon"><Icon name={m.icon} size={17} /></div>
+              <div className="t">
+                {m.t}
+                {m.sub && <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--ink-faint)', marginTop: 1 }}>{m.sub}</span>}
+              </div>
+              <div className="chev"><Icon name="chevronLeft" size={16} /></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="menu-list" style={{ marginTop: 12 }}>
+          {box2.map((m) => (
+            <div className="menu-item" key={m.t} onClick={m.onClick}>
+              <div className="menu-icon"><Icon name={m.icon} size={17} /></div>
+              <div className="t">
+                {m.t}
+                {m.sub && <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--ink-faint)', marginTop: 1 }}>{m.sub}</span>}
+              </div>
+              <div className="chev"><Icon name="chevronLeft" size={16} /></div>
+            </div>
+          ))}
+        </div>
+
+        {registeredUid && (
+          <div className="menu-list" style={{ marginTop: 12 }}>
+            <div className="menu-item" onClick={handleLogout}>
+              <div className="menu-icon" style={{ color: 'var(--safety)' }}><Icon name="logOut" size={17} /></div>
+              <div className="t" style={{ color: 'var(--safety)' }}>Logout</div>
+            </div>
+          </div>
+        )}
+      </div>
 
       <EditProfileSheet
         open={editOpen}
