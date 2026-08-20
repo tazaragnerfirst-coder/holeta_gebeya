@@ -121,7 +121,7 @@ app.post('/completeProfile', async (req, res) => {
 // the next Telegram sign-in.
 app.post('/updateProfile', async (req, res) => {
   try {
-    const { idToken, phone, fullName, photoUrl } = req.body || {};
+    const { idToken, phone, fullName, photoUrl, location } = req.body || {};
     if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
     if (!phone || !phone.trim()) return res.status(400).json({ error: 'Phone number is required.' });
     if (!fullName || !fullName.trim()) return res.status(400).json({ error: 'Full name is required.' });
@@ -133,6 +133,11 @@ app.post('/updateProfile', async (req, res) => {
     };
     if (typeof photoUrl === 'string' && photoUrl.startsWith('data:image')) {
       update.customPhotoUrl = photoUrl;
+    }
+    // Optional free-text location (e.g. "Holeta, Oromia") — shown on
+    // the profile / future store page. Empty string clears it.
+    if (typeof location === 'string') {
+      update.location = location.trim();
     }
     await db.collection('users').doc(decoded.uid).set(update, { merge: true });
 

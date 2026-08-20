@@ -354,6 +354,20 @@ textarea.field{min-height:84px;resize:vertical;}
 .menu-item .t{flex:1;}
 .menu-item .chev{color:var(--ink-faint);}
 
+.premium-tag{display:inline-flex;align-items:center;gap:3px;background:var(--accent-tint);color:var(--accent-dark);font-size:9px;font-weight:800;padding:3px 7px;border-radius:100px;margin-left:7px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle;}
+.coming-soon-note{background:var(--surface-sunken);color:var(--ink-soft);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;margin-top:10px;line-height:1.5;}
+
+.switch{width:44px;height:25px;border-radius:999px;background:var(--line);border:none;padding:2px;cursor:pointer;position:relative;flex:0 0 auto;transition:background .15s;}
+.switch.on{background:var(--primary);}
+.switch-thumb{display:block;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .15s;}
+.switch.on .switch-thumb{transform:translateX(19px);}
+.switch:disabled{opacity:.5;cursor:default;}
+
+.feature-list{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-card);overflow:hidden;margin-top:14px;}
+.feature-row{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;color:var(--ink);}
+.feature-row:last-child{border-bottom:none;}
+.feature-row .fi{width:28px;height:28px;border-radius:9px;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+
 .bottom-nav{display:flex;align-items:center;width:100%;height:72px;background:var(--surface);border-top:1px solid var(--line);padding:0 0 env(safe-area-inset-bottom,0px);position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:50;}
 .nav-icon-wrap{position:relative;display:flex;}
 .nav-badge{position:absolute;top:-4px;right:-8px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--primary);color:#fff;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;}

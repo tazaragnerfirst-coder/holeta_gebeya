@@ -4,9 +4,10 @@ import { fileToCompressedBase64 } from '../lib/imageCompress';
 
 const PHONE_RE = /^(?:\+251|0)(7|9)\d{8}$/;
 
-export default function EditProfileSheet({ open, busy, error, initialName = '', initialPhone = '', initialPhoto = '', onClose, onSubmit }) {
+export default function EditProfileSheet({ open, busy, error, initialName = '', initialPhone = '', initialPhoto = '', initialLocation = '', onClose, onSubmit }) {
   const [fullName, setFullName] = useState(initialName);
   const [phone, setPhone] = useState(initialPhone);
+  const [location, setLocation] = useState(initialLocation);
   const [photoPreview, setPhotoPreview] = useState(initialPhoto);
   const [newPhotoDataUrl, setNewPhotoDataUrl] = useState(null);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -17,11 +18,12 @@ export default function EditProfileSheet({ open, busy, error, initialName = '', 
     if (open) {
       setFullName(initialName);
       setPhone(initialPhone);
+      setLocation(initialLocation);
       setPhotoPreview(initialPhoto);
       setNewPhotoDataUrl(null);
       setTouched(false);
     }
-  }, [open, initialName, initialPhone, initialPhoto]);
+  }, [open, initialName, initialPhone, initialPhoto, initialLocation]);
 
   if (!open) return null;
 
@@ -47,7 +49,7 @@ export default function EditProfileSheet({ open, busy, error, initialName = '', 
   function submit() {
     setTouched(true);
     if (!fullName.trim() || !PHONE_RE.test(phone.trim())) return;
-    onSubmit({ fullName: fullName.trim(), phone: phone.trim(), photoUrl: newPhotoDataUrl });
+    onSubmit({ fullName: fullName.trim(), phone: phone.trim(), photoUrl: newPhotoDataUrl, location: location.trim() });
   }
 
   const initial = fullName ? fullName.trim()[0]?.toUpperCase() : '?';
@@ -57,7 +59,7 @@ export default function EditProfileSheet({ open, busy, error, initialName = '', 
       <div className="sheet" onMouseDown={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <div className="sheet-head">
-          <h3>Edit Profile</h3>
+          <h3>Edit Info</h3>
           <button type="button" className="icon-btn" onClick={onClose} aria-label="Cancel"><Icon name="x" size={18} /></button>
         </div>
 
@@ -97,8 +99,8 @@ export default function EditProfileSheet({ open, busy, error, initialName = '', 
             {nameError && <p className="field-error">{nameError}</p>}
           </div>
 
-          <div className={`field-group ${phoneError ? 'has-error' : ''}`}>
-            <label className="field-label">Phone Number<span className="req">*</span></label>
+          <div className={`field-group ${phoneError ? 'has-error' : ''}`} style={{ marginBottom: 14 }}>
+            <label className="field-label">Business Phone Number<span className="req">*</span></label>
             <input
               className="field"
               type="tel"
@@ -108,6 +110,16 @@ export default function EditProfileSheet({ open, busy, error, initialName = '', 
               placeholder="09XXXXXXXX"
             />
             {phoneError && <p className="field-error">{phoneError}</p>}
+          </div>
+
+          <div className="field-group">
+            <label className="field-label">Location <span style={{ color: 'var(--ink-faint)', fontWeight: 500 }}>(optional)</span></label>
+            <input
+              className="field"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g. Holeta, Oromia"
+            />
           </div>
 
           {error && (

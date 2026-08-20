@@ -23,6 +23,13 @@ const AdsManage = lazy(() => import('./pages/AdsManage.jsx'));
 const ExpiredItems = lazy(() => import('./pages/ExpiredItems.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
 const Favorites = lazy(() => import('./pages/Favorites.jsx'));
+const Subscription = lazy(() => import('./pages/Subscription.jsx'));
+const SubscriptionStatus = lazy(() => import('./pages/SubscriptionStatus.jsx'));
+const BoostPromo = lazy(() => import('./pages/BoostPromo.jsx'));
+const MyStore = lazy(() => import('./pages/MyStore.jsx'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
+const Settings = lazy(() => import('./pages/Settings.jsx'));
+const HoletaCoin = lazy(() => import('./pages/HoletaCoin.jsx'));
 
 function RouteFallback() {
   return (
@@ -62,6 +69,13 @@ export default function App() {
                 <Route path="/dashboard/expired" element={<ExpiredItems />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/favorites" element={<Favorites />} />
+                <Route path="/subscription" element={<Subscription />} />
+                <Route path="/subscription/status" element={<SubscriptionStatus />} />
+                <Route path="/subscription/boost" element={<BoostPromo />} />
+                <Route path="/my-store" element={<MyStore />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/holeta-coin" element={<HoletaCoin />} />
               </Routes>
             </Suspense>
           </div>

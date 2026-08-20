@@ -41,6 +41,12 @@ const PATHS = {
   logOut: '<path d="M9 21H5.5A1.5 1.5 0 014 19.5v-15A1.5 1.5 0 015.5 3H9"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
   pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
   play: '<path d="M7 4l13 8-13 8z"/>',
+  crown: '<path d="M4 8l3.5 3L12 5l4.5 6L20 8l-1.6 9.5H5.6z"/><path d="M5.6 19.5h12.8"/>',
+  store: '<path d="M4 9.5L5 4h14l1 5.5"/><path d="M4 9.5a2.5 2.5 0 005 0 2.5 2.5 0 005 0 2.5 2.5 0 005 0 2.5 2.5 0 005 0"/><path d="M5 10v9.5h14V10"/><path d="M9.5 19.5V14h5v5.5"/>',
+  shieldLock: '<path d="M12 3l7 3v6c0 4.7-3 7.7-7 9-4-1.3-7-4.3-7-9V6z"/><rect x="9.3" y="10.8" width="5.4" height="4.4" rx="1"/><path d="M10.3 10.8V9.2a1.7 1.7 0 013.4 0v1.6"/>',
+  sliders2: '<circle cx="12" cy="12" r="9"/><path d="M12 7v3M12 14v3M8 12h.01M16 12h.01"/>',
+  coin: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9"/><path d="M9.3 15.2c.4.9 1.4 1.5 2.7 1.5 1.8 0 3-1 3-2.3 0-1.4-1.2-1.9-3-2.4-1.8-.5-3-1-3-2.4 0-1.3 1.2-2.3 3-2.3 1.3 0 2.3.6 2.7 1.5"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.8 5.8 3.8 9s-1.4 6.5-3.8 9c-2.4-2.5-3.8-5.8-3.8-9s1.4-6.5 3.8-9z"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {

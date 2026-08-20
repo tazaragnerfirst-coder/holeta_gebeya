@@ -22,8 +22,10 @@ export async function getMyProfile(uid) {
       // login) so a custom photo sticks even after the next sign-in.
       photo: data.customPhotoUrl || data.photoUrl || fallbackPhoto || '',
       phone: data.phone || '',
+      location: data.location || '',
+      subscriptionActive: !!data.subscriptionActive,
     };
   } catch {
-    return { name: fallbackName || 'User', photo: fallbackPhoto, phone: '' };
+    return { name: fallbackName || 'User', photo: fallbackPhoto, phone: '', location: '', subscriptionActive: false };
   }
 }

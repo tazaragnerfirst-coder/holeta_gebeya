@@ -47,7 +47,7 @@ export default function Profile() {
     }
   }
 
-  async function handleEditSubmit({ fullName, phone, photoUrl }) {
+  async function handleEditSubmit({ fullName, phone, photoUrl, location }) {
     setEditBusy(true);
     setEditError('');
     try {
@@ -55,7 +55,7 @@ export default function Profile() {
       const r = await fetch(`${BACKEND_URL}/updateProfile`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken, fullName, phone, photoUrl }),
+        body: JSON.stringify({ idToken, fullName, phone, photoUrl, location }),
       });
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || "Couldn't save your details.");
@@ -91,8 +91,23 @@ export default function Profile() {
     navigate('/');
   }
 
+  async function goSubscription() {
+    await requireRegistered().catch(() => {});
+    navigate('/subscription');
+  }
+
+  async function goMyStore() {
+    await requireRegistered().catch(() => {});
+    navigate('/my-store');
+  }
+
   const menu = [
-    { icon: 'edit', t: 'Edit Profile', onClick: openEdit },
+    { icon: 'edit', t: 'Edit Info', onClick: openEdit },
+    { icon: 'crown', t: 'Subscription', onClick: goSubscription },
+    { icon: 'store', t: 'My Store', onClick: goMyStore },
+    { icon: 'shieldLock', t: 'Privacy Policy', onClick: () => navigate('/privacy-policy') },
+    { icon: 'sliders', t: 'Settings', onClick: () => navigate('/settings') },
+    { icon: 'coin', t: 'Holeta Coin', sub: 'Soon', onClick: () => navigate('/holeta-coin') },
     { icon: 'briefcase', t: 'My Ads', sub: registeredUid ? `${ads.length} listing${ads.length === 1 ? '' : 's'}` : null, onClick: goMyAds },
     { icon: 'heart', t: 'Favorites', sub: registeredUid ? `${favorites.length} saved` : null, onClick: goFavorites },
     { icon: 'helpCircle', t: 'Help & Support', onClick: goSupport },
@@ -141,6 +156,7 @@ export default function Profile() {
         initialName={profile?.name && profile.name !== 'User' ? profile.name : ''}
         initialPhone={profile?.phone || ''}
         initialPhoto={profile?.photo || ''}
+        initialLocation={profile?.location || ''}
         onClose={() => setEditOpen(false)}
         onSubmit={handleEditSubmit}
       />
