@@ -343,15 +343,16 @@ textarea.field{min-height:84px;resize:vertical;}
 .boost-cta:disabled{cursor:default;}
 .boost-note{font-size:11px;color:rgba(255,255,255,.75);margin-top:8px;}
 
-.profile-hero{position:relative;background:var(--surface-sunken);}
-.profile-hero-img{width:100%;height:150px;object-fit:cover;display:block;}
-.profile-hero-fallback{width:100%;height:150px;background:linear-gradient(155deg,var(--primary),var(--primary-dark));}
-.profile-card{position:relative;margin:-38px 16px 0;background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-card);padding:14px 16px;display:flex;align-items:center;gap:14px;}
-.profile-card .avatar-lg{width:64px;height:64px;font-size:22px;margin:0;flex:0 0 auto;border:3px solid var(--surface);}
-.profile-card .info{flex:1;min-width:0;}
-.profile-card .info h2{margin:0;font-size:17px;font-weight:800;}
-.profile-card .stars{display:flex;align-items:center;gap:2px;margin-top:5px;}
-.profile-card .rating-count{font-size:11px;color:var(--ink-faint);margin-left:5px;font-weight:600;}
+.profile-hero-card{position:relative;margin:2px 16px 0;height:225px;border-radius:26px;overflow:hidden;box-shadow:var(--shadow-card);}
+.profile-hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.profile-hero-fallback{position:absolute;inset:0;background:linear-gradient(155deg,var(--primary),var(--primary-dark));}
+.profile-hero-shade{position:absolute;left:0;right:0;bottom:0;height:60%;background:linear-gradient(to bottom, rgba(18,20,17,0) 0%, rgba(18,20,17,.4) 100%);}
+.profile-pill{position:absolute;left:12px;right:12px;bottom:12px;background:var(--surface);border-radius:999px;padding:9px 18px 9px 9px;display:flex;align-items:center;gap:13px;box-shadow:0 6px 18px rgba(20,22,18,.16);}
+.profile-pill .avatar-lg{width:58px;height:58px;font-size:20px;margin:0;flex:0 0 auto;border:3px solid var(--surface);box-shadow:0 2px 6px rgba(20,22,18,.15);}
+.profile-pill .info{flex:1;min-width:0;}
+.profile-pill .info h2{margin:0;font-size:16px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.profile-pill .stars{display:flex;align-items:center;gap:2px;margin-top:4px;}
+.profile-pill .rating-count{font-size:11px;color:var(--ink-faint);margin-left:5px;font-weight:600;}
 .px16{padding:0 16px;}
 
 .quick-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px;}

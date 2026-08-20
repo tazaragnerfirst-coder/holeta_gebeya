@@ -137,24 +137,24 @@ export default function Profile() {
 
   return (
     <div className="page px">
-      <div className="profile-hero">
+      <div className="profile-hero-card">
         {bannerUrl
           ? <img className="profile-hero-img" src={bannerUrl} alt="" />
           : <div className="profile-hero-fallback" />}
-      </div>
-
-      <div className="profile-card">
-        <div
-          className="avatar-lg"
-          style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
-        >
-          {!photo && initial}
-        </div>
-        <div className="info">
-          <h2>{name}</h2>
-          <div className="stars">
-            <StarRow value={rating.avg} size={15} />
-            {rating.count > 0 && <span className="rating-count">{rating.avg.toFixed(1)} ({rating.count})</span>}
+        <div className="profile-hero-shade" />
+        <div className="profile-pill">
+          <div
+            className="avatar-lg"
+            style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+          >
+            {!photo && initial}
+          </div>
+          <div className="info">
+            <h2>{name}</h2>
+            <div className="stars">
+              <StarRow value={rating.avg} size={14} />
+              {rating.count > 0 && <span className="rating-count">{rating.avg.toFixed(1)} ({rating.count})</span>}
+            </div>
           </div>
         </div>
       </div>
