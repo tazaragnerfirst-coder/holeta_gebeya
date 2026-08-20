@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
-import { isActiveAd, daysSincePosted, isCurrentlyBoosted } from '../lib/adStatus';
-import { getSellerAnalytics } from '../lib/analytics';
+import { isActiveAd, isExpired, daysSincePosted, isCurrentlyBoosted } from '../lib/adStatus';
+import { getSellerAnalytics, getListingAnalyticsBulk } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
 import DailyViewsChart from '../components/DailyViewsChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
@@ -54,6 +54,23 @@ export default function Dashboard() {
       .catch(() => setAllTimeReady(true));
   }, [registeredUid]);
 
+  // Per-ad contact-click totals, for the Top Ads by Contact Clicks
+  // card below — mirrors how adRankingItems is derived from `views`.
+  const [contactsPerAd, setContactsPerAd] = useState({});
+  useEffect(() => {
+    if (!adsReady || ads.length === 0) return;
+    getListingAnalyticsBulk(ads.map((a) => a.id), Infinity)
+      .then((data) => {
+        const totals = {};
+        Object.entries(data).forEach(([id, days]) => {
+          totals[id] = days.reduce((s, d) => s + (d.contacts || 0), 0);
+        });
+        setContactsPerAd(totals);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adsReady, ads.map((a) => a.id).join(',')]);
+
   const ready = adsReady;
   const timedOut = useLoadTimeout(ready, 3000);
 
@@ -69,6 +86,10 @@ export default function Dashboard() {
   const adRankingItems = useMemo(
     () => ads.map((a) => ({ id: a.id, label: a.title, value: a.views || 0 })),
     [ads]
+  );
+  const contactRankingItems = useMemo(
+    () => ads.map((a) => ({ id: a.id, label: a.title, value: contactsPerAd[a.id] || 0 })),
+    [ads, contactsPerAd]
   );
 
   const boostedAds = ads.filter(isCurrentlyBoosted);
@@ -104,7 +125,7 @@ export default function Dashboard() {
         </Link>
         <Link to="/dashboard/expired" className="stat-card" style={{ textDecoration: 'none', color: 'inherit', position: 'relative' }}>
           <span className="detail-tag stat-card-tag">Detail</span>
-          <div className="val">{ads.length - active.length}</div><div className="lbl">Expired</div>
+          <div className="val">{ads.filter(isExpired).length}</div><div className="lbl">Expired</div>
         </Link>
       </div>
 
@@ -148,6 +169,13 @@ export default function Dashboard() {
           <h3 className="section-title" style={{ margin: 0 }}><Icon name="star" size={16} /> Top Ads by Views</h3>
         </div>
         <RankedBarChart items={adRankingItems} limit={5} emptyText="Post an ad to see its performance here." />
+      </div>
+
+      <div className="chart-card" style={{ marginTop: 14 }}>
+        <div className="chart-card-head">
+          <h3 className="section-title" style={{ margin: 0 }}><Icon name="chat" size={16} /> Top Ads by Contact Clicks</h3>
+        </div>
+        <RankedBarChart items={contactRankingItems} limit={5} emptyText="Contact clicks from buyers will show up here." />
       </div>
 
       {ready && ads.length > 0 && (

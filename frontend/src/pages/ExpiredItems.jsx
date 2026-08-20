@@ -4,7 +4,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
-import { isActiveAd, computeExpiresAt } from '../lib/adStatus';
+import { isExpired, computeExpiresAt } from '../lib/adStatus';
 import Icon from '../components/Icon.jsx';
 
 // Opened from the "Expired" card on the Dashboard. An ad lands here
@@ -16,7 +16,7 @@ export default function ExpiredItems() {
   const timedOut = useLoadTimeout(adsReady, 3000);
   const [renewingId, setRenewingId] = useState(null);
 
-  const expired = ads.filter((a) => !isActiveAd(a));
+  const expired = ads.filter(isExpired);
 
   async function handleRenew(id) {
     setRenewingId(id);

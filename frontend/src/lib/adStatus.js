@@ -19,6 +19,12 @@ export function isActiveAd(ad) {
   return ad.status === 'active' && !isExpired(ad);
 }
 
+// A seller-paused listing: temporarily hidden from the marketplace
+// without deleting it or letting its expiry countdown run out.
+export function isPausedAd(ad) {
+  return ad.status === 'paused' && !isExpired(ad);
+}
+
 // Whole days since a listing's createdAt timestamp. Used for
 // per-day performance rates (views/day) on the seller dashboard.
 export function daysSincePosted(ad) {

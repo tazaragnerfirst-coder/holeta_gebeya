@@ -4,6 +4,7 @@ import { auth, db } from './firebase';
 import { getUnsafeUserPreview } from './telegram';
 import { getCached, setCached } from './pageCache';
 import { subscribeFavorites } from './favorites';
+import { isActiveAd } from './adStatus';
 
 const AppDataContext = createContext(null);
 
@@ -66,7 +67,9 @@ export function AppDataProvider({ children }) {
   useEffect(() => {
     const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(30));
     const unsub = onSnapshot(q, (snap) => {
-      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Paused (and expired) listings stay in Firestore for the
+      // seller to manage, but shouldn't show up in the public feed.
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter(isActiveAd);
       setListings(data);
       setListingsReady(true);
       setCached('listings', data);

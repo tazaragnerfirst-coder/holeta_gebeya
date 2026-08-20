@@ -1,12 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
-import Sparkline from '../components/Sparkline.jsx';
-import ContactFunnelChart from '../components/ContactFunnelChart.jsx';
-import StateMessage from '../components/StateMessage.jsx';
+import DailyRateChart from '../components/DailyRateChart.jsx';
+import RankedBarChart from '../components/RankedBarChart.jsx';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -16,15 +14,15 @@ const RANGE_OPTIONS = [
 
 // Opened from the "Contact Clicks" card on the Dashboard. Mirrors
 // ViewsDetail's structure but contacts-focused: an all-time contacts
-// total, a Views→Contact funnel with its own range picker, and a
-// per-ad breakdown sorted by contacts instead of views.
+// total, a daily conversion-rate trend with its own range picker,
+// and an all-ads-by-contact-clicks ranking. The per-ad "By Ad" list
+// itself now lives on the Active Ads (management) page instead.
 export default function ContactsDetail() {
   const { ads, adsReady, registeredUid } = useAppData();
   const timedOut = useLoadTimeout(adsReady, 3000);
 
-  // One bulk fetch (all-time) per ad — gives both the accurate
-  // all-time contacts total to sort/rank by, and (via the last 7
-  // entries) the sparkline trend, without a second round trip.
+  // One bulk fetch (all-time) per ad — gives the accurate all-time
+  // contacts total used both for the stat card and to rank ads below.
   const [perAd, setPerAd] = useState({});
   const [perAdReady, setPerAdReady] = useState(false);
 
@@ -61,9 +59,9 @@ export default function ContactsDetail() {
   const totalViewsAllAds = ads.reduce((s, a) => s + (a.views || 0), 0);
   const conversionRate = totalViewsAllAds > 0 ? Math.round((totalContacts / totalViewsAllAds) * 100) : null;
 
-  const sorted = useMemo(() => {
+  const contactRankingItems = useMemo(() => {
     const contactsFor = (id) => (perAd[id] || []).reduce((s, d) => s + (d.contacts || 0), 0);
-    return [...ads].sort((a, b) => contactsFor(b.id) - contactsFor(a.id));
+    return ads.map((a) => ({ id: a.id, label: a.title, value: contactsFor(a.id) }));
   }, [ads, perAd]);
 
   return (
@@ -76,7 +74,7 @@ export default function ContactsDetail() {
 
       <div className="chart-card" style={{ marginTop: 6 }}>
         <div className="chart-card-head">
-          <h3 className="section-title" style={{ margin: 0 }}><Icon name="chat" size={16} /> Views → Contact</h3>
+          <h3 className="section-title" style={{ margin: 0 }}><Icon name="chat" size={16} /> Daily Contact Rate</h3>
           <div className="range-picker">
             <button type="button" className="range-btn" onClick={() => setRangeOpen((v) => !v)}>
               {range.label} <Icon name="chevronDown" size={14} />
@@ -98,8 +96,8 @@ export default function ContactsDetail() {
           </div>
         </div>
         {analyticsReady
-          ? <ContactFunnelChart views={rangeViews} contacts={rangeContacts} />
-          : <div className="chart-empty" style={{ height: 80 }}>Loading…</div>}
+          ? <DailyRateChart data={analytics} />
+          : <div className="chart-empty" style={{ height: 140 }}>Loading…</div>}
         {analyticsReady && analytics.length === 0 && (
           <p className="helper-text" style={{ marginTop: 8 }}>
             {rangeKey === 'all'
@@ -109,47 +107,27 @@ export default function ContactsDetail() {
         )}
       </div>
 
-      <h3 className="section-title">By Ad</h3>
-      {!adsReady && !timedOut && <p className="helper-text">Loading...</p>}
-      {!adsReady && timedOut && (
-        <StateMessage
-          tone="error"
-          icon="history"
-          text="Couldn't load your ads. Check your connection."
-          actionLabel="Try again"
-          onAction={() => window.location.reload()}
+      <div className="chart-card" style={{ marginTop: 14 }}>
+        <div className="chart-card-head">
+          <h3 className="section-title" style={{ margin: 0 }}><Icon name="star" size={16} /> All Ads by Contact Clicks</h3>
+        </div>
+        <RankedBarChart
+          items={contactRankingItems}
+          limit={5}
+          expandable
+          scrollCap={7}
+          linkTo={(item) => `/dashboard/views/${item.id}`}
+          emptyText="Contact clicks from buyers will show up here."
         />
+      </div>
+
+      {!adsReady && !timedOut && <p className="helper-text" style={{ marginTop: 8 }}>Loading...</p>}
+      {!adsReady && timedOut && (
+        <p className="helper-text error-text" style={{ marginTop: 8 }}>
+          Couldn't load your ads. Check your connection and{' '}
+          <a href="#" onClick={(e) => { e.preventDefault(); window.location.reload(); }}>try again</a>.
+        </p>
       )}
-      {adsReady && sorted.length === 0 && (
-        <StateMessage text="You haven't posted anything yet." actionLabel="Post an ad" actionTo="/post" />
-      )}
-      {sorted.map((a) => {
-        const photo = a.images && a.images[0];
-        const days = perAd[a.id] || [];
-        const last7 = days.slice(-7).map((d) => d.contacts || 0);
-        const contactsTotal = days.reduce((s, d) => s + (d.contacts || 0), 0);
-        return (
-          <Link to={`/dashboard/views/${a.id}`} className="view-ad-card" key={a.id}>
-            <div className="view-ad-card-top">
-              <div className="ad-thumb" style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
-                {!photo && <Icon name="image" size={16} />}
-              </div>
-              <div className="info">
-                <div className="t">{a.title}</div>
-                <div className="p">{a.price} ETB</div>
-              </div>
-              <span className="detail-tag">Detail</span>
-            </div>
-            <div className="view-ad-card-bottom">
-              <Sparkline data={last7} />
-              <div className="view-ad-card-stats">
-                <span><Icon name="chat" size={13} /> {contactsTotal}</span>
-                <span><Icon name="eye" size={13} /> {a.views || 0}</span>
-              </div>
-            </div>
-          </Link>
-        );
-      })}
     </div>
   );
 }

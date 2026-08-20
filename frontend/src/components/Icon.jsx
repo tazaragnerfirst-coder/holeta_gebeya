@@ -39,6 +39,8 @@ const PATHS = {
   alertTriangle: '<path d="M12 3.5L2.3 20.5h19.4z"/><path d="M12 9.5v5"/><circle cx="12" cy="17.3" r=".4" fill="currentColor" stroke="none"/>',
   edit: '<path d="M4 20h4l10.5-10.5a2 2 0 000-3L17.5 5.5a2 2 0 00-3 0L4 16v4z"/><path d="M14 7.5l3 3"/>',
   logOut: '<path d="M9 21H5.5A1.5 1.5 0 014 19.5v-15A1.5 1.5 0 015.5 3H9"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+  pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+  play: '<path d="M7 4l13 8-13 8z"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {

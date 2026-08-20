@@ -289,6 +289,12 @@ textarea.field{min-height:84px;resize:vertical;}
 .status-pill{font-size:10px;font-weight:800;padding:4px 9px;border-radius:100px;white-space:nowrap;}
 .status-pill.active{background:#E1F1E5;color:var(--ok);}
 .status-pill.expired{background:#F1E9E1;color:#8C6A3F;}
+.status-pill.paused{background:var(--accent-tint);color:var(--accent-dark);}
+
+/* Two-color line-legend under CombinedTrendChart. */
+.chart-legend{display:flex;gap:16px;justify-content:center;margin-top:6px;font-size:11px;font-weight:600;color:var(--ink-soft);}
+.chart-legend span{display:flex;align-items:center;gap:5px;}
+.legend-dot{display:inline-block;width:8px;height:8px;border-radius:999px;}
 
 /* Small affordance on cards/rows that open a fuller detail view —
    signals there's more behind the summary without adding clutter. */
@@ -301,6 +307,18 @@ textarea.field{min-height:84px;resize:vertical;}
 .view-ad-card-bottom{display:flex;align-items:center;justify-content:space-between;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
 .view-ad-card-stats{display:flex;gap:12px;color:var(--ink-faint);font-size:11.5px;font-weight:700;}
 .view-ad-card-stats span{display:flex;align-items:center;gap:3px;}
+
+/* Active Ads (management) page — same card shell as .view-ad-card,
+   but not itself a link (it holds a link row plus action buttons),
+   with a push/edit/delete row underneath. */
+.ad-manage-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-card);padding:11px;margin-bottom:10px;}
+.ad-manage-link-row{display:flex;gap:11px;align-items:center;flex:1;min-width:0;text-decoration:none;color:inherit;}
+.ad-manage-actions{display:flex;gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
+.ad-manage-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;background:var(--surface-sunken);border:none;border-radius:9px;padding:8px 6px;font-size:12px;font-weight:700;color:var(--ink-soft);text-decoration:none;cursor:pointer;font-family:var(--font-ui);}
+.ad-manage-btn:disabled{opacity:.5;}
+.ad-manage-btn-danger{color:var(--safety);}
+.ad-manage-card .perf-flag{margin-top:9px;}
+
 .view-ad-detail-head{display:flex;gap:11px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:var(--shadow-card);padding:12px;}
 .view-ad-detail-head .info{flex:1;min-width:0;}
 
