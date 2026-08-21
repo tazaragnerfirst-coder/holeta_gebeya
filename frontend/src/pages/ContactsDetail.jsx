@@ -27,6 +27,7 @@ export default function ContactsDetail() {
   const [perAd, setPerAd] = useState({});
   const [perAdReady, setPerAdReady] = useState(false);
   const [perAdError, setPerAdError] = useState(false);
+  const [perAdErrMsg, setPerAdErrMsg] = useState('');
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);
@@ -40,7 +41,12 @@ export default function ContactsDetail() {
     setPerAdError(false);
     getListingAnalyticsBulk(ads.map((a) => a.id), Infinity)
       .then((data) => { setPerAd(data); setPerAdReady(true); })
-      .catch(() => { setPerAdReady(true); setPerAdError(true); });
+      .catch((err) => {
+        console.error('getListingAnalyticsBulk failed:', err);
+        setPerAdReady(true);
+        setPerAdError(true);
+        setPerAdErrMsg(err?.code || err?.message || '');
+      });
   }
   useEffect(loadPerAd, [adsReady, ads]);
 
@@ -122,7 +128,7 @@ export default function ContactsDetail() {
           <h3 className="section-title" style={{ margin: 0 }}><Icon name="star" size={16} /> All Ads by Contact Clicks</h3>
         </div>
         {perAdError
-          ? <StateMessage tone="error" icon="alertTriangle" text="Couldn't load contact clicks." actionLabel="Retry" onAction={loadPerAd} />
+          ? <StateMessage tone="error" icon="alertTriangle" text={`Couldn't load contact clicks.${perAdErrMsg ? ` (${perAdErrMsg})` : ''}`} actionLabel="Retry" onAction={loadPerAd} />
           : (
             <RankedBarChart
               items={contactRankingItems}

@@ -69,11 +69,18 @@ export default function AdsManage() {
 
   const [perAd, setPerAd] = useState({});
   const [perAdError, setPerAdError] = useState(false);
+  const [perAdErrMsg, setPerAdErrMsg] = useState('');
 
   function loadPerAd() {
     if (manageable.length === 0) return;
     setPerAdError(false);
-    getListingAnalyticsBulk(manageable.map((a) => a.id), Infinity).then(setPerAd).catch(() => setPerAdError(true));
+    getListingAnalyticsBulk(manageable.map((a) => a.id), Infinity)
+      .then(setPerAd)
+      .catch((err) => {
+        console.error('getListingAnalyticsBulk failed:', err);
+        setPerAdError(true);
+        setPerAdErrMsg(err?.code || err?.message || '');
+      });
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(loadPerAd, [adsReady, manageable.map((a) => a.id).join(',')]);
@@ -158,7 +165,7 @@ export default function AdsManage() {
 
       <h3 className="section-title" style={{ marginTop: 14 }}>By Ad</h3>
       {perAdError && (
-        <StateMessage tone="error" icon="alertTriangle" text="Couldn't load view/contact stats for your ads." actionLabel="Retry" onAction={loadPerAd} />
+        <StateMessage tone="error" icon="alertTriangle" text={`Couldn't load view/contact stats for your ads.${perAdErrMsg ? ` (${perAdErrMsg})` : ''}`} actionLabel="Retry" onAction={loadPerAd} />
       )}
       {!adsReady && !timedOut && <p className="helper-text">Loading...</p>}
       {!adsReady && timedOut && (

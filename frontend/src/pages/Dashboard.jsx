@@ -65,6 +65,7 @@ export default function Dashboard() {
   // card below — mirrors how adRankingItems is derived from `views`.
   const [contactsPerAd, setContactsPerAd] = useState({});
   const [contactsPerAdError, setContactsPerAdError] = useState(false);
+  const [contactsPerAdErrMsg, setContactsPerAdErrMsg] = useState('');
   function loadContactsPerAd() {
     if (!adsReady || ads.length === 0) return;
     setContactsPerAdError(false);
@@ -76,7 +77,11 @@ export default function Dashboard() {
         });
         setContactsPerAd(totals);
       })
-      .catch(() => setContactsPerAdError(true));
+      .catch((err) => {
+        console.error('getListingAnalyticsBulk failed:', err);
+        setContactsPerAdError(true);
+        setContactsPerAdErrMsg(err?.code || err?.message || '');
+      });
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(loadContactsPerAd, [adsReady, ads.map((a) => a.id).join(',')]);
@@ -189,7 +194,7 @@ export default function Dashboard() {
           <h3 className="section-title" style={{ margin: 0 }}><Icon name="chat" size={16} /> Top Ads by Contact Clicks</h3>
         </div>
         {contactsPerAdError
-          ? <StateMessage tone="error" icon="alertTriangle" text="Couldn't load contact clicks." actionLabel="Retry" onAction={loadContactsPerAd} />
+          ? <StateMessage tone="error" icon="alertTriangle" text={`Couldn't load contact clicks.${contactsPerAdErrMsg ? ` (${contactsPerAdErrMsg})` : ''}`} actionLabel="Retry" onAction={loadContactsPerAd} />
           : <RankedBarChart items={contactRankingItems} limit={5} emptyText="Contact clicks from buyers will show up here." />}
       </div>
 
