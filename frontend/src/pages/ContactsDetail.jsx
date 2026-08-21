@@ -5,6 +5,7 @@ import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
 import DailyRateChart from '../components/DailyRateChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
+import StateMessage from '../components/StateMessage.jsx';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -25,29 +26,35 @@ export default function ContactsDetail() {
   // contacts total used both for the stat card and to rank ads below.
   const [perAd, setPerAd] = useState({});
   const [perAdReady, setPerAdReady] = useState(false);
+  const [perAdError, setPerAdError] = useState(false);
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);
   const [analytics, setAnalytics] = useState([]);
   const [analyticsReady, setAnalyticsReady] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(false);
 
-  useEffect(() => {
+  function loadPerAd() {
     if (!adsReady || ads.length === 0) { setPerAdReady(true); return; }
     setPerAdReady(false);
+    setPerAdError(false);
     getListingAnalyticsBulk(ads.map((a) => a.id), Infinity)
       .then((data) => { setPerAd(data); setPerAdReady(true); })
-      .catch(() => setPerAdReady(true));
-  }, [adsReady, ads]);
+      .catch(() => { setPerAdReady(true); setPerAdError(true); });
+  }
+  useEffect(loadPerAd, [adsReady, ads]);
 
   const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
 
-  useEffect(() => {
+  function loadAnalytics() {
     if (!registeredUid) return;
     setAnalyticsReady(false);
+    setAnalyticsError(false);
     getSellerAnalytics(registeredUid, range.days)
       .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
-      .catch(() => setAnalyticsReady(true));
-  }, [registeredUid, range.days]);
+      .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
+  }
+  useEffect(loadAnalytics, [registeredUid, range.days]);
 
   const rangeViews = useMemo(() => analytics.reduce((s, a) => s + (a.views || 0), 0), [analytics]);
   const rangeContacts = useMemo(() => analytics.reduce((s, a) => s + (a.contacts || 0), 0), [analytics]);
@@ -68,7 +75,7 @@ export default function ContactsDetail() {
     <div className="page">
       <h2 className="page-title">Contact Clicks</h2>
       <div className="stat-row">
-        <div className="stat-card"><div className="val">{perAdReady ? totalContacts : '—'}</div><div className="lbl">Total Contact Clicks</div></div>
+        <div className="stat-card"><div className="val">{perAdError ? '!' : (perAdReady ? totalContacts : '—')}</div><div className="lbl">Total Contact Clicks</div></div>
         <div className="stat-card"><div className="val">{conversionRate != null ? `${conversionRate}%` : '—'}</div><div className="lbl">Views → Contact Rate</div></div>
       </div>
 
@@ -98,7 +105,10 @@ export default function ContactsDetail() {
         {analyticsReady
           ? <DailyRateChart data={analytics} />
           : <div className="chart-empty" style={{ height: 140 }}>Loading…</div>}
-        {analyticsReady && analytics.length === 0 && (
+        {analyticsReady && analyticsError && (
+          <StateMessage tone="error" icon="alertTriangle" text="Couldn't load this chart." actionLabel="Retry" onAction={loadAnalytics} />
+        )}
+        {analyticsReady && !analyticsError && analytics.length === 0 && (
           <p className="helper-text" style={{ marginTop: 8 }}>
             {rangeKey === 'all'
               ? "No contact-click history yet — this tracking started with this update, so it builds up from here."
@@ -111,14 +121,18 @@ export default function ContactsDetail() {
         <div className="chart-card-head">
           <h3 className="section-title" style={{ margin: 0 }}><Icon name="star" size={16} /> All Ads by Contact Clicks</h3>
         </div>
-        <RankedBarChart
-          items={contactRankingItems}
-          limit={5}
-          expandable
-          scrollCap={7}
-          linkTo={(item) => `/dashboard/views/${item.id}`}
-          emptyText="Contact clicks from buyers will show up here."
-        />
+        {perAdError
+          ? <StateMessage tone="error" icon="alertTriangle" text="Couldn't load contact clicks." actionLabel="Retry" onAction={loadPerAd} />
+          : (
+            <RankedBarChart
+              items={contactRankingItems}
+              limit={5}
+              expandable
+              scrollCap={7}
+              linkTo={(item) => `/dashboard/views/${item.id}`}
+              emptyText="Contact clicks from buyers will show up here."
+            />
+          )}
       </div>
 
       {!adsReady && !timedOut && <p className="helper-text" style={{ marginTop: 8 }}>Loading...</p>}

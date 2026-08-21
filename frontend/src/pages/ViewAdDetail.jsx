@@ -26,16 +26,19 @@ export default function ViewAdDetail() {
   const [rangeOpen, setRangeOpen] = useState(false);
   const [analytics, setAnalytics] = useState([]);
   const [analyticsReady, setAnalyticsReady] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(false);
 
   const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
 
-  useEffect(() => {
+  function loadAnalytics() {
     if (!id) return;
     setAnalyticsReady(false);
+    setAnalyticsError(false);
     getListingAnalytics(id, range.days)
       .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
-      .catch(() => setAnalyticsReady(true));
-  }, [id, range.days]);
+      .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
+  }
+  useEffect(loadAnalytics, [id, range.days]);
 
   const rangeViews = useMemo(() => analytics.reduce((s, a) => s + (a.views || 0), 0), [analytics]);
   const rangeContacts = useMemo(() => analytics.reduce((s, a) => s + (a.contacts || 0), 0), [analytics]);
@@ -120,13 +123,16 @@ export default function ViewAdDetail() {
         {analyticsReady
           ? <DailyViewsChart data={analytics.map((a) => ({ date: a.date, views: a.views || 0 }))} />
           : <div className="chart-empty" style={{ height: 140 }}>Loading…</div>}
+        {analyticsReady && analyticsError && (
+          <StateMessage tone="error" icon="alertTriangle" text="Couldn't load this chart." actionLabel="Retry" onAction={loadAnalytics} />
+        )}
       </div>
 
       <h3 className="section-title"><Icon name="chat" size={16} /> Views → Contact</h3>
       <div className="chart-card">
-        {analyticsReady
+        {analyticsReady && !analyticsError
           ? <ContactFunnelChart views={rangeViews} contacts={rangeContacts} />
-          : <div className="chart-empty" style={{ height: 80 }}>Loading…</div>}
+          : <div className="chart-empty" style={{ height: 80 }}>{analyticsError ? '—' : 'Loading…'}</div>}
       </div>
 
       {categoryAvg != null && (

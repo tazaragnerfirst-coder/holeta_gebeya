@@ -9,6 +9,7 @@ import Icon from '../components/Icon.jsx';
 import DailyViewsChart from '../components/DailyViewsChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
 import BoostCard from '../components/BoostCard.jsx';
+import StateMessage from '../components/StateMessage.jsx';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -24,12 +25,14 @@ export default function Dashboard() {
   const [rangeOpen, setRangeOpen] = useState(false);
   const [analytics, setAnalytics] = useState([]);
   const [analyticsReady, setAnalyticsReady] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(false);
 
   // Contact Clicks is always the true total (like Total Views), not
   // scoped to the Daily Views chart's own range picker — so it's
   // fetched once, separately, with days=Infinity.
   const [allTimeContacts, setAllTimeContacts] = useState(0);
   const [allTimeReady, setAllTimeReady] = useState(false);
+  const [allTimeError, setAllTimeError] = useState(false);
 
   useEffect(() => {
     if (registeredUid) return;
@@ -38,27 +41,33 @@ export default function Dashboard() {
 
   const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
 
-  useEffect(() => {
+  function loadDailyAnalytics() {
     if (!registeredUid) return;
     setAnalyticsReady(false);
+    setAnalyticsError(false);
     getSellerAnalytics(registeredUid, range.days)
       .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
-      .catch(() => setAnalyticsReady(true));
-  }, [registeredUid, range.days]);
+      .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
+  }
+  useEffect(loadDailyAnalytics, [registeredUid, range.days]);
 
-  useEffect(() => {
+  function loadAllTimeContacts() {
     if (!registeredUid) return;
     setAllTimeReady(false);
+    setAllTimeError(false);
     getSellerAnalytics(registeredUid, Infinity)
       .then((data) => { setAllTimeContacts(data.reduce((s, a) => s + (a.contacts || 0), 0)); setAllTimeReady(true); })
-      .catch(() => setAllTimeReady(true));
-  }, [registeredUid]);
+      .catch(() => { setAllTimeReady(true); setAllTimeError(true); });
+  }
+  useEffect(loadAllTimeContacts, [registeredUid]);
 
   // Per-ad contact-click totals, for the Top Ads by Contact Clicks
   // card below — mirrors how adRankingItems is derived from `views`.
   const [contactsPerAd, setContactsPerAd] = useState({});
-  useEffect(() => {
+  const [contactsPerAdError, setContactsPerAdError] = useState(false);
+  function loadContactsPerAd() {
     if (!adsReady || ads.length === 0) return;
+    setContactsPerAdError(false);
     getListingAnalyticsBulk(ads.map((a) => a.id), Infinity)
       .then((data) => {
         const totals = {};
@@ -67,9 +76,10 @@ export default function Dashboard() {
         });
         setContactsPerAd(totals);
       })
-      .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adsReady, ads.map((a) => a.id).join(',')]);
+      .catch(() => setContactsPerAdError(true));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(loadContactsPerAd, [adsReady, ads.map((a) => a.id).join(',')]);
 
   const ready = adsReady;
   const timedOut = useLoadTimeout(ready, 3000);
@@ -112,7 +122,7 @@ export default function Dashboard() {
         </Link>
         <Link to="/dashboard/contacts" className="stat-card" style={{ textDecoration: 'none', color: 'inherit', position: 'relative' }}>
           <span className="detail-tag stat-card-tag">Detail</span>
-          <div className="val">{allTimeReady ? allTimeContacts : '—'}</div><div className="lbl">Contact Clicks</div>
+          <div className="val">{allTimeError ? '!' : (allTimeReady ? allTimeContacts : '—')}</div><div className="lbl">Contact Clicks</div>
         </Link>
         <div className="stat-card">
           <div className="val">{chatsReady ? chats.length : '—'}</div><div className="lbl">Active Chats</div>
@@ -155,7 +165,10 @@ export default function Dashboard() {
         {analyticsReady
           ? <DailyViewsChart data={analytics.map((a) => ({ date: a.date, views: a.views || 0 }))} />
           : <div className="chart-empty" style={{ height: 140 }}>Loading…</div>}
-        {analyticsReady && analytics.length === 0 && (
+        {analyticsReady && analyticsError && (
+          <StateMessage tone="error" icon="alertTriangle" text="Couldn't load this chart." actionLabel="Retry" onAction={loadDailyAnalytics} />
+        )}
+        {analyticsReady && !analyticsError && analytics.length === 0 && (
           <p className="helper-text" style={{ marginTop: 8 }}>
             {rangeKey === 'all'
               ? "No daily-view history yet — this tracking started with this update, so it builds up from here."
@@ -175,7 +188,9 @@ export default function Dashboard() {
         <div className="chart-card-head">
           <h3 className="section-title" style={{ margin: 0 }}><Icon name="chat" size={16} /> Top Ads by Contact Clicks</h3>
         </div>
-        <RankedBarChart items={contactRankingItems} limit={5} emptyText="Contact clicks from buyers will show up here." />
+        {contactsPerAdError
+          ? <StateMessage tone="error" icon="alertTriangle" text="Couldn't load contact clicks." actionLabel="Retry" onAction={loadContactsPerAd} />
+          : <RankedBarChart items={contactRankingItems} limit={5} emptyText="Contact clicks from buyers will show up here." />}
       </div>
 
       {ready && ads.length > 0 && (

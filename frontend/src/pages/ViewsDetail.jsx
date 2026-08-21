@@ -4,6 +4,7 @@ import { getSellerAnalytics } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
 import DailyViewsChart from '../components/DailyViewsChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
+import StateMessage from '../components/StateMessage.jsx';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -23,16 +24,19 @@ export default function ViewsDetail() {
   const [rangeOpen, setRangeOpen] = useState(false);
   const [analytics, setAnalytics] = useState([]);
   const [analyticsReady, setAnalyticsReady] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(false);
 
   const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
 
-  useEffect(() => {
+  function loadAnalytics() {
     if (!registeredUid) return;
     setAnalyticsReady(false);
+    setAnalyticsError(false);
     getSellerAnalytics(registeredUid, range.days)
       .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
-      .catch(() => setAnalyticsReady(true));
-  }, [registeredUid, range.days]);
+      .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
+  }
+  useEffect(loadAnalytics, [registeredUid, range.days]);
 
   const totalViews = ads.reduce((s, a) => s + (a.views || 0), 0);
 
@@ -80,6 +84,9 @@ export default function ViewsDetail() {
         {analyticsReady
           ? <DailyViewsChart data={analytics.map((a) => ({ date: a.date, views: a.views || 0 }))} />
           : <div className="chart-empty" style={{ height: 140 }}>Loading…</div>}
+        {analyticsReady && analyticsError && (
+          <StateMessage tone="error" icon="alertTriangle" text="Couldn't load this chart." actionLabel="Retry" onAction={loadAnalytics} />
+        )}
       </div>
 
       <div className="chart-card" style={{ marginTop: 14 }}>

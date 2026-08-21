@@ -9,6 +9,7 @@ import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 import CombinedTrendChart from '../components/CombinedTrendChart.jsx';
+import StateMessage from '../components/StateMessage.jsx';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -67,26 +68,32 @@ export default function AdsManage() {
   const manageable = ads.filter((a) => !isExpired(a));
 
   const [perAd, setPerAd] = useState({});
+  const [perAdError, setPerAdError] = useState(false);
 
-  useEffect(() => {
+  function loadPerAd() {
     if (manageable.length === 0) return;
-    getListingAnalyticsBulk(manageable.map((a) => a.id), Infinity).then(setPerAd).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adsReady, manageable.map((a) => a.id).join(',')]);
+    setPerAdError(false);
+    getListingAnalyticsBulk(manageable.map((a) => a.id), Infinity).then(setPerAd).catch(() => setPerAdError(true));
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(loadPerAd, [adsReady, manageable.map((a) => a.id).join(',')]);
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);
   const [analytics, setAnalytics] = useState([]);
   const [analyticsReady, setAnalyticsReady] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(false);
   const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
 
-  useEffect(() => {
+  function loadAnalytics() {
     if (!registeredUid) return;
     setAnalyticsReady(false);
+    setAnalyticsError(false);
     getSellerAnalytics(registeredUid, range.days)
       .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
-      .catch(() => setAnalyticsReady(true));
-  }, [registeredUid, range.days]);
+      .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
+  }
+  useEffect(loadAnalytics, [registeredUid, range.days]);
 
   async function handleDelete(id) {
     if (!window.confirm('ይህን ማስታወቂያ መሰረዝ ይፈልጋሉ?')) return;
@@ -144,9 +151,15 @@ export default function AdsManage() {
         {analyticsReady
           ? <CombinedTrendChart data={analytics} />
           : <div className="chart-empty" style={{ height: 140 }}>Loading…</div>}
+        {analyticsReady && analyticsError && (
+          <StateMessage tone="error" icon="alertTriangle" text="Couldn't load this chart." actionLabel="Retry" onAction={loadAnalytics} />
+        )}
       </div>
 
       <h3 className="section-title" style={{ marginTop: 14 }}>By Ad</h3>
+      {perAdError && (
+        <StateMessage tone="error" icon="alertTriangle" text="Couldn't load view/contact stats for your ads." actionLabel="Retry" onAction={loadPerAd} />
+      )}
       {!adsReady && !timedOut && <p className="helper-text">Loading...</p>}
       {!adsReady && timedOut && (
         <p className="helper-text error-text">
