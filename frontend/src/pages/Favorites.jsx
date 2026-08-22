@@ -14,9 +14,9 @@ export default function Favorites() {
 
       {favoritesReady && favorites.length === 0 && (
         <div className="empty-state">
-          <div className="empty-state-icon"><Icon name="heart" size={26} /></div>
+          <div className="empty-state-icon"><Icon name="bookmark" size={26} /></div>
           <div className="empty-state-title">No favorites yet</div>
-          <div className="empty-state-sub">Tap the heart on any listing to save it here.</div>
+          <div className="empty-state-sub">Tap the bookmark on any listing to save it here.</div>
         </div>
       )}
 

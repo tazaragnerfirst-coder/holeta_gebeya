@@ -293,10 +293,10 @@ export default function ProductDetail() {
               className="icon-btn"
               onClick={toggleFavorite}
               disabled={favBusy}
-              aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
-              style={isFavorited ? { color: 'var(--safety)' } : undefined}
+              aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
+              style={isFavorited ? { color: 'var(--accent-dark)' } : undefined}
             >
-              <Icon name="heart" size={17} {...(isFavorited ? { fill: 'currentColor' } : {})} />
+              <Icon name="bookmark" size={17} {...(isFavorited ? { fill: 'currentColor' } : {})} />
             </button>
           </div>
         </div>

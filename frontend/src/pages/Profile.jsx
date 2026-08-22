@@ -118,7 +118,7 @@ export default function Profile() {
 
   const quickActions = [
     { icon: 'edit', t: 'Edit Info', onClick: openEdit },
-    { icon: 'heart', t: 'Favorites', onClick: goFavorites },
+    { icon: 'bookmark', t: 'Favorites', onClick: goFavorites },
     { icon: 'sliders', t: 'Settings', onClick: () => navigate('/settings') },
   ];
 
