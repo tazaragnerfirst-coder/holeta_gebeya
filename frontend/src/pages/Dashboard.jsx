@@ -69,7 +69,7 @@ export default function Dashboard() {
   function loadContactsPerAd() {
     if (!adsReady || ads.length === 0) return;
     setContactsPerAdError(false);
-    getListingAnalyticsBulk(ads.map((a) => a.id), Infinity)
+    getListingAnalyticsBulk(ads.map((a) => a.id), registeredUid, Infinity)
       .then((data) => {
         const totals = {};
         Object.entries(data).forEach(([id, days]) => {

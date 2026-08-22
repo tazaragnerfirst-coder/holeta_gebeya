@@ -74,7 +74,7 @@ export default function AdsManage() {
   function loadPerAd() {
     if (manageable.length === 0) return;
     setPerAdError(false);
-    getListingAnalyticsBulk(manageable.map((a) => a.id), Infinity)
+    getListingAnalyticsBulk(manageable.map((a) => a.id), registeredUid, Infinity)
       .then(setPerAd)
       .catch((err) => {
         console.error('getListingAnalyticsBulk failed:', err);

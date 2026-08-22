@@ -39,7 +39,7 @@ export default function ContactsDetail() {
     if (!adsReady || ads.length === 0) { setPerAdReady(true); return; }
     setPerAdReady(false);
     setPerAdError(false);
-    getListingAnalyticsBulk(ads.map((a) => a.id), Infinity)
+    getListingAnalyticsBulk(ads.map((a) => a.id), registeredUid, Infinity)
       .then((data) => { setPerAd(data); setPerAdReady(true); })
       .catch((err) => {
         console.error('getListingAnalyticsBulk failed:', err);

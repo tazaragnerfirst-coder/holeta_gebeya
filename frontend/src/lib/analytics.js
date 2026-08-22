@@ -100,9 +100,19 @@ export async function getListingAnalytics(listingId, days = 30) {
 // query instead of one per ad). Firestore 'in' caps at 30 values, so
 // this chunks; a seller with 30+ ads is an edge case worth the extra
 // round trip rather than a reason to complicate this further.
-export async function getListingAnalyticsBulk(listingIds, days = 7) {
+//
+// sellerId is required: the listingAnalytics security rule is
+// `resource.data.sellerId == request.auth.uid`, and Firestore can
+// only prove a *list* query satisfies that rule if the query itself
+// filters on the same field — a query with only `listingId in [...]`
+// and no matching `sellerId ==` gets rejected outright with
+// permission-denied, even when every listing really does belong to
+// the caller. All current callers already scope `ads` to the signed-
+// in seller, so this is just making that same constraint explicit
+// in the query.
+export async function getListingAnalyticsBulk(listingIds, sellerId, days = 7) {
   const ids = (listingIds || []).filter(Boolean);
-  if (ids.length === 0) return {};
+  if (ids.length === 0 || !sellerId) return {};
   await waitForAuthReady();
   const cutoffStr = days === Infinity ? null : (() => {
     const cutoff = new Date();
@@ -115,7 +125,11 @@ export async function getListingAnalyticsBulk(listingIds, days = 7) {
 
   const byListing = {};
   await Promise.all(chunks.map(async (chunk) => {
-    const snap = await getDocs(query(collection(db, 'listingAnalytics'), where('listingId', 'in', chunk)));
+    const snap = await getDocs(query(
+      collection(db, 'listingAnalytics'),
+      where('sellerId', '==', sellerId),
+      where('listingId', 'in', chunk),
+    ));
     snap.docs.forEach((d) => {
       const data = d.data();
       if (cutoffStr && data.date < cutoffStr) return;
