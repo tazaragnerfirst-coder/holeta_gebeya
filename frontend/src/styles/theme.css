@@ -57,10 +57,17 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .cat-icon{width:38px;height:38px;border-radius:11px;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;}
 
 .boost-scroll{display:flex;gap:11px;overflow-x:auto;padding-bottom:4px;}
-.listing-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
-.listing-card,.boost-card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-card);}
+.listing-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.listing-card,.boost-card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-card);transition:transform .12s ease,box-shadow .12s ease;}
+.listing-card:active{transform:scale(.97);}
 .boost-card{flex:0 0 152px;}
-.thumb{height:118px;position:relative;background:var(--surface-sunken);}
+/* Image sits in a fixed square. A blurred, scaled-up copy of the same
+   photo fills the frame edge-to-edge as a backdrop; the real photo
+   floats on top at object-fit:contain, so no part of it is ever
+   cropped, whatever its aspect ratio. */
+.thumb{aspect-ratio:1/1;position:relative;background:var(--surface-sunken);overflow:hidden;}
+.thumb-backdrop{position:absolute;inset:-10%;background-size:cover;background-position:center;filter:blur(18px) saturate(1.15);opacity:.55;transform:scale(1.05);}
+.thumb-img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:6px;}
 .carousel{height:270px;position:relative;background:var(--surface-sunken);}
 
 /* --- Product detail: image carousel + lightbox --- */
@@ -84,12 +91,17 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .lightbox-nav{display:flex;align-items:center;gap:16px;margin-top:18px;}
 .lightbox-nav .icon-btn{background:rgba(255,255,255,.12);color:#fff;}
 .lightbox-count{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);}
-.thumb-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);}
-.badge-boost{position:absolute;top:8px;left:8px;background:var(--accent);color:#4A2E05;font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:100px;display:flex;align-items:center;gap:4px;}
-.card-body{padding:9px 10px 11px;}
-.card-price{font-weight:800;font-size:14.5px;}
-.card-title{font-size:12px;color:var(--ink-soft);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.card-meta{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink-faint);margin-top:6px;}
+.thumb-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9);}
+.badge-boost{position:absolute;top:8px;left:8px;background:var(--accent);color:#4A2E05;font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:100px;display:flex;align-items:center;gap:4px;box-shadow:0 2px 6px rgba(0,0,0,.15);}
+.badge-count{position:absolute;bottom:8px;right:8px;background:rgba(20,22,18,.6);color:#fff;font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:100px;display:flex;align-items:center;gap:3px;backdrop-filter:blur(2px);}
+.card-body{padding:10px 11px 12px;}
+.card-price-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.card-price{font-weight:800;font-size:15.5px;color:var(--ink);letter-spacing:-.01em;}
+.card-price span{font-size:10.5px;font-weight:700;color:var(--ink-faint);margin-left:2px;}
+.card-condition{font-size:9.5px;font-weight:700;color:var(--primary);background:var(--primary-tint);padding:3px 7px;border-radius:100px;white-space:nowrap;flex:0 0 auto;}
+.card-title{font-size:12.5px;font-weight:500;color:var(--ink-soft);margin-top:5px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.card-meta{display:flex;align-items:center;gap:9px;font-size:10px;color:var(--ink-faint);margin-top:8px;}
+.card-meta span{display:flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 .pd-body{padding:16px 16px 90px;}
 .pd-price-row{display:flex;justify-content:space-between;align-items:center;}
