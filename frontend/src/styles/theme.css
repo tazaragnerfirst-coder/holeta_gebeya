@@ -60,6 +60,9 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .listing-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
 .listing-card,.boost-card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;box-shadow:var(--shadow-card);transition:transform .12s ease,box-shadow .12s ease;}
 .listing-card:active{transform:scale(.97);}
+@media (hover:hover) and (pointer:fine){
+  .listing-card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(32,36,31,.08), 0 14px 26px -10px rgba(32,36,31,.22);}
+}
 .boost-card{flex:0 0 152px;}
 /* Image sits in a fixed square. A blurred, scaled-up copy of the same
    photo fills the frame edge-to-edge as a backdrop; the real photo
@@ -92,9 +95,14 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .lightbox-nav .icon-btn{background:rgba(255,255,255,.12);color:#fff;}
 .lightbox-count{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);}
 .thumb-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9);}
+.thumb-fav{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;background:rgba(20,22,18,.42);backdrop-filter:blur(2px);border:none;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;transition:transform .12s ease,background .12s ease,color .12s ease;}
+.thumb-fav:active{transform:scale(.85);}
+.thumb-fav.is-fav{background:rgba(255,255,255,.94);color:var(--safety);}
 .badge-boost{position:absolute;top:8px;left:8px;background:var(--accent);color:#4A2E05;font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:100px;display:flex;align-items:center;gap:4px;box-shadow:0 2px 6px rgba(0,0,0,.15);}
+.badge-new{position:absolute;top:8px;left:8px;background:var(--primary);color:#fff;font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:100px;box-shadow:0 2px 6px rgba(0,0,0,.15);}
 .badge-count{position:absolute;bottom:8px;right:8px;background:rgba(20,22,18,.6);color:#fff;font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:100px;display:flex;align-items:center;gap:3px;backdrop-filter:blur(2px);}
 .card-body{padding:10px 11px 12px;}
+.card-eyebrow{font-size:9px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card-price-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
 .card-price{font-weight:800;font-size:15.5px;color:var(--ink);letter-spacing:-.01em;}
 .card-price span{font-size:10.5px;font-weight:700;color:var(--ink-faint);margin-left:2px;}
