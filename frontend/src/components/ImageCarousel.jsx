@@ -46,6 +46,10 @@ export default function ImageCarousel({ images = [], left, right }) {
         </div>
 
         {pics.length > 1 && (
+          <div className="carousel-count-badge"><Icon name="camera" size={11} /> {active + 1}/{pics.length}</div>
+        )}
+
+        {pics.length > 1 && (
           <div className="carousel-thumb-strip">
             {pics.map((src, i) => (
               <button

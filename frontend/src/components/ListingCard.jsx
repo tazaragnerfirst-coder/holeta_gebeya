@@ -4,6 +4,7 @@ import Icon from './Icon.jsx';
 import { useAppData } from '../lib/appData';
 import { useRequireRegistered } from '../lib/authGate';
 import { setFavorite } from '../lib/favorites';
+import { formatPrice } from '../lib/format';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
 function colorFor(id) {
@@ -95,7 +96,7 @@ export default function ListingCard({ item, boosted }) {
       <div className="card-body">
         {item.category && <div className="card-eyebrow">{item.category}</div>}
         <div className="card-price-row">
-          <div className="card-price">{item.price}<span>ETB</span></div>
+          <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
           {item.condition && <div className="card-condition">{item.condition}</div>}
         </div>
         <div className="card-title">{item.title}</div>

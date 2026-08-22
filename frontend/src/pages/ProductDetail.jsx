@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   doc, onSnapshot, collection, addDoc, setDoc, updateDoc, increment,
   query, where, limit, getDocs, serverTimestamp,
@@ -10,6 +10,7 @@ import { useAppData } from '../lib/appData';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
 import ImageCarousel from '../components/ImageCarousel.jsx';
+import ListingCard from '../components/ListingCard.jsx';
 import StarRow from '../components/StarRow.jsx';
 import ReviewSheet from '../components/ReviewSheet.jsx';
 import ReportSheet from '../components/ReportSheet.jsx';
@@ -18,6 +19,7 @@ import { ProductDetailSkeleton } from '../components/Skeletons.jsx';
 import { getCached, setCached } from '../lib/pageCache';
 import { logListingView, logContactClick } from '../lib/analytics';
 import { setFavorite } from '../lib/favorites';
+import { formatPrice } from '../lib/format';
 
 function timeAgo(ts) {
   if (!ts?.toDate) return '';
@@ -44,6 +46,9 @@ export default function ProductDetail() {
   const [startingChat, setStartingChat] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
 
+  const [descExpanded, setDescExpanded] = useState(false);
+  const DESC_LIMIT = 180;
+
   const [callSheetOpen, setCallSheetOpen] = useState(false);
   const [callBusy, setCallBusy] = useState(false);
   const [sellerPhone, setSellerPhone] = useState('');
@@ -68,6 +73,7 @@ export default function ProductDetail() {
     setSimilar(getCached(`similar:${id}`) || []);
     setReviews(getCached(`reviews:${id}`) || []);
     setNotFound(false);
+    setDescExpanded(false);
     const unsub = onSnapshot(doc(db, 'listings', id), (snap) => {
       if (snap.exists()) {
         const data = { id: snap.id, ...snap.data() };
@@ -117,7 +123,7 @@ export default function ProductDetail() {
   // of a seller's listings).
   useEffect(() => {
     if (!item?.id) return;
-    getDocs(query(collection(db, 'reviews'), where('listingId', '==', item.id)))
+    getDocs(query(collection(db, 'reviews'), where('listingId', '==', item.id), limit(20)))
       .then((snap) => {
         const data = snap.docs
           .map((d) => ({ id: d.id, ...d.data() }))
@@ -223,7 +229,7 @@ export default function ProductDetail() {
         createdAt: serverTimestamp(),
       }, { merge: true });
       setReviewSheetOpen(false);
-      const snap = await getDocs(query(collection(db, 'reviews'), where('listingId', '==', item.id)));
+      const snap = await getDocs(query(collection(db, 'reviews'), where('listingId', '==', item.id), limit(20)));
       setReviews(snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)));
     } catch (err) {
@@ -254,6 +260,29 @@ export default function ProductDetail() {
     }
   }
 
+  const [shareCopied, setShareCopied] = useState(false);
+  async function shareListing() {
+    const url = window.location.href;
+    const shareData = { title: item?.title || 'Holeta Gebeya listing', url };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      // User cancelled the native share sheet — fall through silently,
+      // no error banner needed for a cancelled share.
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // Clipboard unavailable — nothing more we can do here.
+    }
+  }
+
   function goBack() {
     if (window.history.length > 1) navigate(-1);
     else navigate('/');
@@ -280,13 +309,23 @@ export default function ProductDetail() {
       <ImageCarousel
         images={item.images || []}
         left={<button type="button" className="pd-hero-btn" onClick={goBack} aria-label="Back"><Icon name="chevronLeft" size={20} /></button>}
-        right={<button type="button" className="pd-hero-btn" onClick={() => setReportSheetOpen(true)} aria-label="Report"><Icon name="flag" size={17} /></button>}
+        right={(
+          <>
+            <button type="button" className="pd-hero-btn" onClick={shareListing} aria-label="Share">
+              <Icon name={shareCopied ? 'check' : 'share'} size={17} />
+            </button>
+            <button type="button" className="pd-hero-btn" onClick={() => setReportSheetOpen(true)} aria-label="Report"><Icon name="flag" size={17} /></button>
+          </>
+        )}
       />
 
       <div className="pd-body">
         <div className="pd-price-row">
-          <div className="pd-price">{item.price} ETB</div>
+          <div className="pd-price">{formatPrice(item.price)} ETB</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {item.boostedUntil?.toDate?.() > new Date() && (
+              <div className="badge-boost pd-boost-badge"><Icon name="trendingUp" size={12} /> Featured</div>
+            )}
             <div className="cond-badge">{item.condition}</div>
             <button
               type="button"
@@ -335,7 +374,18 @@ export default function ProductDetail() {
 
         <div className="pd-desc">
           <h4>Description</h4>
-          <p>{item.description || 'No description provided.'}</p>
+          <p>
+            {item.description
+              ? (descExpanded || item.description.length <= DESC_LIMIT
+                ? item.description
+                : `${item.description.slice(0, DESC_LIMIT)}…`)
+              : 'No description provided.'}
+          </p>
+          {item.description && item.description.length > DESC_LIMIT && (
+            <button type="button" className="link-btn" onClick={() => setDescExpanded((v) => !v)}>
+              {descExpanded ? 'Read less' : 'Read more'}
+            </button>
+          )}
         </div>
 
         <div className="pd-reviews">
@@ -361,18 +411,11 @@ export default function ProductDetail() {
             <h3 className="section-title">You might also like</h3>
             <div className="boost-scroll">
               {similar.map((s) => (
-                <Link to={`/product/${s.id}`} className="listing-card boost-card" key={s.id}>
-                  <div
-                    className="thumb"
-                    style={s.images?.[0] ? { backgroundImage: `url(${s.images[0]})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                  >
-                    {!s.images?.[0] && <div className="thumb-placeholder"><Icon name="image" size={22} /></div>}
-                  </div>
-                  <div className="card-body">
-                    <div className="card-price">{s.price} ETB</div>
-                    <div className="card-title">{s.title}</div>
-                  </div>
-                </Link>
+                <ListingCard
+                  key={s.id}
+                  item={s}
+                  boosted={Boolean(s.boostedUntil?.toDate?.() > new Date())}
+                />
               ))}
             </div>
           </>
