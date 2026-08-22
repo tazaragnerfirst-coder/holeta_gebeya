@@ -31,14 +31,14 @@ export default function ViewAdDetail() {
   const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
 
   function loadAnalytics() {
-    if (!id) return;
+    if (!id || !ad?.sellerId) return;
     setAnalyticsReady(false);
     setAnalyticsError(false);
-    getListingAnalytics(id, range.days)
+    getListingAnalytics(id, ad.sellerId, range.days)
       .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
       .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
   }
-  useEffect(loadAnalytics, [id, range.days]);
+  useEffect(loadAnalytics, [id, ad?.sellerId, range.days]);
 
   const rangeViews = useMemo(() => analytics.reduce((s, a) => s + (a.views || 0), 0), [analytics]);
   const rangeContacts = useMemo(() => analytics.reduce((s, a) => s + (a.contacts || 0), 0), [analytics]);

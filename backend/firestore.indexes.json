@@ -15,6 +15,14 @@
         { "fieldPath": "sellerId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "listingAnalytics",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "sellerId", "order": "ASCENDING" },
+        { "fieldPath": "listingId", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

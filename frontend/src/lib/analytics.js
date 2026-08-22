@@ -81,10 +81,21 @@ export async function getSellerAnalytics(sellerId, days = 30) {
 }
 
 // Fetches daily docs for one listing (used by the per-ad detail page).
-export async function getListingAnalytics(listingId, days = 30) {
-  if (!listingId) return [];
+// `sellerId` isn't used to look anything up — it's included purely
+// so this is a *provably* rule-safe query: Firestore validates a
+// list query's security rule against the query's own `where`
+// clauses, not each document's actual data, so a query that only
+// filters by listingId can't be proven to satisfy a rule that checks
+// sellerId and gets rejected outright, even though every matching
+// doc actually does belong to this seller.
+export async function getListingAnalytics(listingId, sellerId, days = 30) {
+  if (!listingId || !sellerId) return [];
   await waitForAuthReady();
-  const snap = await getDocs(query(collection(db, 'listingAnalytics'), where('listingId', '==', listingId)));
+  const snap = await getDocs(query(
+    collection(db, 'listingAnalytics'),
+    where('listingId', '==', listingId),
+    where('sellerId', '==', sellerId),
+  ));
   const all = snap.docs.map((d) => d.data());
   let filtered = all;
   if (days !== Infinity) {
