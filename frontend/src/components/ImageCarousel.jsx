@@ -46,13 +46,18 @@ export default function ImageCarousel({ images = [], left, right }) {
         </div>
 
         {pics.length > 1 && (
-          <div className="carousel-dots">
-            {pics.map((_, i) => (
-              <span
+          <div className="carousel-thumb-strip">
+            {pics.map((src, i) => (
+              <button
+                type="button"
                 key={i}
-                className={`carousel-dot ${i === active ? 'active' : ''}`}
+                className={`carousel-thumb ${i === active ? 'active' : ''}`}
+                style={src ? { backgroundImage: `url(${src})` } : undefined}
                 onClick={() => goTo(i)}
-              />
+                aria-label={`View photo ${i + 1}`}
+              >
+                {!src && <Icon name="image" size={14} />}
+              </button>
             ))}
           </div>
         )}
