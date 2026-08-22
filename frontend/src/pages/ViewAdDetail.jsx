@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 import { useAppData } from '../lib/appData';
 import { getListingAnalytics } from '../lib/analytics';
 import { isActiveAd, daysSincePosted, isCurrentlyBoosted } from '../lib/adStatus';
@@ -8,6 +10,7 @@ import DailyViewsChart from '../components/DailyViewsChart.jsx';
 import ContactFunnelChart from '../components/ContactFunnelChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
 import BoostCard from '../components/BoostCard.jsx';
+import StarRow from '../components/StarRow.jsx';
 import StateMessage from '../components/StateMessage.jsx';
 
 const RANGE_OPTIONS = [
@@ -15,6 +18,20 @@ const RANGE_OPTIONS = [
   { key: '30', label: '30 days', days: 30 },
   { key: 'all', label: 'All time', days: Infinity },
 ];
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  const ms = typeof ts.toMillis === 'function' ? ts.toMillis() : new Date(ts).getTime();
+  const diff = Math.max(0, Date.now() - ms);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(ms).toLocaleDateString();
+}
 
 
 export default function ViewAdDetail() {
@@ -39,6 +56,29 @@ export default function ViewAdDetail() {
       .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
   }
   useEffect(loadAnalytics, [id, ad?.sellerId, range.days]);
+
+  // Buyer-left ratings/reviews for this specific listing — publicly
+  // readable (same query ProductDetail uses), so no sellerId gating
+  // needed here, unlike the analytics reads above.
+  const [reviews, setReviews] = useState([]);
+  const [reviewsReady, setReviewsReady] = useState(false);
+  const [reviewsError, setReviewsError] = useState(false);
+
+  function loadReviews() {
+    if (!id) return;
+    setReviewsReady(false);
+    setReviewsError(false);
+    getDocs(query(collection(db, 'reviews'), where('listingId', '==', id)))
+      .then((snap) => {
+        const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        data.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+        setReviews(data);
+        setReviewsReady(true);
+      })
+      .catch(() => { setReviewsReady(true); setReviewsError(true); });
+  }
+  useEffect(loadReviews, [id]);
+  const avgReviewRating = reviews.length ? reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length : 0;
 
   const rangeViews = useMemo(() => analytics.reduce((s, a) => s + (a.views || 0), 0), [analytics]);
   const rangeContacts = useMemo(() => analytics.reduce((s, a) => s + (a.contacts || 0), 0), [analytics]);
@@ -149,6 +189,35 @@ export default function ViewAdDetail() {
           </div>
         </>
       )}
+
+      <h3 className="section-title"><Icon name="chat" size={16} /> Ratings & Reviews</h3>
+      <div className="chart-card">
+        {!reviewsReady && <div className="chart-empty" style={{ height: 60 }}>Loading…</div>}
+        {reviewsReady && reviewsError && (
+          <StateMessage tone="error" icon="alertTriangle" text="Couldn't load reviews." actionLabel="Retry" onAction={loadReviews} />
+        )}
+        {reviewsReady && !reviewsError && reviews.length === 0 && (
+          <p className="no-reviews">No reviews yet on this ad.</p>
+        )}
+        {reviewsReady && !reviewsError && reviews.length > 0 && (
+          <>
+            <div className="review-summary" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <StarRow value={avgReviewRating} size={14} />
+              <span>{avgReviewRating.toFixed(1)} ({reviews.length})</span>
+            </div>
+            {reviews.map((r) => (
+              <div className="review-item" key={r.id}>
+                <div className="review-top">
+                  <span className="review-name">{r.buyerName || 'Buyer'}</span>
+                  <span className="review-date">{timeAgo(r.createdAt)}</span>
+                </div>
+                <StarRow value={r.rating || 0} size={12} />
+                {r.comment && <p className="review-comment">{r.comment}</p>}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
 
       <h3 className="section-title"><Icon name="trendingUp" size={16} /> Boost</h3>
       {isBoosted ? (
