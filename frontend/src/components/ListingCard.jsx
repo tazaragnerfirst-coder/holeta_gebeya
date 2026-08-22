@@ -84,9 +84,9 @@ export default function ListingCard({ item, boosted }) {
           className={isFavorited ? 'thumb-fav is-fav' : 'thumb-fav'}
           onClick={toggleFavorite}
           disabled={favBusy}
-          aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
+          aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
         >
-          <Icon name="heart" size={14} {...(isFavorited ? { fill: 'currentColor' } : {})} />
+          <Icon name="bookmark" size={14} {...(isFavorited ? { fill: 'currentColor' } : {})} />
         </button>
         {photos.length > 1 && (
           <div className="badge-count"><Icon name="camera" size={11} /> {photos.length}</div>

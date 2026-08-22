@@ -47,6 +47,7 @@ const PATHS = {
   sliders2: '<circle cx="12" cy="12" r="9"/><path d="M12 7v3M12 14v3M8 12h.01M16 12h.01"/>',
   coin: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v9"/><path d="M9.3 15.2c.4.9 1.4 1.5 2.7 1.5 1.8 0 3-1 3-2.3 0-1.4-1.2-1.9-3-2.4-1.8-.5-3-1-3-2.4 0-1.3 1.2-2.3 3-2.3 1.3 0 2.3.6 2.7 1.5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.8 5.8 3.8 9s-1.4 6.5-3.8 9c-2.4-2.5-3.8-5.8-3.8-9s1.4-6.5 3.8-9z"/>',
+  bookmark: '<path d="M6.5 3.5h11a1 1 0 011 1V21l-6.5-4-6.5 4V4.5a1 1 0 011-1z"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {
