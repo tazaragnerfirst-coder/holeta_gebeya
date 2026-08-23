@@ -19,7 +19,8 @@ import { ProductDetailSkeleton } from '../components/Skeletons.jsx';
 import { getCached, setCached } from '../lib/pageCache';
 import { logListingView, logContactClick } from '../lib/analytics';
 import { setFavorite } from '../lib/favorites';
-import { formatPrice } from '../lib/format';
+import { formatPrice, conditionTone } from '../lib/format';
+import usePullToGoHome from '../lib/usePullToGoHome';
 
 function timeAgo(ts) {
   if (!ts?.toDate) return '';
@@ -40,6 +41,7 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
   const { registeredUid, favorites } = useAppData();
+  const pullRef = usePullToGoHome();
   const [item, setItem] = useState(() => getCached(`product:${id}`) || null);
   const [notFound, setNotFound] = useState(false);
   const [chatError, setChatError] = useState('');
@@ -283,11 +285,6 @@ export default function ProductDetail() {
     }
   }
 
-  function goBack() {
-    if (window.history.length > 1) navigate(-1);
-    else navigate('/');
-  }
-
   if (notFound) {
     return (
       <div className="page">
@@ -303,52 +300,52 @@ export default function ProductDetail() {
   const isFavorited = registeredUid ? favorites.some((f) => f.listingId === id) : false;
   const hasAttrs = item.attributes && Object.values(item.attributes).some((v) => v !== '' && v !== undefined);
   const sellerInitial = (item.sellerName || 'S')[0].toUpperCase();
+  const isBoosted = item.boostedUntil?.toDate?.() > new Date();
 
   return (
-    <div className="pd-page">
+    <div className="pd-page" ref={pullRef}>
       <ImageCarousel
         images={item.images || []}
-        left={<button type="button" className="pd-hero-btn" onClick={goBack} aria-label="Back"><Icon name="chevronLeft" size={20} /></button>}
+        left={
+          isBoosted ? (
+            <div className="badge-boost"><Icon name="trendingUp" size={12} /> Featured</div>
+          ) : item.condition ? (
+            <div className={`badge-condition tone-${conditionTone(item.condition)}`}>{item.condition}</div>
+          ) : null
+        }
         right={(
           <>
-            <button type="button" className="pd-hero-btn" onClick={shareListing} aria-label="Share">
-              <Icon name={shareCopied ? 'check' : 'share'} size={17} />
+            <button
+              type="button"
+              className={isFavorited ? 'pd-hero-btn is-fav' : 'pd-hero-btn'}
+              onClick={toggleFavorite}
+              disabled={favBusy}
+              aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
+            >
+              <Icon name="bookmark" size={16} {...(isFavorited ? { fill: 'currentColor' } : {})} />
             </button>
-            <button type="button" className="pd-hero-btn" onClick={() => setReportSheetOpen(true)} aria-label="Report"><Icon name="flag" size={17} /></button>
+            <button type="button" className="pd-hero-btn" onClick={shareListing} aria-label="Share">
+              <Icon name={shareCopied ? 'check' : 'share'} size={16} />
+            </button>
+            <button type="button" className="pd-hero-btn" onClick={() => setReportSheetOpen(true)} aria-label="Report">
+              <Icon name="flag" size={16} />
+            </button>
           </>
         )}
       />
 
-      <div className="pd-body">
-        <div className="pd-price-row">
-          <div className="pd-price">{formatPrice(item.price)} ETB</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {item.boostedUntil?.toDate?.() > new Date() && (
-              <div className="badge-boost pd-boost-badge"><Icon name="trendingUp" size={12} /> Featured</div>
-            )}
-            <div className="cond-badge">{item.condition}</div>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={toggleFavorite}
-              disabled={favBusy}
-              aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
-              style={isFavorited ? { color: 'var(--accent-dark)' } : undefined}
-            >
-              <Icon name="bookmark" size={17} {...(isFavorited ? { fill: 'currentColor' } : {})} />
-            </button>
-          </div>
-        </div>
+      <div className="pd-hero-footer">
         <div className="pd-title">{item.title}</div>
+        <div className="pd-price">{formatPrice(item.price)}<span>ETB</span></div>
         <div className="pd-meta-row">
           <span><Icon name="mapPin" size={13} /> {item.location}</span>
           <span><Icon name="grid" size={13} /> {item.category} / {item.subcategory}</span>
+          <span><Icon name="eye" size={13} /> {item.views || 0}</span>
+          {item.createdAt && <span><Icon name="clock" size={13} /> {timeAgo(item.createdAt)}</span>}
         </div>
-        <div className="pd-stats-row">
-          <span><Icon name="eye" size={13} /> {item.views || 0} views</span>
-          {item.createdAt && <span><Icon name="clock" size={13} /> Posted {timeAgo(item.createdAt)}</span>}
-        </div>
+      </div>
 
+      <div className="pd-body">
         <div className="seller-card">
           {item.sellerPhoto ? (
             <div className="seller-avatar" style={{ backgroundImage: `url(${item.sellerPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />

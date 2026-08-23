@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 import { useAppData } from '../lib/appData';
 import { useRequireRegistered } from '../lib/authGate';
 import { setFavorite } from '../lib/favorites';
-import { formatPrice } from '../lib/format';
+import { formatPrice, conditionTone } from '../lib/format';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
 function colorFor(id) {
@@ -25,14 +25,6 @@ function timeAgo(ts) {
   const mo = Math.floor(day / 30);
   if (mo < 12) return `${mo}mo ago`;
   return `${Math.floor(mo / 12)}y ago`;
-}
-
-function conditionTone(condition) {
-  if (!condition) return 'default';
-  const c = condition.toLowerCase();
-  if (c === 'new') return 'new';
-  if (c.includes('repair')) return 'repair';
-  return 'used';
 }
 
 export default function ListingCard({ item, boosted }) {

@@ -56,7 +56,7 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .cat-item.active .cat-icon{background:var(--primary);color:#fff;}
 .cat-icon{width:38px;height:38px;border-radius:11px;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;}
 
-.boost-scroll{display:flex;gap:11px;overflow-x:auto;padding-bottom:4px;}
+.boost-scroll{display:flex;gap:11px;overflow-x:auto;padding-bottom:4px;align-items:flex-start;}
 /* True masonry: a 2-column flow where each card only takes the
    vertical space its own image needs, and the next card slots in
    right below it — not row-locked to whatever is tallest in the
@@ -87,7 +87,9 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .carousel-overlay-row{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;pointer-events:none;}
 .carousel-overlay-side{display:flex;gap:8px;}
 .carousel-overlay-side.right{justify-content:flex-end;}
-.pd-hero-btn{pointer-events:auto;width:38px;height:38px;border-radius:50%;background:rgba(20,22,18,.45);color:#fff;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(3px);}
+.pd-hero-btn{pointer-events:auto;width:36px;height:36px;border-radius:50%;background:rgba(20,22,18,.42);color:#fff;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.pd-hero-btn.is-fav{background:rgba(255,255,255,.92);color:var(--accent-dark);}
+.carousel-overlay-side .badge-boost,.carousel-overlay-side .badge-condition{position:static;}
 .carousel-count-badge{position:absolute;top:calc(14px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);background:rgba(20,22,18,.55);color:#fff;font-size:11px;font-weight:700;padding:4px 9px;border-radius:100px;display:flex;align-items:center;gap:4px;backdrop-filter:blur(3px);}
 .carousel-thumb-strip{position:absolute;bottom:10px;left:10px;right:10px;display:flex;gap:5px;overflow-x:auto;padding:5px;background:rgba(255,255,255,.55);backdrop-filter:blur(8px);border-radius:var(--radius-md);scrollbar-width:none;}
 .carousel-thumb-strip::-webkit-scrollbar{display:none;}
@@ -112,7 +114,6 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .badge-condition.tone-repair{background:#C86A4A;color:#fff;}
 .badge-condition.tone-default{background:rgba(255,255,255,.85);color:var(--ink);}
 .badge-count{position:absolute;bottom:8px;right:8px;background:rgba(20,22,18,.6);color:#fff;font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:100px;display:flex;align-items:center;gap:3px;backdrop-filter:blur(2px);}
-.pd-boost-badge{position:static;box-shadow:none;}
 /* The photo shows in full, nothing laid over it. The text block
    sits in its own space right below — pulled up a few pixels and
    mask-faded at its top edge so it blurs straight into the photo's
@@ -125,21 +126,24 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .card-meta{display:flex;align-items:center;gap:9px;font-size:10px;color:var(--ink-faint);margin-top:8px;}
 .card-meta span{display:flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
-.pd-body{padding:16px 16px 90px;}
-.pd-price-row{display:flex;justify-content:space-between;align-items:center;}
-.pd-price{font-size:23px;font-weight:800;}
-.cond-badge{background:var(--primary-tint);color:var(--primary);font-size:11px;font-weight:700;padding:5px 10px;border-radius:100px;}
-.pd-title{font-size:15.5px;font-weight:600;margin-top:8px;line-height:1.5;}
-.pd-meta-row{display:flex;gap:14px;font-size:11.5px;color:var(--ink-faint);margin-top:9px;}
+/* Same glass-footer language as ListingCard: the hero photo stays
+   fully visible, and title/price/meta sit in their own translucent,
+   blurred panel right below it — pulled up slightly so the two
+   blend instead of meeting at a hard edge. */
+.pd-hero-footer{position:relative;margin-top:-18px;padding:16px 16px 12px;background:rgba(255,255,255,.66);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);}
+.pd-title{font-size:16px;font-weight:700;color:var(--ink);line-height:1.4;}
+.pd-price{font-size:20px;font-weight:800;color:var(--primary);letter-spacing:-.01em;margin-top:4px;}
+.pd-price span{font-size:11px;font-weight:700;color:var(--primary);opacity:.7;margin-left:3px;}
+.pd-meta-row{display:flex;flex-wrap:wrap;gap:10px 14px;font-size:11.5px;color:var(--ink-faint);margin-top:9px;}
 .pd-meta-row span{display:flex;align-items:center;gap:4px;}
-.pd-stats-row{display:flex;gap:14px;font-size:11px;color:var(--ink-faint);margin-top:8px;padding-top:8px;border-top:1px solid var(--line);}
-.pd-stats-row span{display:flex;align-items:center;gap:4px;}
 
-.seller-card{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:13px 14px;margin-top:16px;box-shadow:var(--shadow-card);}
-.seller-avatar{width:44px;height:44px;border-radius:50%;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;flex:0 0 auto;}
+.pd-body{padding:12px 16px 90px;}
+
+.seller-card{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:10px 12px;}
+.seller-avatar{width:38px;height:38px;border-radius:50%;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex:0 0 auto;}
 .seller-info{flex:1;min-width:0;}
-.seller-name{font-size:13.5px;font-weight:700;}
-.seller-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-faint);margin-top:4px;}
+.seller-name{font-size:13px;font-weight:700;}
+.seller-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-faint);margin-top:3px;}
 
 .star-row{display:inline-flex;gap:2px;}
 .star-row svg{color:var(--line);}
@@ -149,7 +153,7 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .star-input svg{color:var(--line);}
 .star-input svg.filled{color:var(--accent);fill:var(--accent);}
 
-.pd-reviews{margin-top:22px;}
+.pd-reviews{margin-top:16px;}
 .pd-reviews-head{display:flex;align-items:center;justify-content:space-between;}
 .pd-reviews-head h4{font-size:13.5px;font-weight:700;margin:0;}
 .link-btn{background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;padding:0;font-family:var(--font-ui);}
@@ -162,11 +166,11 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .review-comment{font-size:12.5px;color:var(--ink-soft);line-height:1.6;margin-top:5px;}
 
 .ok-banner{display:flex;gap:8px;align-items:center;background:var(--primary-tint);color:var(--primary);border:1px solid #C9DED4;border-radius:var(--radius-md);padding:10px 12px;font-size:12px;font-weight:600;margin:8px 0;}
-.attr-list{margin-top:16px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);}
+.attr-list{margin-top:12px;border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;background:var(--surface);}
 .attr-row{display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);font-size:12.5px;}
 .attr-row:last-child{border-bottom:none;}
 .attr-row span:first-child{color:var(--ink-faint);text-transform:capitalize;}
-.pd-desc{margin-top:18px;}
+.pd-desc{margin-top:14px;}
 .pd-desc h4{font-size:13.5px;font-weight:700;margin-bottom:7px;}
 .pd-desc p{font-size:13px;color:var(--ink-soft);line-height:1.7;}
 

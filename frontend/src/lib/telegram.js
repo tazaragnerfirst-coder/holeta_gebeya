@@ -30,6 +30,12 @@ export function initTelegramApp() {
   if (!tg) return null;
   tg.ready();
   tg.expand();
+  // Telegram's own vertical-swipe gesture closes the whole Mini App
+  // when the user drags down from the top of a page. Our pages
+  // implement their own swipe-down-to-go-home behaviour (see
+  // usePullToGoHome), so the native one needs to be off or the two
+  // fight each other and the app just closes instead.
+  tg.disableVerticalSwipes?.();
   applySafeArea(tg);
   tg.onEvent?.('safeAreaChanged', () => applySafeArea(tg));
   tg.onEvent?.('contentSafeAreaChanged', () => applySafeArea(tg));
