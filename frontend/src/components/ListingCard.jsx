@@ -27,14 +27,6 @@ function timeAgo(ts) {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
-// A listing counts as "New" for its first 48 hours — cheap to derive
-// from createdAt, no extra read. Only shown when not boosted, so the
-// two corner badges never compete for the same spot.
-function isNew(ts) {
-  if (!ts?.toDate) return false;
-  return Date.now() - ts.toDate().getTime() < 48 * 60 * 60 * 1000;
-}
-
 export default function ListingCard({ item, boosted }) {
   const { registeredUid, favorites } = useAppData();
   const requireRegistered = useRequireRegistered();
@@ -74,8 +66,8 @@ export default function ListingCard({ item, boosted }) {
         )}
         {boosted ? (
           <div className="badge-boost"><Icon name="trendingUp" size={12} /> Featured</div>
-        ) : isNew(item.createdAt) ? (
-          <div className="badge-new">New</div>
+        ) : item.condition ? (
+          <div className="badge-condition">{item.condition}</div>
         ) : null}
         <button
           type="button"
@@ -86,18 +78,15 @@ export default function ListingCard({ item, boosted }) {
         >
           <Icon name="bookmark" size={14} {...(isFavorited ? { fill: 'currentColor' } : {})} />
         </button>
-        <div className="card-overlay">
-          {item.category && <div className="card-eyebrow">{item.category}</div>}
-          <div className="card-price-row">
-            <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
-            {item.condition && <div className="card-condition">{item.condition}</div>}
-          </div>
-          <div className="card-title">{item.title}</div>
-          <div className="card-meta">
-            {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}
-            {posted && <span><Icon name="clock" size={11} /> {posted}</span>}
-            {photos.length > 1 && <span><Icon name="camera" size={11} /> {photos.length}</span>}
-          </div>
+      </div>
+      <div className="card-footer">
+        {item.category && <div className="card-eyebrow">{item.category}</div>}
+        <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
+        <div className="card-title">{item.title}</div>
+        <div className="card-meta">
+          {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}
+          {posted && <span><Icon name="clock" size={11} /> {posted}</span>}
+          {photos.length > 1 && <span><Icon name="camera" size={11} /> {photos.length}</span>}
         </div>
       </div>
     </Link>
