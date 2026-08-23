@@ -66,10 +66,7 @@ export default function ListingCard({ item, boosted }) {
     <Link to={`/product/${item.id}`} className={boosted ? 'listing-card boost-card' : 'listing-card'}>
       <div className="thumb">
         {photo ? (
-          <>
-            <div className="thumb-backdrop" style={{ backgroundImage: `url(${photo})` }} />
-            <img className="thumb-img" src={photo} alt={item.title} loading="lazy" />
-          </>
+          <img className="thumb-img" src={photo} alt={item.title} loading="lazy" />
         ) : (
           <div className="thumb-placeholder" style={{ background: colorFor(item.id) }}>
             <Icon name="image" size={22} />
@@ -89,20 +86,18 @@ export default function ListingCard({ item, boosted }) {
         >
           <Icon name="bookmark" size={14} {...(isFavorited ? { fill: 'currentColor' } : {})} />
         </button>
-        {photos.length > 1 && (
-          <div className="badge-count"><Icon name="camera" size={11} /> {photos.length}</div>
-        )}
-      </div>
-      <div className="card-body">
-        {item.category && <div className="card-eyebrow">{item.category}</div>}
-        <div className="card-price-row">
-          <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
-          {item.condition && <div className="card-condition">{item.condition}</div>}
-        </div>
-        <div className="card-title">{item.title}</div>
-        <div className="card-meta">
-          {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}
-          {posted && <span><Icon name="clock" size={11} /> {posted}</span>}
+        <div className="card-overlay">
+          {item.category && <div className="card-eyebrow">{item.category}</div>}
+          <div className="card-price-row">
+            <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
+            {item.condition && <div className="card-condition">{item.condition}</div>}
+          </div>
+          <div className="card-title">{item.title}</div>
+          <div className="card-meta">
+            {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}
+            {posted && <span><Icon name="clock" size={11} /> {posted}</span>}
+            {photos.length > 1 && <span><Icon name="camera" size={11} /> {photos.length}</span>}
+          </div>
         </div>
       </div>
     </Link>
