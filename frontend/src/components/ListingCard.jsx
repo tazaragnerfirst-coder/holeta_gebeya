@@ -89,8 +89,8 @@ export default function ListingCard({ item, boosted }) {
           <Icon name="bookmark" size={15} {...(isFavorited ? { fill: 'currentColor' } : {})} />
         </button>
         {item.category && <div className="card-eyebrow">{item.category}</div>}
-        <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
         <div className="card-title">{item.title}</div>
+        <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
         <div className="card-meta">
           {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}
           {posted && <span><Icon name="clock" size={11} /> {posted}</span>}
