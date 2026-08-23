@@ -47,13 +47,32 @@ export default function App() {
     fetch(`${BACKEND_URL}/health`).catch(() => {});
   }, []);
 
+  // Product pages open as a sheet stacked on top of wherever the
+  // user tapped it from (Home, Search, Favorites, a chat thread...),
+  // instead of replacing that screen outright — closing it (pull
+  // down, back button) should reveal that same screen underneath,
+  // still exactly as it was.
+  //
+  // The trick: any in-app Link to /product/:id attaches
+  // `state: { backgroundLocation: location }` (see openProduct() in
+  // lib/nav.js). When that's present, the MAIN <Routes> keeps
+  // rendering that background location (so e.g. Home stays mounted
+  // underneath) while a SECOND, later-mounted <Routes> renders just
+  // the /product/:id route on top of it as a full-screen panel.
+  // A direct/shared link with no backgroundLocation (no prior
+  // in-app screen to show underneath) just falls through to the
+  // ordinary full-page route in the main <Routes> — there's nothing
+  // to layer it over.
+  const location = useLocation();
+  const backgroundLocation = location.state?.backgroundLocation;
+
   return (
     <AppDataProvider>
       <AuthGateProvider>
         <div className="app-shell">
           <div className="screen-container">
             <Suspense fallback={<RouteFallback />}>
-              <Routes>
+              <Routes location={backgroundLocation || location}>
                 <Route path="/" element={<Home />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/post" element={<PostAd />} />
@@ -76,6 +95,13 @@ export default function App() {
                 <Route path="/holeta-coin" element={<HoletaCoin />} />
               </Routes>
             </Suspense>
+            {backgroundLocation && (
+              <Suspense fallback={null}>
+                <Routes>
+                  <Route path="/product/:id" element={<ProductDetail />} />
+                </Routes>
+              </Suspense>
+            )}
           </div>
           <TelegramBackButton />
           <ConditionalBottomNav />

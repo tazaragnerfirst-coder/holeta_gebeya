@@ -20,6 +20,7 @@ import { getCached, setCached } from '../lib/pageCache';
 import { logListingView, logContactClick } from '../lib/analytics';
 import { setFavorite } from '../lib/favorites';
 import { formatPrice, conditionTone } from '../lib/format';
+import { getSellerRating } from '../lib/rating';
 import usePullToGoHome from '../lib/usePullToGoHome';
 
 function timeAgo(ts) {
@@ -58,6 +59,7 @@ export default function ProductDetail() {
   const [similar, setSimilar] = useState(() => getCached(`similar:${id}`) || []);
 
   const [reviews, setReviews] = useState(() => getCached(`reviews:${id}`) || []);
+  const [sellerRating, setSellerRating] = useState(() => getCached(`sellerRating:${item?.sellerId}`) || { avg: 0, count: 0 });
   const [reviewSheetOpen, setReviewSheetOpen] = useState(false);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [reviewError, setReviewError] = useState('');
@@ -119,10 +121,8 @@ export default function ProductDetail() {
       .catch(() => {});
   }, [item?.category, item?.id, id]);
 
-  // This listing's own reviews (not every listing this seller has —
-  // a rating/comment is tied to the item it was left on; a future
-  // seller-profile page is the right place to aggregate across all
-  // of a seller's listings).
+  // This listing's own reviews (the list shown below) — a
+  // rating/comment is tied to the item it was left on.
   useEffect(() => {
     if (!item?.id) return;
     getDocs(query(collection(db, 'reviews'), where('listingId', '==', item.id), limit(20)))
@@ -136,7 +136,13 @@ export default function ProductDetail() {
       .catch(() => {});
   }, [item?.id, id]);
 
-  const avgRating = reviews.length ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length : 0;
+  // The star shown next to the seller's name is their overall rating
+  // across every listing they've sold — same figure as their Profile
+  // page — not just this one item's reviews.
+  useEffect(() => {
+    if (!item?.sellerId) return;
+    getSellerRating(item.sellerId).then(setSellerRating);
+  }, [item?.sellerId]);
 
   // Registration is only requested HERE — the moment the user wants
   // to act (message the seller), never before this point. The chat
@@ -313,28 +319,18 @@ export default function ProductDetail() {
             <div className={`badge-condition tone-${conditionTone(item.condition)}`}>{item.condition}</div>
           ) : null
         }
-        right={(
-          <>
-            <button
-              type="button"
-              className={isFavorited ? 'pd-hero-btn is-fav' : 'pd-hero-btn'}
-              onClick={toggleFavorite}
-              disabled={favBusy}
-              aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
-            >
-              <Icon name="bookmark" size={16} {...(isFavorited ? { fill: 'currentColor' } : {})} />
-            </button>
-            <button type="button" className="pd-hero-btn" onClick={shareListing} aria-label="Share">
-              <Icon name={shareCopied ? 'check' : 'share'} size={16} />
-            </button>
-            <button type="button" className="pd-hero-btn" onClick={() => setReportSheetOpen(true)} aria-label="Report">
-              <Icon name="flag" size={16} />
-            </button>
-          </>
-        )}
       />
 
       <div className="pd-hero-footer">
+        <button
+          type="button"
+          className={isFavorited ? 'pd-save-btn is-fav' : 'pd-save-btn'}
+          onClick={toggleFavorite}
+          disabled={favBusy}
+          aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
+        >
+          <Icon name="bookmark" size={15} {...(isFavorited ? { fill: 'currentColor' } : {})} />
+        </button>
         <div className="pd-title">{item.title}</div>
         <div className="pd-price">{formatPrice(item.price)}<span>ETB</span></div>
         <div className="pd-meta-row">
@@ -342,6 +338,9 @@ export default function ProductDetail() {
           <span><Icon name="grid" size={13} /> {item.category} / {item.subcategory}</span>
           <span><Icon name="eye" size={13} /> {item.views || 0}</span>
           {item.createdAt && <span><Icon name="clock" size={13} /> {timeAgo(item.createdAt)}</span>}
+          <button type="button" className="pd-meta-share" onClick={shareListing}>
+            <Icon name={shareCopied ? 'check' : 'share'} size={12} /> {shareCopied ? 'Copied' : 'Share'}
+          </button>
         </div>
       </div>
 
@@ -355,10 +354,13 @@ export default function ProductDetail() {
           <div className="seller-info">
             <div className="seller-name">{item.sellerName || 'Seller'}</div>
             <div className="seller-meta">
-              <StarRow value={avgRating} size={12} />
-              <span>{reviews.length ? `${avgRating.toFixed(1)} (${reviews.length})` : 'No ratings yet'}</span>
+              <StarRow value={sellerRating.avg} size={12} />
+              <span>{sellerRating.count ? `${sellerRating.avg.toFixed(1)} (${sellerRating.count})` : 'No ratings yet'}</span>
             </div>
           </div>
+          <button type="button" className="pd-report-link" onClick={() => setReportSheetOpen(true)}>
+            <Icon name="flag" size={12} /> Report
+          </button>
         </div>
 
         {hasAttrs && (

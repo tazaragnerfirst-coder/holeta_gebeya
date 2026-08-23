@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Icon from './Icon.jsx';
 import { useAppData } from '../lib/appData';
 import { useRequireRegistered } from '../lib/authGate';
 import { setFavorite } from '../lib/favorites';
 import { formatPrice, conditionTone } from '../lib/format';
+import { productLinkState } from '../lib/nav';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
 function colorFor(id) {
@@ -31,6 +32,7 @@ export default function ListingCard({ item, boosted }) {
   const { registeredUid, favorites } = useAppData();
   const requireRegistered = useRequireRegistered();
   const [favBusy, setFavBusy] = useState(false);
+  const location = useLocation();
 
   const photos = item.images && item.images.length ? item.images : (item.photo ? [item.photo] : []);
   const photo = photos[0];
@@ -55,7 +57,7 @@ export default function ListingCard({ item, boosted }) {
   }
 
   return (
-    <Link to={`/product/${item.id}`} className="listing-card">
+    <Link to={`/product/${item.id}`} state={productLinkState(location)} className="listing-card">
       <div className="thumb">
         {photo ? (
           <img className="thumb-img" src={photo} alt={item.title} loading="lazy" />

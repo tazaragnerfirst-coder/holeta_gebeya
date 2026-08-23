@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { isExpired, computeExpiresAt } from '../lib/adStatus';
+import { productLinkState } from '../lib/nav';
 import Icon from '../components/Icon.jsx';
 
 // Opened from the "Expired" card on the Dashboard. An ad lands here
@@ -15,6 +16,7 @@ export default function ExpiredItems() {
   const { ads, adsReady } = useAppData();
   const timedOut = useLoadTimeout(adsReady, 3000);
   const [renewingId, setRenewingId] = useState(null);
+  const location = useLocation();
 
   const expired = ads.filter(isExpired);
 
@@ -48,7 +50,7 @@ export default function ExpiredItems() {
         const photo = a.images && a.images[0];
         return (
           <div className="ad-row" key={a.id}>
-            <Link to={`/product/${a.id}`} style={{ display: 'flex', flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+            <Link to={`/product/${a.id}`} state={productLinkState(location)} style={{ display: 'flex', flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
               <div className="ad-thumb" style={photo ? { backgroundImage: `url(${photo})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}>
                 {!photo && <Icon name="image" size={16} />}
               </div>

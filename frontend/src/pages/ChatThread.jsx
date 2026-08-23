@@ -10,6 +10,7 @@ import { getUnsafeUserPreview, getTelegramWebApp } from '../lib/telegram';
 import { getMyProfile } from '../lib/profile';
 import { getInitial, getAvatarColor } from '../lib/avatar';
 import { SUPPORT_UID, SUPPORT_NAME } from '../lib/constants';
+import { productLinkState } from '../lib/nav';
 import Icon from '../components/Icon.jsx';
 import { getCached, setCached } from '../lib/pageCache';
 
@@ -382,14 +383,14 @@ export default function ChatThread() {
           {!chatInfo?.isSupport && chatInfo?.listingTitle && <div className="t">{chatInfo.listingTitle}</div>}
         </div>
         {chatInfo?.listingId && (
-          <Link to={`/product/${chatInfo.listingId}`} className="p" style={{ textDecoration: 'none' }}>View</Link>
+          <Link to={`/product/${chatInfo.listingId}`} state={productLinkState(location)} className="p" style={{ textDecoration: 'none' }}>View</Link>
         )}
       </div>
 
       {topics.length > 1 && (
         <div className="chat-topics-strip">
           {topics.map((t) => (
-            <Link to={`/product/${t.listingId}`} className="chat-topic-chip" key={t.listingId}>
+            <Link to={`/product/${t.listingId}`} state={productLinkState(location)} className="chat-topic-chip" key={t.listingId}>
               <span
                 className="chat-topic-thumb"
                 style={t.listingPhoto ? { backgroundImage: `url(${t.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
@@ -413,7 +414,7 @@ export default function ChatThread() {
               draft — shown locally so the buyer sees what they're
               messaging about, before it's ever written to Firestore. */}
           {pendingListing && !messages.some((m) => m.type === 'listing' && m.listingId === pendingListing.listingId) && (
-            <Link to={`/product/${pendingListing.listingId}`} className="thread-listing-card">
+            <Link to={`/product/${pendingListing.listingId}`} state={productLinkState(location)} className="thread-listing-card">
               <div
                 className="thread-listing-thumb"
                 style={pendingListing.listingPhoto ? { backgroundImage: `url(${pendingListing.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
@@ -430,7 +431,7 @@ export default function ChatThread() {
           {messages.map((m, i) => {
             if (m.type === 'listing') {
               return (
-                <Link to={`/product/${m.listingId}`} className="thread-listing-card" key={m.id}>
+                <Link to={`/product/${m.listingId}`} state={productLinkState(location)} className="thread-listing-card" key={m.id}>
                   <div
                     className="thread-listing-thumb"
                     style={m.listingPhoto ? { backgroundImage: `url(${m.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}

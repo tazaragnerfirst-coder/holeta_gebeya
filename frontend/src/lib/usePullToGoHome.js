@@ -5,8 +5,9 @@ import { useNavigate } from 'react-router-dom';
 // turned off (see initTelegramApp/disableVerticalSwipes) so pages
 // don't get yanked shut by an ordinary scroll. This hook gives that
 // gesture back its usual meaning within the app: pulling down from
-// the very top of the page slides it away and drops the user on
-// Home, instead of doing nothing or closing Telegram outright.
+// the very top of the page dismisses it — same as closing a bottom
+// sheet — landing back on whatever screen the user actually came
+// from (via history back), not unconditionally on Home.
 //
 // Returns a callback ref (not a plain useRef) so the listeners
 // attach the instant the element actually mounts — this page's
@@ -47,7 +48,10 @@ export default function usePullToGoHome() {
       if (dy > TRIGGER_PX) {
         el.style.transform = `translateY(${window.innerHeight}px)`;
         el.style.opacity = '0';
-        setTimeout(() => navigate('/'), 180);
+        setTimeout(() => {
+          if (window.history.length > 1) navigate(-1);
+          else navigate('/');
+        }, 180);
       } else {
         el.style.transform = '';
         el.style.opacity = '';
