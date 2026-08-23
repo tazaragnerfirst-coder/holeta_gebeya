@@ -27,6 +27,14 @@ function timeAgo(ts) {
   return `${Math.floor(mo / 12)}y ago`;
 }
 
+function conditionTone(condition) {
+  if (!condition) return 'default';
+  const c = condition.toLowerCase();
+  if (c === 'new') return 'new';
+  if (c.includes('repair')) return 'repair';
+  return 'used';
+}
+
 export default function ListingCard({ item, boosted }) {
   const { registeredUid, favorites } = useAppData();
   const requireRegistered = useRequireRegistered();
@@ -67,19 +75,19 @@ export default function ListingCard({ item, boosted }) {
         {boosted ? (
           <div className="badge-boost"><Icon name="trendingUp" size={12} /> Featured</div>
         ) : item.condition ? (
-          <div className="badge-condition">{item.condition}</div>
+          <div className={`badge-condition tone-${conditionTone(item.condition)}`}>{item.condition}</div>
         ) : null}
+      </div>
+      <div className="card-footer">
         <button
           type="button"
-          className={isFavorited ? 'thumb-fav is-fav' : 'thumb-fav'}
+          className={isFavorited ? 'footer-fav is-fav' : 'footer-fav'}
           onClick={toggleFavorite}
           disabled={favBusy}
           aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
         >
-          <Icon name="bookmark" size={14} {...(isFavorited ? { fill: 'currentColor' } : {})} />
+          <Icon name="bookmark" size={15} {...(isFavorited ? { fill: 'currentColor' } : {})} />
         </button>
-      </div>
-      <div className="card-footer">
         {item.category && <div className="card-eyebrow">{item.category}</div>}
         <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
         <div className="card-title">{item.title}</div>
