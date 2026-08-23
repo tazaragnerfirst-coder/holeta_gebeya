@@ -55,7 +55,7 @@ export default function ListingCard({ item, boosted }) {
   }
 
   return (
-    <Link to={`/product/${item.id}`} className={boosted ? 'listing-card boost-card' : 'listing-card'}>
+    <Link to={`/product/${item.id}`} className="listing-card">
       <div className="thumb">
         {photo ? (
           <img className="thumb-img" src={photo} alt={item.title} loading="lazy" />

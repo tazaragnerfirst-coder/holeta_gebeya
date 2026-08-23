@@ -68,7 +68,7 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 @media (hover:hover) and (pointer:fine){
   .listing-card:hover{transform:translateY(-3px);}
 }
-.boost-card{flex:0 0 152px;}
+.boost-scroll .listing-card{flex:0 0 152px;flex-shrink:0;}
 /* No fixed box: the image renders at its own natural aspect ratio,
    so the card's shape simply follows the photo's shape (square,
    portrait, wide, whatever it is) — nothing is ever cropped and
