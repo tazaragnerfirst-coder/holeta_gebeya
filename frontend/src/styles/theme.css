@@ -543,4 +543,5 @@ textarea.field{min-height:84px;resize:vertical;}
 @keyframes skeleton-sweep{100%{transform:translateX(100%);}}
 .skeleton-card .thumb{aspect-ratio:4/5;}
 .skeleton-card .card-body{padding:10px 11px 12px;display:flex;flex-direction:column;}
-.skeleton-line{border-radius:6px;}
+.skeleton-line{border-radius:6px;} 
+
