@@ -48,24 +48,24 @@ export default function ImageCarousel({ images = [], left, right }) {
         {pics.length > 1 && (
           <div className="carousel-count-badge"><Icon name="camera" size={11} /> {active + 1}/{pics.length}</div>
         )}
-
-        {pics.length > 1 && (
-          <div className="carousel-thumb-strip">
-            {pics.map((src, i) => (
-              <button
-                type="button"
-                key={i}
-                className={`carousel-thumb ${i === active ? 'active' : ''}`}
-                style={src ? { backgroundImage: `url(${src})` } : undefined}
-                onClick={() => goTo(i)}
-                aria-label={`View photo ${i + 1}`}
-              >
-                {!src && <Icon name="image" size={14} />}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+
+      {pics.length > 1 && (
+        <div className="carousel-thumb-strip">
+          {pics.map((src, i) => (
+            <button
+              type="button"
+              key={i}
+              className={`carousel-thumb ${i === active ? 'active' : ''}`}
+              style={src ? { backgroundImage: `url(${src})` } : undefined}
+              onClick={() => goTo(i)}
+              aria-label={`View photo ${i + 1}`}
+            >
+              {!src && <Icon name="image" size={14} />}
+            </button>
+          ))}
+        </div>
+      )}
 
       {lightboxOpen && (
         <div className="lightbox-overlay" onClick={() => setLightboxOpen(false)}>

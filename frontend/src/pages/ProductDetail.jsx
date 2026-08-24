@@ -21,7 +21,6 @@ import { logListingView, logContactClick } from '../lib/analytics';
 import { setFavorite } from '../lib/favorites';
 import { formatPrice, conditionTone } from '../lib/format';
 import { getSellerRating } from '../lib/rating';
-import usePullToGoHome from '../lib/usePullToGoHome';
 
 function timeAgo(ts) {
   if (!ts?.toDate) return '';
@@ -42,7 +41,6 @@ export default function ProductDetail() {
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
   const { registeredUid, favorites } = useAppData();
-  const pullRef = usePullToGoHome();
   const [item, setItem] = useState(() => getCached(`product:${id}`) || null);
   const [notFound, setNotFound] = useState(false);
   const [chatError, setChatError] = useState('');
@@ -309,7 +307,7 @@ export default function ProductDetail() {
   const isBoosted = item.boostedUntil?.toDate?.() > new Date();
 
   return (
-    <div className="pd-page" ref={pullRef}>
+    <div className="pd-page">
       <ImageCarousel
         images={item.images || []}
         left={
@@ -322,6 +320,14 @@ export default function ProductDetail() {
       />
 
       <div className="pd-hero-footer">
+        <button
+          type="button"
+          className="pd-share-btn"
+          onClick={shareListing}
+          aria-label={shareCopied ? 'Link copied' : 'Share this listing'}
+        >
+          <Icon name={shareCopied ? 'check' : 'share'} size={15} />
+        </button>
         <button
           type="button"
           className={isFavorited ? 'pd-save-btn is-fav' : 'pd-save-btn'}
@@ -338,9 +344,6 @@ export default function ProductDetail() {
           <span><Icon name="grid" size={13} /> {item.category} / {item.subcategory}</span>
           <span><Icon name="eye" size={13} /> {item.views || 0}</span>
           {item.createdAt && <span><Icon name="clock" size={13} /> {timeAgo(item.createdAt)}</span>}
-          <button type="button" className="pd-meta-share" onClick={shareListing}>
-            <Icon name={shareCopied ? 'check' : 'share'} size={12} /> {shareCopied ? 'Copied' : 'Share'}
-          </button>
         </div>
       </div>
 
