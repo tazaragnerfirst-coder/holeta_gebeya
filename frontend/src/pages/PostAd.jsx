@@ -10,6 +10,7 @@ import { CATEGORIES, getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIP
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
 import ImageUploader from '../components/ImageUploader.jsx';
 import ChipSelect from '../components/ChipSelect.jsx';
+import { ErrorBanner } from '../components/Banner.jsx';
 
 export default function PostAd() {
   const navigate = useNavigate();
@@ -318,11 +319,7 @@ export default function PostAd() {
           </>
         )}
 
-        {errors.submit && (
-          <div className="error-banner">
-            <span>{errors.submit}</span>
-          </div>
-        )}
+        {errors.submit && <ErrorBanner text={errors.submit} />}
 
         <button className="btn btn-primary" disabled={submitting} onClick={submit}>
           {submitting ? (statusMsg || (isEdit ? 'Saving...' : 'Posting...')) : (isEdit ? 'Save Changes' : 'Continue')}

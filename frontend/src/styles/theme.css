@@ -10,8 +10,18 @@
   --shadow-card:0 1px 2px rgba(32,36,31,.06), 0 6px 16px -8px rgba(32,36,31,.18);
   --font-ui:'Inter',system-ui,sans-serif;
 }
+[data-theme="dark"]{
+  --bg-app:#15170F; --surface:#1D2016; --surface-sunken:#262A1D;
+  --ink:#EDEFE6; --ink-soft:#B4B9A9; --ink-faint:#767C6A; --line:#333825;
+  --primary:#4E9C82; --primary-dark:#3A7A65; --primary-tint:#1E2E27;
+  --accent:#E5A03B; --accent-dark:#F0B15B; --accent-tint:#332A16;
+  --safety:#E37A5B; --safety-tint:#3A2419; --ok:#4FAE73;
+  --shadow-card:0 1px 2px rgba(0,0,0,.3), 0 6px 16px -8px rgba(0,0,0,.5);
+}
 *{box-sizing:border-box;}
-body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--ink);-webkit-font-smoothing:antialiased;}
+html{color-scheme:light;}
+html[data-theme="dark"]{color-scheme:dark;}
+body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--ink);-webkit-font-smoothing:antialiased;transition:background-color .15s ease,color .15s ease;}
 .icon{flex:0 0 auto;display:inline-block;vertical-align:middle;}
 
 .app-shell{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-app);}
@@ -429,6 +439,10 @@ textarea.field{min-height:84px;resize:vertical;}
 
 .premium-tag{display:inline-flex;align-items:center;gap:3px;background:var(--accent-tint);color:var(--accent-dark);font-size:9px;font-weight:800;padding:3px 7px;border-radius:100px;margin-left:7px;text-transform:uppercase;letter-spacing:.03em;vertical-align:middle;}
 .coming-soon-note{background:var(--surface-sunken);color:var(--ink-soft);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;margin-top:10px;line-height:1.5;}
+.theme-picker{display:flex;gap:8px;margin-top:10px;}
+.theme-option{flex:1;position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--surface);border:1.5px solid var(--line);border-radius:var(--radius-md);padding:14px 8px;font-size:12px;font-weight:600;color:var(--ink-soft);cursor:pointer;transition:border-color .15s,background .15s,color .15s;}
+.theme-option.active{border-color:var(--primary);color:var(--primary);background:var(--primary-tint);}
+.theme-option-check{position:absolute;top:6px;right:6px;color:var(--primary);}
 
 .switch{width:44px;height:25px;border-radius:999px;background:var(--line);border:none;padding:2px;cursor:pointer;position:relative;flex:0 0 auto;transition:background .15s;}
 .switch.on{background:var(--primary);}

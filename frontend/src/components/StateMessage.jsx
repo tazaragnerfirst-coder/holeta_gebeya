@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from './Icon.jsx';
+import { hapticError } from '../lib/telegram';
 
 // Consistent look for "couldn't load" and "nothing here yet" states:
 // an icon, a short message, and — when there's somewhere useful to
 // go — a small action. `tone="error"` uses the accent (amber) tint
 // instead of red, so a failed load reads as "try again", not alarm.
 export default function StateMessage({ icon = 'helpCircle', tone = 'default', text, actionLabel, actionTo, onAction }) {
+  useEffect(() => { if (tone === 'error') hapticError(); }, [tone]);
   return (
     <div className={`state-box ${tone === 'error' ? 'state-error' : ''}`}>
       <Icon name={icon} size={16} />

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Icon from './Icon.jsx';
+import { ErrorBanner } from './Banner.jsx';
 
 export default function ReviewSheet({ open, busy, error, initial, onClose, onSubmit }) {
   const [rating, setRating] = useState(initial?.rating || 5);
@@ -52,12 +53,7 @@ export default function ReviewSheet({ open, busy, error, initial, onClose, onSub
 
           {touched && !rating && <p className="field-error">Please pick a star rating.</p>}
           {touched && rating && !comment.trim() && <p className="field-error">Please add a short comment.</p>}
-          {error && (
-            <div className="error-banner" style={{ marginTop: 14 }}>
-              <Icon name="x" size={14} />
-              <span>{error}</span>
-            </div>
-          )}
+          {error && <ErrorBanner text={error} style={{ marginTop: 14 }} />}
         </div>
 
         <div className="sheet-actions">

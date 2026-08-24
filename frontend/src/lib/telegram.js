@@ -56,7 +56,20 @@ export function getUnsafeUserPreview() {
 }
 
 export function hapticSuccess() {
-  getTelegramWebApp()?.HapticFeedback?.notificationOccurred('success');
+  const tg = getTelegramWebApp();
+  if (tg?.HapticFeedback?.notificationOccurred) {
+    tg.HapticFeedback.notificationOccurred('success');
+    return;
+  }
+  navigator.vibrate?.(20);
+}
+export function hapticError() {
+  const tg = getTelegramWebApp();
+  if (tg?.HapticFeedback?.notificationOccurred) {
+    tg.HapticFeedback.notificationOccurred('error');
+    return;
+  }
+  navigator.vibrate?.([30, 40, 30]);
 }
 export function hapticImpact(style = 'light') {
   getTelegramWebApp()?.HapticFeedback?.impactOccurred(style);

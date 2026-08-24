@@ -9,6 +9,7 @@ import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { getUnsafeUserPreview } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
+import { ErrorBanner, SuccessBanner } from '../components/Banner.jsx';
 import ImageCarousel from '../components/ImageCarousel.jsx';
 import ListingCard from '../components/ListingCard.jsx';
 import StarRow from '../components/StarRow.jsx';
@@ -292,10 +293,7 @@ export default function ProductDetail() {
   if (notFound) {
     return (
       <div className="page">
-        <div className="error-banner">
-          <Icon name="x" size={14} />
-          <span>This listing couldn't be found — it may have been removed.</span>
-        </div>
+        <ErrorBanner text="This listing couldn't be found — it may have been removed." />
       </div>
     );
   }
@@ -423,18 +421,8 @@ export default function ProductDetail() {
           </>
         )}
 
-        {reportDone && (
-          <div className="ok-banner">
-            <Icon name="checkCircle" size={14} />
-            <span>Thanks — our team will review this listing.</span>
-          </div>
-        )}
-        {chatError && (
-          <div className="error-banner">
-            <Icon name="x" size={14} />
-            <span>{chatError}</span>
-          </div>
-        )}
+        {reportDone && <SuccessBanner text="Thanks — our team will review this listing." />}
+        {chatError && <ErrorBanner text={chatError} />}
       </div>
 
       <div className="pd-float-actions">

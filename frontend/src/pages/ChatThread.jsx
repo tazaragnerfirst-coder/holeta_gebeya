@@ -12,6 +12,7 @@ import { getInitial, getAvatarColor } from '../lib/avatar';
 import { SUPPORT_UID, SUPPORT_NAME } from '../lib/constants';
 import { productLinkState } from '../lib/nav';
 import Icon from '../components/Icon.jsx';
+import { ErrorBanner } from '../components/Banner.jsx';
 import { getCached, setCached } from '../lib/pageCache';
 
 function formatClock(ts) {
@@ -465,12 +466,7 @@ export default function ChatThread() {
         </div>
       </div>
 
-      {error && (
-        <div className="error-banner">
-          <Icon name="x" size={14} />
-          <span>{error}</span>
-        </div>
-      )}
+      {error && <ErrorBanner text={error} />}
 
       {showQuickReplies && (
         <div className="quick-replies">

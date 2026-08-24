@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Icon from './Icon.jsx';
+import { ErrorBanner } from './Banner.jsx';
 
 const REASONS = ['Prohibited item', 'Looks like a scam', 'Wrong category', 'Offensive content', 'Other'];
 
@@ -58,12 +59,7 @@ export default function ReportSheet({ open, busy, error, onClose, onSubmit }) {
             />
           </div>
 
-          {error && (
-            <div className="error-banner" style={{ marginTop: 14 }}>
-              <Icon name="x" size={14} />
-              <span>{error}</span>
-            </div>
-          )}
+          {error && <ErrorBanner text={error} style={{ marginTop: 14 }} />}
         </div>
 
         <div className="sheet-actions">

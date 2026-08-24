@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Icon from './Icon.jsx';
+import { ErrorBanner } from './Banner.jsx';
 
 // Ethiopian mobile numbers: 09XXXXXXXX / 07XXXXXXXX or +2519.../+2517...
 const PHONE_RE = /^(?:\+251|0)(7|9)\d{8}$/;
@@ -68,12 +69,7 @@ export default function SignupSheet({ open, busy, error, defaultName = '', onClo
             {phoneError && <p className="field-error">{phoneError}</p>}
           </div>
 
-          {error && (
-            <div className="error-banner" style={{ marginTop: 14 }}>
-              <Icon name="x" size={14} />
-              <span>{error}</span>
-            </div>
-          )}
+          {error && <ErrorBanner text={error} style={{ marginTop: 14 }} />}
         </div>
 
         <div className="sheet-actions">

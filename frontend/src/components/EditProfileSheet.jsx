@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Icon from './Icon.jsx';
+import { ErrorBanner } from './Banner.jsx';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 
 const PHONE_RE = /^(?:\+251|0)(7|9)\d{8}$/;
@@ -122,12 +123,7 @@ export default function EditProfileSheet({ open, busy, error, initialName = '', 
             />
           </div>
 
-          {error && (
-            <div className="error-banner" style={{ marginTop: 14 }}>
-              <Icon name="x" size={14} />
-              <span>{error}</span>
-            </div>
-          )}
+          {error && <ErrorBanner text={error} style={{ marginTop: 14 }} />}
         </div>
 
         <div className="sheet-actions">

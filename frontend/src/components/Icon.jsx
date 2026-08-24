@@ -49,6 +49,9 @@ const PATHS = {
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.4 2.5 3.8 5.8 3.8 9s-1.4 6.5-3.8 9c-2.4-2.5-3.8-5.8-3.8-9s1.4-6.5 3.8-9z"/>',
   bookmark: '<path d="M6.5 3.5h11a1 1 0 011 1V21l-6.5-4-6.5 4V4.5a1 1 0 011-1z"/>',
   share: '<circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="M8.3 10.7l7.4-4.2M8.3 13.3l7.4 4.2"/>',
+  sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.5M12 19v2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2.5 12H5M19 12h2.5M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
+  moon: '<path d="M20 14.5A8.5 8.5 0 119.5 4a7 7 0 0010.5 10.5z"/>',
+  monitor: '<rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M8 19.5h8M12 16.5v3"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {
