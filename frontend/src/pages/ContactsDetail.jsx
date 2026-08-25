@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
@@ -20,7 +21,13 @@ const RANGE_OPTIONS = [
 // itself now lives on the Active Ads (management) page instead.
 export default function ContactsDetail() {
   const { ads, adsReady, registeredUid } = useAppData();
+  const requireRegistered = useRequireRegistered();
   const timedOut = useLoadTimeout(adsReady, 3000);
+
+  useEffect(() => {
+    if (registeredUid) return;
+    requireRegistered().catch((err) => console.error(err));
+  }, [registeredUid]);
 
   // One bulk fetch (all-time) per ad — gives the accurate all-time
   // contacts total used both for the stat card and to rank ads below.

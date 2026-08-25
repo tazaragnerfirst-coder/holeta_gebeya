@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { getSellerAnalytics } from '../lib/analytics';
 import Icon from '../components/Icon.jsx';
@@ -19,6 +20,12 @@ const RANGE_OPTIONS = [
 // only: totals, the daily trend, and the two ranking charts.
 export default function ViewsDetail() {
   const { ads, registeredUid } = useAppData();
+  const requireRegistered = useRequireRegistered();
+
+  useEffect(() => {
+    if (registeredUid) return;
+    requireRegistered().catch((err) => console.error(err));
+  }, [registeredUid]);
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);

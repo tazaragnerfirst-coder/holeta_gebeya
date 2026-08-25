@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { isActiveAd, isPausedAd, isExpired, daysSincePosted } from '../lib/adStatus';
@@ -59,9 +60,15 @@ function getPerfFlag(ad, days) {
 // own, so no local list state is needed.
 export default function AdsManage() {
   const { ads, adsReady, registeredUid } = useAppData();
+  const requireRegistered = useRequireRegistered();
   const timedOut = useLoadTimeout(adsReady, 3000);
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+
+  useEffect(() => {
+    if (registeredUid) return;
+    requireRegistered().catch((err) => console.error(err));
+  }, [registeredUid]);
 
   // Active + paused, but not yet expired — expired ads have their
   // own page (Expired) and don't need push/edit/delete here.

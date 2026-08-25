@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { getListingAnalytics } from '../lib/analytics';
 import { isActiveAd, daysSincePosted, isCurrentlyBoosted } from '../lib/adStatus';
@@ -36,8 +37,14 @@ function timeAgo(ts) {
 
 export default function ViewAdDetail() {
   const { id } = useParams();
-  const { ads, adsReady } = useAppData();
+  const { ads, adsReady, registeredUid } = useAppData();
   const ad = ads.find((a) => a.id === id);
+  const requireRegistered = useRequireRegistered();
+
+  useEffect(() => {
+    if (registeredUid) return;
+    requireRegistered().catch((err) => console.error(err));
+  }, [registeredUid]);
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);
