@@ -1,6 +1,5 @@
 import { doc, setDoc, getDocs, collection, query, where, increment } from 'firebase/firestore';
-import { db } from './firebase';
-import { waitForAuthReady } from './authReady';
+import { db, ensureLoggedIn } from './firebase';
 
 // One doc per seller per calendar day (UTC), id `${sellerId}_${date}`.
 // Kept deliberately simple — a handful of docs per seller, no
@@ -67,7 +66,7 @@ export function logContactClick(sellerId, listingId) {
 // `days` is a lookback window; pass Infinity for all-time.
 export async function getSellerAnalytics(sellerId, days = 30) {
   if (!sellerId) return [];
-  await waitForAuthReady();
+  await ensureLoggedIn();
   const snap = await getDocs(query(collection(db, 'sellerAnalytics'), where('sellerId', '==', sellerId)));
   const all = snap.docs.map((d) => d.data());
   let filtered = all;
@@ -90,7 +89,7 @@ export async function getSellerAnalytics(sellerId, days = 30) {
 // doc actually does belong to this seller.
 export async function getListingAnalytics(listingId, sellerId, days = 30) {
   if (!listingId || !sellerId) return [];
-  await waitForAuthReady();
+  await ensureLoggedIn();
   const snap = await getDocs(query(
     collection(db, 'listingAnalytics'),
     where('listingId', '==', listingId),
@@ -124,7 +123,7 @@ export async function getListingAnalytics(listingId, sellerId, days = 30) {
 export async function getListingAnalyticsBulk(listingIds, sellerId, days = 7) {
   const ids = (listingIds || []).filter(Boolean);
   if (ids.length === 0 || !sellerId) return {};
-  await waitForAuthReady();
+  await ensureLoggedIn();
   const cutoffStr = days === Infinity ? null : (() => {
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - days);
