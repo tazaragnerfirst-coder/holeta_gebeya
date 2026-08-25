@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { CATEGORIES } from '../data/categories';
 import Icon from '../components/Icon.jsx';
 import SearchHeader from '../components/SearchHeader.jsx';
@@ -6,7 +6,9 @@ import FilterSheet from '../components/FilterSheet.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import ListingCard from '../components/ListingCard.jsx';
 import { ListingGridSkeleton } from '../components/Skeletons.jsx';
+import PromoBannerCarousel from '../components/PromoBannerCarousel.jsx';
 import { useAppData } from '../lib/appData';
+import { getHomeBanners, getCachedHomeBanners } from '../lib/homeBanners';
 
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 
@@ -19,6 +21,9 @@ export default function Home() {
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const headerWrapRef = useRef(null);
   const [filterAnchorTop, setFilterAnchorTop] = useState(null);
+  const [banners, setBanners] = useState(() => getCachedHomeBanners());
+
+  useEffect(() => { getHomeBanners().then(setBanners); }, []);
 
   // Measures the real, rendered bottom edge of the search bar at the
   // moment it's tapped, so the dropdown lands exactly under it —
@@ -107,6 +112,8 @@ export default function Home() {
         onApply={setFilters}
         anchorTop={filterAnchorTop}
       />
+
+      {!filtering && banners.length > 0 && <PromoBannerCarousel banners={banners} />}
 
       {!filtering && boosted.length > 0 && (
         <>
