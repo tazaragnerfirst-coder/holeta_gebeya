@@ -87,7 +87,7 @@ export default function Dashboard() {
   useEffect(loadContactsPerAd, [adsReady, ads.map((a) => a.id).join(',')]);
 
   const ready = adsReady;
-  const timedOut = useLoadTimeout(ready, 3000);
+  const timedOut = useLoadTimeout(ready, 45000);
 
   const active = ads.filter(isActiveAd);
 

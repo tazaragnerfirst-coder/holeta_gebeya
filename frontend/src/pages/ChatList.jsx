@@ -44,7 +44,7 @@ export default function ChatList() {
   // chatsReady alone: cached chats from a previous session render
   // immediately instead of waiting on registeredUid to re-resolve.
   const ready = chatsReady;
-  const timedOut = useLoadTimeout(ready, 3000);
+  const timedOut = useLoadTimeout(ready, 45000);
   const supportChatId = uid ? `support_${uid}` : null;
   const supportChat = chats.find((c) => c.id === supportChatId);
   const otherChats = chats.filter((c) => c.id !== supportChatId);

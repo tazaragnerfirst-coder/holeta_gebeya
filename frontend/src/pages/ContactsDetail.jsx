@@ -22,7 +22,7 @@ const RANGE_OPTIONS = [
 export default function ContactsDetail() {
   const { ads, adsReady, registeredUid } = useAppData();
   const requireRegistered = useRequireRegistered();
-  const timedOut = useLoadTimeout(adsReady, 3000);
+  const timedOut = useLoadTimeout(adsReady, 45000);
 
   useEffect(() => {
     if (registeredUid) return;

@@ -61,7 +61,7 @@ function getPerfFlag(ad, days) {
 export default function AdsManage() {
   const { ads, adsReady, registeredUid } = useAppData();
   const requireRegistered = useRequireRegistered();
-  const timedOut = useLoadTimeout(adsReady, 3000);
+  const timedOut = useLoadTimeout(adsReady, 45000);
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
 

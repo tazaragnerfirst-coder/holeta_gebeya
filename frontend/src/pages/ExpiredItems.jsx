@@ -14,7 +14,7 @@ import Icon from '../components/Icon.jsx';
 // expiry field existed never age into this list on their own.
 export default function ExpiredItems() {
   const { ads, adsReady } = useAppData();
-  const timedOut = useLoadTimeout(adsReady, 3000);
+  const timedOut = useLoadTimeout(adsReady, 45000);
   const [renewingId, setRenewingId] = useState(null);
   const location = useLocation();
 
