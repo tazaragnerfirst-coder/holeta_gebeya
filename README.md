@@ -80,38 +80,31 @@ firebase deploy --only hosting:app --project holeta-c22fc
 `@BotFather` → `/mybots` → your bot → **Bot Settings** → **Menu Button**
 → set it to your Firebase Hosting URL (e.g. `https://holeta-c22fc.web.app`).
 
-### 7. Admin panel (one-time setup, then deploy)
+### 7. Admin panel (one-time setup, then it deploys itself)
 The admin panel lives in `admin/` — plain HTML/JS, no build step, a
 separate Firebase Hosting site from the main Mini App so it's a normal
 browser page (not a Telegram Mini App) with its own URL.
 
-**One-time, from Cloud Shell:**
-```
-# a) Create the second Hosting site (name is up to you; must be
-#    globally unique across all Firebase projects, not just yours)
-firebase hosting:sites:create holeta-gebeya-admin --project holeta-c22fc
+Every push to `main` that touches `admin/**` auto-deploys via GitHub
+Actions (`.github/workflows/deploy-admin.yml`) — no Cloud Shell needed
+for routine admin-panel updates. Two things only need doing once:
 
-# b) If you picked a different name than holeta-gebeya-admin, update
-#    the "admin" line in .firebaserc to match it, then:
-firebase target:apply hosting admin holeta-gebeya-admin --project holeta-c22fc
-firebase target:apply hosting app holeta-c22fc --project holeta-c22fc
+**a) Add one repository secret (GitHub web UI, no CLI):**
+Repo → Settings → Secrets and variables → Actions → New repository
+secret → name it `FIREBASE_SERVICE_ACCOUNT_BASE64`, paste the same
+base64 value already used for Render's env var of the same name.
 
-# c) Create the admin's login account: Firebase Console → Authentication
-#    → Users → Add user (email + password)
+**b) Run two one-time workflows (Actions tab, no CLI):**
+Actions tab → pick the workflow → **Run workflow**:
+1. **"Create admin hosting site (one-time)"** — provisions the
+   `holeta-gebeya-admin` Hosting site itself. Safe to re-run.
+2. Create the admin's login in Firebase Console → Authentication →
+   Users → Add user (email + password) first, then run
+   **"Set admin claim"**, filling in that email — grants the account
+   the `isAdmin` claim the panel and firestore.rules require.
 
-# d) Grant that account the isAdmin claim it needs to actually use the panel
-cd backend/server
-npm install
-node scripts/setAdminClaim.js you@example.com
-cd ../..
-```
-
-**Every deploy after that:**
-```
-firebase deploy --only hosting:admin --project holeta-c22fc
-```
-The panel is then live at `https://holeta-gebeya-admin.web.app` (or
-whatever site name you chose in step a).
+After that, the panel is live at `https://holeta-gebeya-admin.web.app`
+and stays up to date automatically on every push.
 
 For Telegram alerts (new reports, etc. — see `/notifyAdmin` in
 `backend/server/index.js`), set `ADMIN_TELEGRAM_ID` (your personal

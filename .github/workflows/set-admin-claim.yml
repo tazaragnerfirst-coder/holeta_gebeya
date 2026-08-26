@@ -1,0 +1,41 @@
+name: Set admin claim
+
+# Manual only — run from the Actions tab (Actions → "Set admin claim"
+# → Run workflow), fill in the admin's email, and it grants that
+# Firebase Auth account the isAdmin claim the panel and firestore
+# rules check for. Tick "revoke" to remove it instead.
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'Admin account email (must already exist in Firebase Auth)'
+        required: true
+      revoke:
+        description: 'Revoke instead of grant'
+        type: boolean
+        default: false
+
+jobs:
+  set-claim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install backend deps
+        working-directory: backend/server
+        run: npm ci
+
+      - name: Set claim
+        working-directory: backend/server
+        env:
+          FIREBASE_SERVICE_ACCOUNT_BASE64: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_BASE64 }}
+        run: |
+          if [ "${{ inputs.revoke }}" = "true" ]; then
+            node scripts/setAdminClaim.js "${{ inputs.email }}" --revoke
+          else
+            node scripts/setAdminClaim.js "${{ inputs.email }}"
+          fi
