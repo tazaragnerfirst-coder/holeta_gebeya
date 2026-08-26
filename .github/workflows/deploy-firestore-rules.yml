@@ -1,0 +1,32 @@
+name: Deploy Firestore rules
+
+# Runs automatically whenever the rules/indexes files change on main.
+# This was the actual missing piece behind the admin panel's
+# "Missing or insufficient permissions" errors: firestore.rules had
+# the isAdmin() logic committed, but nothing ever deployed it to
+# Firebase — Firestore was still enforcing the old rules the whole
+# time, regardless of the admin's custom claim or session freshness.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/firestore.rules'
+      - 'backend/firestore.indexes.json'
+      - '.github/workflows/deploy-firestore-rules.yml'
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decode Firebase service account
+        run: echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_BASE64 }}" | base64 -d > ${{ github.workspace }}/firebase-sa.json
+
+      - name: Deploy Firestore rules and indexes
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ github.workspace }}/firebase-sa.json
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --only firestore:rules,firestore:indexes --project holeta-c22fc --non-interactive
