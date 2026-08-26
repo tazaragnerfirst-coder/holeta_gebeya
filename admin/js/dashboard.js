@@ -79,7 +79,7 @@ function initBanner() {
       saveBtn.textContent = 'Saved ✓';
       setTimeout(() => { saveBtn.textContent = 'Save image'; }, 1500);
     } catch (err) {
-      showFieldError(errorBox, err.message || 'Could not save. Please try again.');
+      showFieldError(errorBox, describeFirestoreError(err));
       saveBtn.disabled = false;
       saveBtn.textContent = 'Save image';
     }
@@ -95,14 +95,35 @@ function initBanner() {
       saveBtn.disabled = true;
       fileInput.value = '';
     } catch (err) {
-      showFieldError(errorBox, err.message || 'Could not remove. Please try again.');
+      showFieldError(errorBox, describeFirestoreError(err));
     }
   });
 }
 
 // --- Search-bar promo carousel (config/homeBanners) -----------------
+// All slides live together in a single Firestore doc, and Firestore
+// caps any one document at 1MB — so unlike the profile banner (its
+// own doc, effectively one image), the carousel needs a running
+// size check across all its slides combined, not just per-image
+// compression.
+const FIRESTORE_DOC_LIMIT = 1048576; // 1MB, Firestore's hard per-document cap
+const CAROUSEL_SAFE_BUDGET = 900000; // leave ~150KB headroom under the cap
+const MAX_SLIDES = 8;
+
 let pendingCarouselDataUrl = null;
 let carouselBanners = [];
+
+function carouselDocSize() {
+  return JSON.stringify({ banners: carouselBanners }).length;
+}
+
+function renderCarouselSizeIndicator() {
+  const el = document.getElementById('carousel-size');
+  const usedKb = Math.round(carouselDocSize() / 1024);
+  const limitKb = Math.round(CAROUSEL_SAFE_BUDGET / 1024);
+  el.textContent = `${carouselBanners.length}/${MAX_SLIDES} slides · ~${usedKb}KB / ${limitKb}KB`;
+  el.classList.toggle('size-warning', carouselDocSize() > CAROUSEL_SAFE_BUDGET * 0.8);
+}
 
 function renderCarouselList() {
   const listEl = document.getElementById('carousel-list');
@@ -127,6 +148,7 @@ function renderCarouselList() {
   listEl.querySelectorAll('button[data-act]').forEach((btn) => {
     btn.addEventListener('click', () => handleCarouselAction(btn.dataset.act, Number(btn.dataset.i)));
   });
+  renderCarouselSizeIndicator();
 }
 
 async function saveCarousel() {
@@ -134,6 +156,7 @@ async function saveCarousel() {
 }
 
 async function handleCarouselAction(act, i) {
+  const before = carouselBanners.slice();
   if (act === 'remove') {
     if (!confirm('Remove this slide?')) return;
     carouselBanners.splice(i, 1);
@@ -143,7 +166,14 @@ async function handleCarouselAction(act, i) {
     [carouselBanners[i + 1], carouselBanners[i]] = [carouselBanners[i], carouselBanners[i + 1]];
   }
   renderCarouselList();
-  await saveCarousel();
+  try {
+    await saveCarousel();
+  } catch (err) {
+    carouselBanners = before; // roll back — the save didn't actually land
+    renderCarouselList();
+    document.getElementById('carousel-error').hidden = false;
+    document.getElementById('carousel-error').textContent = describeFirestoreError(err);
+  }
 }
 
 function initCarousel() {
@@ -161,8 +191,20 @@ function initCarousel() {
     hideFieldError(errorBox);
     const file = fileInput.files[0];
     if (!file) return;
+    if (carouselBanners.length >= MAX_SLIDES) {
+      showFieldError(errorBox, `Limit reached: ${MAX_SLIDES} slides max (all slides share one Firestore document, capped at 1MB). Remove one first.`);
+      fileInput.value = '';
+      return;
+    }
     try {
       pendingCarouselDataUrl = await compressImageToDataUrl(file, { maxWidth: 1000, quality: 0.7 });
+      const wouldBeSize = carouselDocSize() + pendingCarouselDataUrl.length + 60; // ~60B overhead for id/linkUrl/quotes
+      if (wouldBeSize > CAROUSEL_SAFE_BUDGET) {
+        showFieldError(errorBox, `That image would push this document too close to Firestore's 1MB limit. Try a smaller image, or remove an existing slide first.`);
+        pendingCarouselDataUrl = null;
+        fileInput.value = '';
+        return;
+      }
       addBtn.disabled = false;
     } catch (err) {
       showFieldError(errorBox, err.message);
@@ -185,12 +227,27 @@ function initCarousel() {
       fileInput.value = '';
       linkInput.value = '';
     } catch (err) {
-      showFieldError(errorBox, err.message || 'Could not add slide. Please try again.');
+      carouselBanners.pop(); // undo the optimistic push — the save didn't actually land
+      showFieldError(errorBox, describeFirestoreError(err));
     } finally {
       addBtn.disabled = true;
       addBtn.textContent = 'Add slide';
     }
   });
+}
+
+// Firestore's raw error messages ("Missing or insufficient
+// permissions.", "resource-exhausted", etc.) don't tell an admin what
+// to actually do — translate the ones worth explaining.
+function describeFirestoreError(err) {
+  const code = err && err.code;
+  if (code === 'permission-denied') {
+    return "Permission denied — if you were just granted admin access, sign out and back in so your login picks up the new permissions.";
+  }
+  if (code === 'resource-exhausted' || /longer than.*1048576|exceeds.*maximum/i.test(err?.message || '')) {
+    return 'This would exceed Firestore\'s 1MB document limit. Remove a slide or use a smaller image.';
+  }
+  return err?.message || 'Could not save. Please try again.';
 }
 
 // --- Reports queue --------------------------------------------------
