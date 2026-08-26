@@ -1,0 +1,158 @@
+:root {
+  --primary: #4F7052;
+  --accent: #EBAE29;
+  --ink: #132228;
+  --bg-app: #F5EED2;
+  --card-bg: #ffffff;
+  --line: #e5ddc6;
+  --error: #c0392b;
+  --muted: #6b6558;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-app);
+  color: var(--ink);
+}
+
+.muted { color: var(--muted); font-size: 14px; }
+
+.field-label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+.field {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 15px;
+  background: #fff;
+}
+input[type="file"] { margin-top: 8px; }
+
+.btn-primary, .btn-ghost {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+
+.error-banner {
+  background: #fdecea;
+  color: var(--error);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+/* --- Login page --- */
+.login-body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-card {
+  background: var(--card-bg);
+  padding: 32px;
+  border-radius: 14px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
+.login-card h1 { font-size: 20px; margin: 0 0 4px; }
+.login-card .btn-primary { width: 100%; margin-top: 18px; }
+
+/* --- Dashboard shell --- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--line);
+}
+.topbar h1 { font-size: 18px; margin: 0; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.badge {
+  background: var(--error);
+  color: #fff;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tabbar {
+  display: flex;
+  gap: 4px;
+  padding: 10px 20px 0;
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--line);
+}
+.tab {
+  background: transparent;
+  border: none;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+.content { max-width: 640px; margin: 24px auto; padding: 0 20px 60px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+.tab-panel h2 { font-size: 17px; margin-bottom: 4px; }
+
+.card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 14px;
+  border: 1px solid var(--line);
+}
+.card h3 { font-size: 15px; margin: 0 0 4px; }
+
+.row { display: flex; gap: 10px; margin-top: 14px; }
+
+#banner-preview-wrap {
+  aspect-ratio: 16/7;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-app);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+#banner-preview { width: 100%; height: 100%; object-fit: cover; }
+.empty-hint { color: var(--muted); font-size: 14px; }
+
+.list { margin-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.list-row {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.thumb { width: 64px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0; }
+.list-row-info { flex: 1; min-width: 0; font-size: 14px; }
+.list-row-info div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.icon-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+}
+.icon-btn.danger { color: var(--error); border-color: #f3c9c4; }
+.icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }

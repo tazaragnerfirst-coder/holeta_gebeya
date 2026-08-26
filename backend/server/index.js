@@ -198,6 +198,34 @@ app.post('/notifyNewMessage', async (req, res) => {
   }
 });
 
+// Called by the main app's client (never by the admin panel itself)
+// right after something an admin should look at happens — a new
+// report filed, etc. Sends a plain Telegram message to the one fixed
+// ADMIN_TELEGRAM_ID (there's a single admin, so no per-recipient
+// lookup like /notifyNewMessage does for regular users).
+app.post('/notifyAdmin', async (req, res) => {
+  try {
+    if (!BOT_TOKEN) return res.status(500).json({ error: 'Bot token not configured on the server.' });
+    const adminId = process.env.ADMIN_TELEGRAM_ID;
+    if (!adminId) return res.json({ ok: true, skipped: 'ADMIN_TELEGRAM_ID not configured' });
+
+    const { text } = req.body || {};
+    if (!text) return res.status(400).json({ error: 'text is required.' });
+
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: adminId, text }),
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('notifyAdmin failed:', err);
+    // Never fail the caller's action over a notification hiccup.
+    res.json({ ok: false });
+  }
+});
+
 // Called by the client right after a listing is successfully
 // created, so the next post attempt's cooldown (enforced in
 // firestore.rules against users/{uid}.lastPostAt) has something to

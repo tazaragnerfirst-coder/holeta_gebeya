@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Holeta Gebeya — Admin</title>
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Holeta Gebeya Admin</h1>
+    <div class="topbar-right">
+      <span id="reports-badge" class="badge" hidden></span>
+      <button type="button" class="btn-ghost" id="logout-btn">Sign out</button>
+    </div>
+  </header>
+
+  <nav class="tabbar">
+    <button type="button" class="tab active" data-tab="banner">Profile Banner</button>
+    <button type="button" class="tab" data-tab="carousel">Search Carousel</button>
+    <button type="button" class="tab" data-tab="reports">Reports</button>
+  </nav>
+
+  <main class="content">
+    <!-- Profile header banner (single global image, config/appBanner) -->
+    <section id="tab-banner" class="tab-panel active">
+      <h2>Profile Page Header Image</h2>
+      <p class="muted">Shows in the big box at the top of every user's Profile page. One image, same for everyone.</p>
+
+      <div class="card">
+        <div id="banner-preview-wrap">
+          <img id="banner-preview" alt="" hidden />
+          <div id="banner-empty" class="empty-hint">No image set yet.</div>
+        </div>
+        <input type="file" id="banner-file" accept="image/*" />
+        <div id="banner-error" class="error-banner" hidden></div>
+        <div class="row">
+          <button type="button" class="btn-primary" id="banner-save-btn" disabled>Save image</button>
+          <button type="button" class="btn-ghost" id="banner-remove-btn">Remove image</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search-bar promo carousel (config/homeBanners, multiple images) -->
+    <section id="tab-carousel" class="tab-panel">
+      <h2>Search Bar Promo Carousel</h2>
+      <p class="muted">A rotating set of images shown below the home search bar. Add, remove, or reorder them below.</p>
+
+      <div class="card">
+        <h3>Add a new slide</h3>
+        <input type="file" id="carousel-file" accept="image/*" />
+        <label class="field-label" for="carousel-link">Link (optional)</label>
+        <input class="field" type="text" id="carousel-link" placeholder="/dashboard/ads or https://..." />
+        <div id="carousel-error" class="error-banner" hidden></div>
+        <button type="button" class="btn-primary" id="carousel-add-btn" disabled>Add slide</button>
+      </div>
+
+      <div id="carousel-list" class="list"></div>
+    </section>
+
+    <!-- Reports queue (config-independent, reports collection) -->
+    <section id="tab-reports" class="tab-panel">
+      <h2>Listing Reports</h2>
+      <p class="muted">Reports filed by users about a listing. Dismiss once handled.</p>
+      <div id="reports-list" class="list"></div>
+      <div id="reports-empty" class="empty-hint" hidden>No reports right now.</div>
+    </section>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/imageCompress.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

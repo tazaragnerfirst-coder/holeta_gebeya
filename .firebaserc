@@ -1,5 +1,13 @@
 {
   "projects": {
     "default": "holeta-c22fc"
+  },
+  "targets": {
+    "holeta-c22fc": {
+      "hosting": {
+        "app": ["holeta-c22fc"],
+        "admin": ["holeta-gebeya-admin"]
+      }
+    }
   }
 }

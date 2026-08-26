@@ -2,6 +2,16 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // True only for the admin-panel account (Firebase Auth
+    // Email/Password), which has an `isAdmin: true` custom claim set
+    // via backend/server/scripts/setAdminClaim.js. Telegram-signed-in
+    // shoppers/sellers never have this claim, so this is false for
+    // every regular app user regardless of what's in their own
+    // users/{uid} doc.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.isAdmin == true;
+    }
+
     // Anyone can browse listings — no login required to look around.
     match /listings/{listingId} {
       allow read: if true;
@@ -23,9 +33,10 @@ service cloud.firestore {
       // by exactly +1 and nothing else — it's a low-stakes public
       // stat, not sensitive data, so it isn't gated behind an account.
       allow update: if (request.auth != null && resource.data.sellerId == request.auth.uid)
+        || isAdmin()
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
             && request.resource.data.views == resource.data.views + 1);
-      allow delete: if request.auth != null && resource.data.sellerId == request.auth.uid;
+      allow delete: if (request.auth != null && resource.data.sellerId == request.auth.uid) || isAdmin();
     }
 
     // Per-seller daily analytics (dashboard views/contact-click
@@ -78,9 +89,10 @@ service cloud.firestore {
     }
 
     // Listing reports: write-only from the client (an admin reviews
-    // these manually) — never readable back by regular users.
+    // these manually) — never readable back by regular users. The
+    // admin panel can read/dismiss them.
     match /reports/{reportId} {
-      allow read, update, delete: if false;
+      allow read, update, delete: if isAdmin();
       allow create: if request.auth != null && request.resource.data.reporterId == request.auth.uid;
     }
 
@@ -98,12 +110,12 @@ service cloud.firestore {
       }
     }
 
-    // App-wide config docs (e.g. the seasonal Profile-page banner
-    // image). Publicly readable; updated manually via the Firebase
-    // console for now — no admin panel yet, no client writes.
+    // App-wide config docs (e.g. the Profile-page header banner and
+    // the home search-bar promo carousel). Publicly readable by the
+    // main app; writable only by the admin panel.
     match /config/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
     // Chats: only the two participants can read/write, and only once

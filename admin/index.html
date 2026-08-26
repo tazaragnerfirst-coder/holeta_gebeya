@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Holeta Gebeya — Admin Login</title>
+  <link rel="stylesheet" href="css/admin.css" />
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <h1>Holeta Gebeya Admin</h1>
+    <p class="muted">Sign in with your admin account.</p>
+
+    <form id="login-form">
+      <label class="field-label" for="email">Email</label>
+      <input class="field" type="email" id="email" autocomplete="username" required />
+
+      <label class="field-label" for="password">Password</label>
+      <input class="field" type="password" id="password" autocomplete="current-password" required />
+
+      <div id="login-error" class="error-banner" hidden></div>
+
+      <button type="submit" class="btn-primary" id="login-btn">Sign in</button>
+    </form>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="js/firebase-init.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

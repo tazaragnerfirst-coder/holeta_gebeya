@@ -112,3 +112,14 @@ export function notifyNewMessage({ recipientUid, senderName, listingTitle, text,
     body: JSON.stringify({ recipientUid, senderName, listingTitle, text, chatId }),
   }).catch((err) => console.error('notifyNewMessage failed:', err));
 }
+
+// Same fire-and-forget pattern, for pinging the single admin
+// (ADMIN_TELEGRAM_ID on the backend) about things worth a look —
+// currently just new reports. Never blocks the caller's own action.
+export function notifyAdmin({ text }) {
+  return fetch(`${BACKEND_URL}/notifyAdmin`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  }).catch((err) => console.error('notifyAdmin failed:', err));
+}

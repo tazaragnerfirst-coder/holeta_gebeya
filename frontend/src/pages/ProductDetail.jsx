@@ -4,7 +4,7 @@ import {
   doc, onSnapshot, collection, addDoc, setDoc, updateDoc, increment,
   query, where, limit, getDocs, serverTimestamp,
 } from 'firebase/firestore';
-import { db, BACKEND_URL } from '../lib/firebase';
+import { db, BACKEND_URL, notifyAdmin } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { getUnsafeUserPreview } from '../lib/telegram';
@@ -260,6 +260,7 @@ export default function ProductDetail() {
       });
       setReportSheetOpen(false);
       setReportDone(true);
+      notifyAdmin({ text: `🚩 New report: "${item.title}"\nReason: ${reason}${note ? `\nNote: ${note}` : ''}` });
     } catch (err) {
       setReportError(err.message || "Couldn't submit your report. Please try again.");
     } finally {
