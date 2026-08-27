@@ -71,8 +71,6 @@ export default function ListingCard({ item, boosted }) {
         ) : item.condition ? (
           <div className={`badge-condition tone-${conditionTone(item.condition)}`}>{item.condition}</div>
         ) : null}
-      </div>
-      <div className="card-footer">
         <button
           type="button"
           className={isFavorited ? 'footer-fav is-fav' : 'footer-fav'}
@@ -80,10 +78,19 @@ export default function ListingCard({ item, boosted }) {
           disabled={favBusy}
           aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
         >
-          <Icon name="bookmark" size={15} {...(isFavorited ? { fill: 'currentColor' } : {})} />
+          <Icon name="bookmark" size={13} {...(isFavorited ? { fill: 'currentColor' } : {})} />
         </button>
+      </div>
+      <div className="card-footer">
         {item.category && <div className="card-eyebrow">{item.category}</div>}
         <div className="card-title">{item.title}</div>
+        {item.avgRating ? (
+          <div className="card-rating">
+            <Icon name="star" size={11} fill="currentColor" />
+            {item.avgRating.toFixed(1)}
+            {item.reviewCount ? <span>({item.reviewCount})</span> : null}
+          </div>
+        ) : null}
         <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
         <div className="card-meta">
           {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}

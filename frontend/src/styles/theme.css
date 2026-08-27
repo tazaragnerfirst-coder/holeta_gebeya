@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root{
-  --bg-app:#FAF8F3; --surface:#FFFFFF; --surface-sunken:#F1EDE4;
+  --bg-app:#FAF8F3; --surface:#FFFFFF; --surface-sunken:#F1EDE4; --card-surface:#F3EEE0;
   --ink:#20241F; --ink-soft:#5C6259; --ink-faint:#95998E; --line:#E4E0D5;
   --primary:#1E4B3F; --primary-dark:#12332A; --primary-tint:#E4EEE9;
   --accent:#E5A03B; --accent-dark:#B9791F; --accent-tint:#FBEDD4;
@@ -11,7 +11,7 @@
   --font-ui:'Inter',system-ui,sans-serif;
 }
 [data-theme="dark"]{
-  --bg-app:#20241F; --surface:#262B22; --surface-sunken:#2E3428;
+  --bg-app:#20241F; --surface:#262B22; --surface-sunken:#2E3428; --card-surface:#262B22;
   --ink:#F1EDE0; --ink-soft:#C9C4B0; --ink-faint:#83887A; --line:#343A2E;
   --primary:#4FA184; --primary-dark:#12332A; --primary-tint:#1C2E27;
   --accent:#E5A03B; --accent-dark:#E8AE56; --accent-tint:#3A2E16;
@@ -79,21 +79,19 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
    vertical space its own image needs, and the next card slots in
    right below it — not row-locked to whatever is tallest in the
    opposite column, the way CSS grid would do it. */
-.listing-grid{column-count:2;column-gap:12px;}
-.listing-grid > .listing-card{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:12px;}
-.listing-card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);overflow:hidden;transition:transform .12s ease;}
+.listing-grid{column-count:2;column-gap:6px;}
+.listing-grid > .listing-card{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:6px;}
+.listing-card{display:block;text-decoration:none;color:inherit;background:var(--card-surface);border:none;border-radius:var(--radius-md);overflow:hidden;transition:transform .12s ease;}
 .listing-card:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){
   .listing-card:hover{transform:translateY(-3px);}
 }
 .boost-scroll .listing-card{flex:0 0 152px;flex-shrink:0;}
-/* No fixed box: the image renders at its own natural aspect ratio,
-   so the card's shape simply follows the photo's shape (square,
-   portrait, wide, whatever it is) — nothing is ever cropped and
-   there's no letterbox backdrop needed. Title/price/meta sit in a
-   frosted glass panel overlaid on the image itself. */
-.thumb{position:relative;background:var(--surface-sunken);overflow:hidden;}
-.thumb-img{display:block;width:100%;height:auto;}
+/* Fixed 1:1 square, image cropped to fill edge-to-edge (object-fit:
+   cover) — AliExpress-style dense grid card. Title/price/meta sit in
+   a plain block below the photo, not overlaid on it. */
+.thumb{position:relative;background:var(--surface-sunken);overflow:hidden;aspect-ratio:1/1;}
+.thumb-img{display:block;width:100%;height:100%;object-fit:cover;}
 .carousel{height:270px;position:relative;background:var(--surface-sunken);}
 
 /* --- Product detail: image carousel + lightbox --- */
@@ -126,26 +124,27 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .lightbox-nav .icon-btn{background:rgba(255,255,255,.12);color:#fff;}
 .lightbox-count{font-size:13px;font-weight:600;color:rgba(255,255,255,.85);}
 .thumb-placeholder{position:relative;aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.9);}
-.footer-fav{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:var(--surface-sunken);border:none;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);cursor:pointer;transition:transform .12s ease,background .12s ease,color .12s ease;}
+.footer-fav{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:rgba(20,22,18,.38);border:none;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;transition:transform .12s ease,background .12s ease,color .12s ease;}
 .footer-fav:active{transform:scale(.85);}
 .footer-fav.is-fav{background:var(--accent-dark);color:#fff;}
-.badge-boost,.badge-condition{position:absolute;top:8px;left:8px;font-size:9.5px;font-weight:800;padding:4px 8px;border-radius:100px;display:flex;align-items:center;gap:4px;}
+.badge-boost,.badge-condition{position:absolute;top:8px;left:8px;font-size:9px;font-weight:800;padding:3px 7px;border-radius:100px;display:flex;align-items:center;gap:4px;}
 .badge-boost{background:var(--accent);color:#4A2E05;}
 .badge-condition.tone-new{background:var(--primary);color:#fff;}
 .badge-condition.tone-used{background:#D9A24A;color:#3D2C0B;}
 .badge-condition.tone-repair{background:#C86A4A;color:#fff;}
 .badge-condition.tone-default{background:rgba(255,255,255,.85);color:var(--ink);}
-.badge-count{position:absolute;bottom:8px;right:8px;background:rgba(20,22,18,.6);color:#fff;font-size:9.5px;font-weight:700;padding:3px 7px;border-radius:100px;display:flex;align-items:center;gap:3px;backdrop-filter:blur(2px);}
-/* The photo shows in full, nothing laid over it. The text block
-   sits in its own space right below — pulled up a few pixels and
-   mask-faded at its top edge so it blurs straight into the photo's
-   bottom instead of meeting it at a hard line. */
-.card-footer{position:relative;margin-top:-20px;padding:18px 34px 11px 11px;background:rgba(255,255,255,.62);backdrop-filter:blur(16px) saturate(1.4);-webkit-backdrop-filter:blur(16px) saturate(1.4);mask-image:linear-gradient(to bottom, transparent 0, #000 20px);-webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 20px);}
-.card-eyebrow{font-size:9px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.card-title{font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.32;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-.card-price{font-weight:800;font-size:15px;color:var(--primary);letter-spacing:-.01em;margin-top:5px;}
+.badge-count{position:absolute;bottom:8px;right:8px;background:rgba(20,22,18,.6);color:#fff;font-size:9px;font-weight:700;padding:3px 6px;border-radius:100px;display:flex;align-items:center;gap:3px;}
+/* Plain block below the photo — no overlap, no blur, no shadow.
+   Tight padding, dense like the AliExpress reference. */
+.card-footer{padding:7px 8px 9px;background:var(--card-surface);}
+.card-eyebrow{font-size:8.5px;font-weight:700;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.card-title{font-size:12.5px;font-weight:600;color:var(--ink);line-height:1.28;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.card-rating{display:flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;color:var(--ink-soft);margin-top:3px;}
+.card-rating .icon{color:var(--accent);}
+.card-rating span{color:var(--ink-faint);font-weight:500;}
+.card-price{font-weight:800;font-size:15px;color:var(--primary);letter-spacing:-.01em;margin-top:4px;}
 .card-price span{font-size:10px;font-weight:700;color:var(--primary);opacity:.7;margin-left:3px;}
-.card-meta{display:flex;align-items:center;gap:9px;font-size:10px;color:var(--ink-faint);margin-top:8px;}
+.card-meta{display:flex;align-items:center;gap:8px;font-size:9.5px;color:var(--ink-faint);margin-top:6px;}
 .card-meta span{display:flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* Same glass-footer language as ListingCard: the hero photo stays
