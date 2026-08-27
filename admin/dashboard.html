@@ -20,6 +20,7 @@
     <button type="button" class="tab active" data-tab="banner">Profile Banner</button>
     <button type="button" class="tab" data-tab="carousel">Search Carousel</button>
     <button type="button" class="tab" data-tab="reports">Reports</button>
+    <button type="button" class="tab" data-tab="users">Users</button>
   </nav>
 
   <main class="content">
@@ -66,6 +67,16 @@
       <p class="muted">Reports filed by users about a listing. Dismiss once handled.</p>
       <div id="reports-list" class="list"></div>
       <div id="reports-empty" class="empty-hint" hidden>No reports right now.</div>
+    </section>
+
+    <!-- User management (users collection) -->
+    <section id="tab-users" class="tab-panel">
+      <h2>Users</h2>
+      <p class="muted">Search by name, phone, username, or Telegram ID. Suspending a user blocks them from posting new listings — it does not hide their existing listings or block browsing/messaging.</p>
+      <input class="field" type="text" id="users-search" placeholder="Search users…" />
+      <div id="users-list" class="list"></div>
+      <div id="users-empty" class="empty-hint" hidden>No users found.</div>
+      <button type="button" class="btn-ghost" id="users-load-more">Load more</button>
     </section>
   </main>
 

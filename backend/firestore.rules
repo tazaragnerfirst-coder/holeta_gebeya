@@ -27,6 +27,13 @@ service cloud.firestore {
           !exists(/databases/$(database)/documents/users/$(request.auth.uid))
           || !('lastPostAt' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data)
           || request.time > get(/databases/$(database)/documents/users/$(request.auth.uid)).data.lastPostAt + duration.value(2, 'm')
+        )
+        // A suspended seller (set by the admin panel) can't post new
+        // listings. Their existing listings and browsing/messaging
+        // are untouched — this only blocks new posts.
+        && (
+          !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.suspended != true
         );
       // Sellers can edit their own listing normally. Anyone (even
       // signed-out browsers) may also bump the public `views` counter
@@ -96,10 +103,16 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.reporterId == request.auth.uid;
     }
 
-    // Users can read/write only their own profile doc.
+    // Users can read/write only their own profile doc. The admin
+    // panel can also read any user's doc (for the User Management
+    // list) and toggle ONLY the `suspended` field on it — every
+    // other field (phone, name, telegramId, etc.) stays writable
+    // only by the telegramAuth Cloud Function, same as before.
     match /users/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow write: if false; // only written by the telegramAuth Cloud Function (Admin SDK)
+      allow read: if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['suspended']);
+      allow create, delete: if false; // only written by the telegramAuth Cloud Function (Admin SDK)
 
       // A user's saved/favorited listings. Unlike the parent doc,
       // this is written directly by the client (no backend

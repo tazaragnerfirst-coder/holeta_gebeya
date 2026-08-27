@@ -13,6 +13,7 @@ auth.onAuthStateChanged(async (user) => {
   initBanner();
   initCarousel();
   initReports();
+  initUsers();
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
@@ -288,4 +289,100 @@ function initReports() {
       listEl.appendChild(row);
     });
   });
+}
+
+// --- User management (users collection) ------------------------------
+// Docs are id `tg_{telegramId}` with fields telegramId/firstName/
+// lastName/username/photoUrl/updatedAt (+ phone/fullName/location once
+// the user completes their profile). Paginated 30-at-a-time by
+// updatedAt desc; search filters client-side over the loaded page(s)
+// only (not a live server-side query — fine at this scale).
+const USERS_PAGE_SIZE = 30;
+let usersLoaded = [];
+let usersLastDoc = null;
+let usersAllLoaded = false;
+
+function displayName(u) {
+  const full = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
+  return u.fullName || full || u.username || `Telegram ${u.telegramId || ''}`.trim();
+}
+
+function userMatchesSearch(u, q) {
+  if (!q) return true;
+  const haystack = [u.fullName, u.firstName, u.lastName, u.username, u.phone, u.telegramId]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(q.toLowerCase());
+}
+
+function renderUsersList() {
+  const listEl = document.getElementById('users-list');
+  const emptyEl = document.getElementById('users-empty');
+  const q = document.getElementById('users-search').value.trim();
+  const filtered = usersLoaded.filter((u) => userMatchesSearch(u, q));
+
+  listEl.innerHTML = '';
+  emptyEl.hidden = filtered.length > 0;
+
+  filtered.forEach((u) => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    const initial = (displayName(u)[0] || '?').toUpperCase();
+    row.innerHTML = `
+      ${u.photoUrl
+        ? `<img src="${u.photoUrl}" alt="" class="avatar" />`
+        : `<div class="avatar-placeholder">${initial}</div>`}
+      <div class="list-row-info">
+        <div><strong>${displayName(u)}</strong> ${u.suspended ? '<span class="tag-suspended">Suspended</span>' : ''}</div>
+        <div class="muted">${u.phone || '—'} · @${u.username || '—'} · ${u.telegramId || '—'}</div>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="btn-ghost ${u.suspended ? '' : 'danger-text'}" data-id="${u.id}">${u.suspended ? 'Unsuspend' : 'Suspend'}</button>
+      </div>
+    `;
+    row.querySelector('button').addEventListener('click', async (e) => {
+      const btn = e.target;
+      const willSuspend = !u.suspended;
+      if (willSuspend && !confirm(`Suspend ${displayName(u)}? They won't be able to post new listings.`)) return;
+      btn.disabled = true;
+      try {
+        await db.collection('users').doc(u.id).update({ suspended: willSuspend });
+        u.suspended = willSuspend;
+        renderUsersList();
+      } catch (err) {
+        alert(describeFirestoreError(err));
+        btn.disabled = false;
+      }
+    });
+    listEl.appendChild(row);
+  });
+}
+
+async function loadUsersPage() {
+  const loadMoreBtn = document.getElementById('users-load-more');
+  loadMoreBtn.disabled = true;
+  loadMoreBtn.textContent = 'Loading…';
+  try {
+    let query = db.collection('users').orderBy('updatedAt', 'desc').limit(USERS_PAGE_SIZE);
+    if (usersLastDoc) query = query.startAfter(usersLastDoc);
+    const snap = await query.get();
+    if (snap.empty || snap.size < USERS_PAGE_SIZE) usersAllLoaded = true;
+    if (!snap.empty) usersLastDoc = snap.docs[snap.docs.length - 1];
+    snap.docs.forEach((docSnap) => usersLoaded.push({ id: docSnap.id, ...docSnap.data() }));
+    renderUsersList();
+  } catch (err) {
+    document.getElementById('users-empty').hidden = false;
+    document.getElementById('users-empty').textContent = describeFirestoreError(err);
+  } finally {
+    loadMoreBtn.textContent = 'Load more';
+    loadMoreBtn.hidden = usersAllLoaded;
+    loadMoreBtn.disabled = false;
+  }
+}
+
+function initUsers() {
+  document.getElementById('users-search').addEventListener('input', renderUsersList);
+  document.getElementById('users-load-more').addEventListener('click', loadUsersPage);
+  loadUsersPage();
 }
