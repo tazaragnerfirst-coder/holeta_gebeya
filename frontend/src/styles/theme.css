@@ -11,13 +11,11 @@
   --font-ui:'Inter',system-ui,sans-serif;
 }
 [data-theme="dark"]{
-  /* Warm near-black (not pure #000, no green cast) — a dark, slightly
-     cream-leaning neutral (R>G>B) instead of the earlier
-     forest-green-tinted grays. Surfaces step up in lightness for
-     elevation (bg < card/surface < surface-sunken), mirrored by a
-     visible warm border since cards carry no shadow. */
-  --bg-app:#17140F; --surface:#201C15; --surface-sunken:#282218; --card-surface:#201C15;
-  --ink:#F1EDE0; --ink-soft:#C9C4B0; --ink-faint:#83887A; --line:#3A3325;
+  /* Plain neutral gray-black (no warm/green tint, not pure #000) —
+     surfaces step up slightly for elevation, cards separated by the
+     border (see .listing-card) rather than a color trick. */
+  --bg-app:#141414; --surface:#1E1E1E; --surface-sunken:#262626; --card-surface:#1E1E1E;
+  --ink:#F1EDE0; --ink-soft:#C9C4B0; --ink-faint:#83887A; --line:#2E2E2E;
   --primary:#4FA184; --primary-dark:#12332A; --primary-tint:#1C2E27;
   --accent:#E5A03B; --accent-dark:#E8AE56; --accent-tint:#3A2E16;
   --safety:#E5805F; --safety-tint:#3A2419; --ok:#4FA184;
