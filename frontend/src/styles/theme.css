@@ -11,7 +11,7 @@
   --font-ui:'Inter',system-ui,sans-serif;
 }
 [data-theme="dark"]{
-  --bg-app:#20241F; --surface:#262B22; --surface-sunken:#2E3428; --card-surface:#262B22;
+  --bg-app:#20241F; --surface:#262B22; --surface-sunken:#2E3428; --card-surface:#2B3125;
   --ink:#F1EDE0; --ink-soft:#C9C4B0; --ink-faint:#83887A; --line:#343A2E;
   --primary:#4FA184; --primary-dark:#12332A; --primary-tint:#1C2E27;
   --accent:#E5A03B; --accent-dark:#E8AE56; --accent-tint:#3A2E16;
