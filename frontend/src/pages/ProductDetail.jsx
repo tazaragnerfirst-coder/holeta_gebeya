@@ -239,6 +239,19 @@ export default function ProductDetail() {
       const snap = await getDocs(query(collection(db, 'reviews'), where('listingId', '==', item.id), limit(20)));
       setReviews(snap.docs.map((d) => ({ id: d.id, ...d.data() }))
         .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)));
+      // Refreshes the seller's denormalized avgRating/reviewCount
+      // (on their user doc and every one of their listings) so
+      // ListingCard picks up the new number. Best-effort — the
+      // review itself already saved, so a failure here shouldn't
+      // surface as an error to the reviewer.
+      try {
+        const idToken = await user.getIdToken();
+        fetch(`${BACKEND_URL}/syncSellerRating`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken, sellerId: item.sellerId }),
+        }).catch(() => {});
+      } catch {}
     } catch (err) {
       setReviewError(err.message || "Couldn't submit your review. Please try again.");
     } finally {

@@ -262,6 +262,40 @@ app.post('/incrementListingView', async (req, res) => {
   }
 });
 
+// Recomputes a seller's aggregate rating (avg + count across every
+// review left on any of their listings) and denormalizes it onto
+// users/{sellerId} plus every one of that seller's own listing docs,
+// so ListingCard can show it with zero extra client-side reads.
+// Firestore rules only let a listing's owning seller update it —
+// a reviewer is a buyer, not the seller — so this has to happen
+// server-side via the Admin SDK, same as lastPostAt above. Called
+// right after a review is submitted; failure here never blocks the
+// review itself, which has already succeeded by that point.
+app.post('/syncSellerRating', async (req, res) => {
+  try {
+    const { idToken, sellerId } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    if (!sellerId) return res.status(400).json({ error: 'sellerId is required.' });
+    await admin.auth().verifyIdToken(idToken);
+
+    const reviewsSnap = await db.collection('reviews').where('sellerId', '==', sellerId).get();
+    const ratings = reviewsSnap.docs.map((d) => d.data().rating).filter((r) => typeof r === 'number');
+    const avgRating = ratings.length ? ratings.reduce((s, r) => s + r, 0) / ratings.length : 0;
+    const reviewCount = ratings.length;
+
+    const batch = db.batch();
+    batch.set(db.collection('users').doc(sellerId), { avgRating, reviewCount }, { merge: true });
+    const listingsSnap = await db.collection('listings').where('sellerId', '==', sellerId).get();
+    listingsSnap.docs.forEach((d) => batch.update(d.ref, { avgRating, reviewCount }));
+    await batch.commit();
+
+    res.json({ ok: true, avgRating, reviewCount });
+  } catch (err) {
+    console.error('syncSellerRating failed:', err);
+    res.json({ ok: false });
+  }
+});
+
 // Reveals a seller's phone number to a verified, registered caller.
 // Phone numbers are never exposed via Firestore rules (users/{uid}
 // is read-restricted to its own owner) — this endpoint is the only
