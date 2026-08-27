@@ -23,6 +23,7 @@
     <button type="button" class="tab" data-tab="users">Users</button>
     <button type="button" class="tab" data-tab="listings">Listings</button>
     <button type="button" class="tab" data-tab="analytics">Analytics</button>
+    <button type="button" class="tab" data-tab="support">Support</button>
   </nav>
 
   <main class="content">
@@ -112,6 +113,29 @@
         <div class="stat-card"><div class="stat-value" id="stat-new-listings-7d">—</div><div class="stat-label">New listings (7d)</div></div>
         <div class="stat-card"><div class="stat-value" id="stat-new-listings-30d">—</div><div class="stat-label">New listings (30d)</div></div>
         <div class="stat-card"><div class="stat-value" id="stat-active-users-7d">—</div><div class="stat-label">Users active (7d)</div></div>
+      </div>
+    </section>
+
+    <!-- Support inbox (chats where isSupport == true) -->
+    <section id="tab-support" class="tab-panel">
+      <h2>Support Inbox</h2>
+      <p class="muted">Conversations started from the app's Help &amp; Support button. Ordinary buyer/seller chats are never visible here.</p>
+
+      <div id="support-list-view">
+        <div id="support-list" class="list"></div>
+        <div id="support-empty" class="empty-hint" hidden>No support conversations yet.</div>
+        <button type="button" class="btn-ghost" id="support-load-more">Load more</button>
+      </div>
+
+      <div id="support-thread-view" class="thread-view" hidden>
+        <button type="button" class="btn-ghost" id="support-back">&larr; Back to inbox</button>
+        <h3 id="support-thread-name"></h3>
+        <div id="support-thread-messages" class="thread-messages"></div>
+        <div class="thread-composer">
+          <textarea class="field" id="support-reply-text" rows="2" placeholder="Type a reply…"></textarea>
+          <button type="button" class="btn-primary" id="support-reply-send">Send</button>
+        </div>
+        <div id="support-reply-error" class="error-banner" hidden></div>
       </div>
     </section>
   </main>

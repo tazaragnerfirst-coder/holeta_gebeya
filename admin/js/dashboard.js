@@ -16,6 +16,7 @@ auth.onAuthStateChanged(async (user) => {
   initUsers();
   initListings();
   initAnalytics();
+  initSupport();
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
@@ -564,4 +565,151 @@ async function initAnalytics() {
     errorBox.hidden = false;
     errorBox.textContent = describeFirestoreError(err);
   }
+}
+
+// --- Support inbox (chats where isSupport == true) --------------------
+// Chat doc shape (frontend/src/pages/ChatThread.jsx): participants
+// [SUPPORT_UID, buyerUid], buyerId, buyerName, isSupport: true,
+// lastMessage, lastSenderId, lastMessageAt, unreadCount.{uid},
+// lastReadAt.{uid}. Messages: {senderId, text, createdAt} (plain
+// text) or {senderId, type:'listing', ...} (a shared-listing card —
+// rare in support threads, rendered as a fallback line here).
+// firestore.rules extends admin access to ONLY chats with
+// isSupport==true — regular buyer/seller threads stay untouchable.
+const SUPPORT_PAGE_SIZE = 30;
+let supportChatsLoaded = [];
+let supportLastDoc = null;
+let supportAllLoaded = false;
+let supportUnsubMessages = null;
+let supportActiveChatId = null;
+
+function renderSupportList() {
+  const listEl = document.getElementById('support-list');
+  const emptyEl = document.getElementById('support-empty');
+  listEl.innerHTML = '';
+  emptyEl.hidden = supportChatsLoaded.length > 0;
+
+  supportChatsLoaded.forEach((c) => {
+    const row = document.createElement('div');
+    row.className = 'list-row list-row-clickable';
+    const when = c.lastMessageAt && c.lastMessageAt.toDate ? c.lastMessageAt.toDate().toLocaleString() : '';
+    row.innerHTML = `
+      <div class="avatar-placeholder">${(c.buyerName || '?')[0].toUpperCase()}</div>
+      <div class="list-row-info">
+        <div><strong>${c.buyerName || 'User'}</strong></div>
+        <div class="muted">${c.lastMessage || 'No messages yet'} · ${when}</div>
+      </div>
+    `;
+    row.addEventListener('click', () => openSupportThread(c.id, c.buyerName || 'User'));
+    listEl.appendChild(row);
+  });
+}
+
+async function loadSupportPage() {
+  const loadMoreBtn = document.getElementById('support-load-more');
+  loadMoreBtn.disabled = true;
+  loadMoreBtn.textContent = 'Loading…';
+  try {
+    let query = db.collection('chats').where('isSupport', '==', true).orderBy('lastMessageAt', 'desc').limit(SUPPORT_PAGE_SIZE);
+    if (supportLastDoc) query = query.startAfter(supportLastDoc);
+    const snap = await query.get();
+    if (snap.empty || snap.size < SUPPORT_PAGE_SIZE) supportAllLoaded = true;
+    if (!snap.empty) supportLastDoc = snap.docs[snap.docs.length - 1];
+    snap.docs.forEach((docSnap) => supportChatsLoaded.push({ id: docSnap.id, ...docSnap.data() }));
+    renderSupportList();
+  } catch (err) {
+    document.getElementById('support-empty').hidden = false;
+    document.getElementById('support-empty').textContent = describeFirestoreError(err);
+  } finally {
+    loadMoreBtn.textContent = 'Load more';
+    loadMoreBtn.hidden = supportAllLoaded;
+    loadMoreBtn.disabled = false;
+  }
+}
+
+function renderSupportMessages(msgs) {
+  const box = document.getElementById('support-thread-messages');
+  const adminUid = auth.currentUser && auth.currentUser.uid;
+  box.innerHTML = '';
+  msgs.forEach((m) => {
+    const mine = m.senderId === adminUid;
+    const bubble = document.createElement('div');
+    bubble.className = `thread-bubble ${mine ? 'mine' : 'theirs'}`;
+    bubble.textContent = m.text || (m.type === 'listing' ? `[Shared listing: ${m.listingTitle || ''}]` : '');
+    box.appendChild(bubble);
+  });
+  box.scrollTop = box.scrollHeight;
+}
+
+function openSupportThread(chatId, buyerName) {
+  supportActiveChatId = chatId;
+  document.getElementById('support-list-view').hidden = true;
+  document.getElementById('support-thread-view').hidden = false;
+  document.getElementById('support-thread-name').textContent = buyerName;
+  document.getElementById('support-reply-text').value = '';
+  document.getElementById('support-reply-error').hidden = true;
+
+  if (supportUnsubMessages) supportUnsubMessages();
+  supportUnsubMessages = db.collection('chats').doc(chatId).collection('messages')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot((snap) => {
+      renderSupportMessages(snap.docs.map((d) => d.data()));
+    }, (err) => {
+      document.getElementById('support-reply-error').hidden = false;
+      document.getElementById('support-reply-error').textContent = describeFirestoreError(err);
+    });
+}
+
+function closeSupportThread() {
+  if (supportUnsubMessages) { supportUnsubMessages(); supportUnsubMessages = null; }
+  supportActiveChatId = null;
+  document.getElementById('support-thread-view').hidden = true;
+  document.getElementById('support-list-view').hidden = false;
+}
+
+async function sendSupportReply() {
+  const textEl = document.getElementById('support-reply-text');
+  const text = textEl.value.trim();
+  if (!text || !supportActiveChatId) return;
+  const sendBtn = document.getElementById('support-reply-send');
+  const errorBox = document.getElementById('support-reply-error');
+  const adminUid = auth.currentUser.uid;
+  const chatId = supportActiveChatId;
+  sendBtn.disabled = true;
+  errorBox.hidden = true;
+  try {
+    const chatRef = db.collection('chats').doc(chatId);
+    const chatSnap = await chatRef.get();
+    const buyerId = chatSnap.data().buyerId;
+    await chatRef.collection('messages').add({
+      senderId: adminUid,
+      text,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    await chatRef.update({
+      lastMessage: text,
+      lastSenderId: adminUid,
+      lastMessageAt: firebase.firestore.FieldValue.serverTimestamp(),
+      ...(buyerId ? { [`unreadCount.${buyerId}`]: firebase.firestore.FieldValue.increment(1) } : {}),
+    });
+    textEl.value = '';
+    // Keep the inbox list's preview in sync without a full reload.
+    const cached = supportChatsLoaded.find((c) => c.id === chatId);
+    if (cached) { cached.lastMessage = text; }
+  } catch (err) {
+    errorBox.hidden = false;
+    errorBox.textContent = describeFirestoreError(err);
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+function initSupport() {
+  document.getElementById('support-load-more').addEventListener('click', loadSupportPage);
+  document.getElementById('support-back').addEventListener('click', closeSupportThread);
+  document.getElementById('support-reply-send').addEventListener('click', sendSupportReply);
+  document.getElementById('support-reply-text').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendSupportReply(); }
+  });
+  loadSupportPage();
 }
