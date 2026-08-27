@@ -84,11 +84,11 @@ export default function ListingCard({ item, boosted }) {
       <div className="card-footer">
         {item.category && <div className="card-eyebrow">{item.category}</div>}
         <div className="card-title">{item.title}</div>
-        {item.avgRating ? (
+        {item.avgRating && item.reviewCount > 5 ? (
           <div className="card-rating">
             <Icon name="star" size={11} fill="currentColor" />
             {item.avgRating.toFixed(1)}
-            {item.reviewCount ? <span>({item.reviewCount})</span> : null}
+            <span>({item.reviewCount})</span>
           </div>
         ) : null}
         <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
