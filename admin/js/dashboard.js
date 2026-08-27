@@ -14,6 +14,7 @@ auth.onAuthStateChanged(async (user) => {
   initCarousel();
   initReports();
   initUsers();
+  initListings();
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
@@ -385,4 +386,130 @@ function initUsers() {
   document.getElementById('users-search').addEventListener('input', renderUsersList);
   document.getElementById('users-load-more').addEventListener('click', loadUsersPage);
   loadUsersPage();
+}
+
+// --- Listings moderation (listings collection) -----------------------
+// Doc fields (from PostAd.jsx): sellerId, sellerName, sellerPhoto,
+// title, price, description, location, category, subcategory,
+// attributes, condition, images[], createdAt, expiresAt, boostedUntil,
+// views, status ('active' | 'paused'). isAdmin() already has update
+// and delete rights on any listing (firestore.rules), so no rules
+// change was needed for this tab. Same paginate-30 + client-search
+// pattern as the Users tab.
+const LISTINGS_PAGE_SIZE = 30;
+const MAIN_APP_URL = 'https://holeta-c22fc.web.app';
+let listingsLoaded = [];
+let listingsLastDoc = null;
+let listingsAllLoaded = false;
+
+function listingIsExpired(l) {
+  if (!l.expiresAt) return false;
+  const ms = typeof l.expiresAt.toMillis === 'function' ? l.expiresAt.toMillis() : l.expiresAt;
+  return ms < Date.now();
+}
+
+function listingStatusLabel(l) {
+  if (listingIsExpired(l)) return 'expired';
+  return l.status === 'paused' ? 'paused' : 'active';
+}
+
+function listingMatchesFilters(l, q, statusFilter) {
+  if (statusFilter !== 'all' && listingStatusLabel(l) !== statusFilter) return false;
+  if (!q) return true;
+  const haystack = [l.title, l.sellerName, l.category, l.subcategory].filter(Boolean).join(' ').toLowerCase();
+  return haystack.includes(q.toLowerCase());
+}
+
+function formatListingPrice(l) {
+  const n = Number(l.price);
+  return Number.isFinite(n) ? `${n.toLocaleString()} ETB` : '—';
+}
+
+function renderListingsList() {
+  const listEl = document.getElementById('listings-list');
+  const emptyEl = document.getElementById('listings-empty');
+  const q = document.getElementById('listings-search').value.trim();
+  const statusFilter = document.getElementById('listings-status-filter').value;
+  const filtered = listingsLoaded.filter((l) => listingMatchesFilters(l, q, statusFilter));
+
+  listEl.innerHTML = '';
+  emptyEl.hidden = filtered.length > 0;
+
+  filtered.forEach((l) => {
+    const status = listingStatusLabel(l);
+    const thumb = l.images && l.images[0];
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.innerHTML = `
+      ${thumb ? `<img src="${thumb}" alt="" class="thumb" />` : `<div class="thumb thumb-empty"></div>`}
+      <div class="list-row-info">
+        <div><strong>${l.title || 'Untitled'}</strong> <span class="tag-status tag-status-${status}">${status}</span></div>
+        <div class="muted">${formatListingPrice(l)} · ${l.sellerName || 'Unknown seller'} · ${l.category || '—'}</div>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="btn-ghost" data-act="view" data-id="${l.id}">View</button>
+        <button type="button" class="btn-ghost" data-act="pause" data-id="${l.id}">${l.status === 'paused' ? 'Resume' : 'Pause'}</button>
+        <button type="button" class="btn-ghost danger-text" data-act="delete" data-id="${l.id}">Delete</button>
+      </div>
+    `;
+    row.querySelector('[data-act="view"]').addEventListener('click', () => {
+      window.open(`${MAIN_APP_URL}/product/${l.id}`, '_blank');
+    });
+    row.querySelector('[data-act="pause"]').addEventListener('click', async (e) => {
+      const btn = e.target;
+      const willPause = l.status !== 'paused';
+      btn.disabled = true;
+      try {
+        await db.collection('listings').doc(l.id).update({ status: willPause ? 'paused' : 'active' });
+        l.status = willPause ? 'paused' : 'active';
+        renderListingsList();
+      } catch (err) {
+        alert(describeFirestoreError(err));
+        btn.disabled = false;
+      }
+    });
+    row.querySelector('[data-act="delete"]').addEventListener('click', async (e) => {
+      if (!confirm(`Permanently delete "${l.title || 'this listing'}"? This can't be undone.`)) return;
+      const btn = e.target;
+      btn.disabled = true;
+      try {
+        await db.collection('listings').doc(l.id).delete();
+        listingsLoaded = listingsLoaded.filter((x) => x.id !== l.id);
+        renderListingsList();
+      } catch (err) {
+        alert(describeFirestoreError(err));
+        btn.disabled = false;
+      }
+    });
+    listEl.appendChild(row);
+  });
+}
+
+async function loadListingsPage() {
+  const loadMoreBtn = document.getElementById('listings-load-more');
+  loadMoreBtn.disabled = true;
+  loadMoreBtn.textContent = 'Loading…';
+  try {
+    let query = db.collection('listings').orderBy('createdAt', 'desc').limit(LISTINGS_PAGE_SIZE);
+    if (listingsLastDoc) query = query.startAfter(listingsLastDoc);
+    const snap = await query.get();
+    if (snap.empty || snap.size < LISTINGS_PAGE_SIZE) listingsAllLoaded = true;
+    if (!snap.empty) listingsLastDoc = snap.docs[snap.docs.length - 1];
+    snap.docs.forEach((docSnap) => listingsLoaded.push({ id: docSnap.id, ...docSnap.data() }));
+    renderListingsList();
+  } catch (err) {
+    document.getElementById('listings-empty').hidden = false;
+    document.getElementById('listings-empty').textContent = describeFirestoreError(err);
+  } finally {
+    loadMoreBtn.textContent = 'Load more';
+    loadMoreBtn.hidden = listingsAllLoaded;
+    loadMoreBtn.disabled = false;
+  }
+}
+
+function initListings() {
+  document.getElementById('listings-search').addEventListener('input', renderListingsList);
+  document.getElementById('listings-status-filter').addEventListener('change', renderListingsList);
+  document.getElementById('listings-load-more').addEventListener('click', loadListingsPage);
+  loadListingsPage();
 }

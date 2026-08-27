@@ -21,6 +21,7 @@
     <button type="button" class="tab" data-tab="carousel">Search Carousel</button>
     <button type="button" class="tab" data-tab="reports">Reports</button>
     <button type="button" class="tab" data-tab="users">Users</button>
+    <button type="button" class="tab" data-tab="listings">Listings</button>
   </nav>
 
   <main class="content">
@@ -77,6 +78,24 @@
       <div id="users-list" class="list"></div>
       <div id="users-empty" class="empty-hint" hidden>No users found.</div>
       <button type="button" class="btn-ghost" id="users-load-more">Load more</button>
+    </section>
+
+    <!-- Listings moderation (listings collection) -->
+    <section id="tab-listings" class="tab-panel">
+      <h2>Listings</h2>
+      <p class="muted">Browse every listing on the marketplace. Pausing hides it from the public feed without deleting it; deleting is permanent.</p>
+      <div class="row-wrap">
+        <input class="field" type="text" id="listings-search" placeholder="Search by title, seller, or category…" />
+        <select class="field" id="listings-status-filter">
+          <option value="all">All statuses</option>
+          <option value="active">Active</option>
+          <option value="paused">Paused</option>
+          <option value="expired">Expired</option>
+        </select>
+      </div>
+      <div id="listings-list" class="list"></div>
+      <div id="listings-empty" class="empty-hint" hidden>No listings found.</div>
+      <button type="button" class="btn-ghost" id="listings-load-more">Load more</button>
     </section>
   </main>
 
