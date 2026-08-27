@@ -22,6 +22,7 @@
     <button type="button" class="tab" data-tab="reports">Reports</button>
     <button type="button" class="tab" data-tab="users">Users</button>
     <button type="button" class="tab" data-tab="listings">Listings</button>
+    <button type="button" class="tab" data-tab="analytics">Analytics</button>
   </nav>
 
   <main class="content">
@@ -96,6 +97,22 @@
       <div id="listings-list" class="list"></div>
       <div id="listings-empty" class="empty-hint" hidden>No listings found.</div>
       <button type="button" class="btn-ghost" id="listings-load-more">Load more</button>
+    </section>
+
+    <!-- Platform analytics overview (aggregation counts, no full-doc reads) -->
+    <section id="tab-analytics" class="tab-panel">
+      <h2>Platform Overview</h2>
+      <p class="muted">Live counts across the marketplace. Boost/subscription revenue isn't tracked yet — real payments aren't wired up.</p>
+      <div id="analytics-error" class="error-banner" hidden></div>
+      <div class="stat-grid" id="analytics-grid">
+        <div class="stat-card"><div class="stat-value" id="stat-total-listings">—</div><div class="stat-label">Total listings</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-active-listings">—</div><div class="stat-label">Active</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-paused-listings">—</div><div class="stat-label">Paused</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-total-users">—</div><div class="stat-label">Total users</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-new-listings-7d">—</div><div class="stat-label">New listings (7d)</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-new-listings-30d">—</div><div class="stat-label">New listings (30d)</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-active-users-7d">—</div><div class="stat-label">Users active (7d)</div></div>
+      </div>
     </section>
   </main>
 

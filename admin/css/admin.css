@@ -210,3 +210,20 @@ input[type="file"] { margin-top: 8px; }
 .tag-status-paused { background: #fdf3e0; color: var(--accent); }
 .tag-status-expired { background: #f0efe9; color: var(--muted); }
 #listings-load-more { display: block; margin: 14px auto 0; }
+
+/* --- Analytics tab --- */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+.stat-value { font-size: 26px; font-weight: 700; color: var(--primary); }
+.stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }

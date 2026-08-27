@@ -15,6 +15,7 @@ auth.onAuthStateChanged(async (user) => {
   initReports();
   initUsers();
   initListings();
+  initAnalytics();
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
@@ -512,4 +513,55 @@ function initListings() {
   document.getElementById('listings-status-filter').addEventListener('change', renderListingsList);
   document.getElementById('listings-load-more').addEventListener('click', loadListingsPage);
   loadListingsPage();
+}
+
+// --- Platform analytics overview --------------------------------------
+// Uses Firestore's count() aggregation queries so this never downloads
+// full listing documents (which carry base64 images and would be a
+// heavy read at this dataset's size) — just server-computed counts.
+// Users have no createdAt field (only updatedAt, bumped on every
+// login), so "new users" isn't derivable; "active" is reported
+// instead, which is what the field actually means.
+function daysAgoTimestamp(days) {
+  return firebase.firestore.Timestamp.fromDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
+}
+
+async function countOf(query) {
+  const snap = await query.count().get();
+  return snap.data().count;
+}
+
+async function initAnalytics() {
+  const errorBox = document.getElementById('analytics-error');
+  try {
+    const listingsRef = db.collection('listings');
+    const usersRef = db.collection('users');
+    const [
+      totalListings,
+      activeListings,
+      pausedListings,
+      totalUsers,
+      newListings7d,
+      newListings30d,
+      activeUsers7d,
+    ] = await Promise.all([
+      countOf(listingsRef),
+      countOf(listingsRef.where('status', '==', 'active')),
+      countOf(listingsRef.where('status', '==', 'paused')),
+      countOf(usersRef),
+      countOf(listingsRef.where('createdAt', '>=', daysAgoTimestamp(7))),
+      countOf(listingsRef.where('createdAt', '>=', daysAgoTimestamp(30))),
+      countOf(usersRef.where('updatedAt', '>=', daysAgoTimestamp(7))),
+    ]);
+    document.getElementById('stat-total-listings').textContent = totalListings;
+    document.getElementById('stat-active-listings').textContent = activeListings;
+    document.getElementById('stat-paused-listings').textContent = pausedListings;
+    document.getElementById('stat-total-users').textContent = totalUsers;
+    document.getElementById('stat-new-listings-7d').textContent = newListings7d;
+    document.getElementById('stat-new-listings-30d').textContent = newListings30d;
+    document.getElementById('stat-active-users-7d').textContent = activeUsers7d;
+  } catch (err) {
+    errorBox.hidden = false;
+    errorBox.textContent = describeFirestoreError(err);
+  }
 }
