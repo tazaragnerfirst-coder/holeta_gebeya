@@ -5,6 +5,7 @@ import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { isActiveAd, isExpired, daysSincePosted, isCurrentlyBoosted } from '../lib/adStatus';
 import { getSellerAnalytics, getListingAnalyticsBulk } from '../lib/analytics';
+import { getCached, setCached } from '../lib/pageCache';
 import Icon from '../components/Icon.jsx';
 import DailyViewsChart from '../components/DailyViewsChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
@@ -23,15 +24,24 @@ export default function Dashboard() {
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);
-  const [analytics, setAnalytics] = useState([]);
-  const [analyticsReady, setAnalyticsReady] = useState(false);
+  const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
+
+  // These three are page-scoped and parameterized (by uid + range),
+  // so per the convention in appData.jsx they don't live in the
+  // global context — but they still seed their initial render from
+  // pageCache.js the same way appData.jsx's own state does, instead
+  // of starting empty and flashing a loading state on every visit.
+  const analyticsCacheKey = registeredUid ? `analytics:${registeredUid}:${range.key}` : null;
+  const [analytics, setAnalytics] = useState(() => (analyticsCacheKey ? getCached(analyticsCacheKey) || [] : []));
+  const [analyticsReady, setAnalyticsReady] = useState(() => (analyticsCacheKey ? getCached(analyticsCacheKey) != null : false));
   const [analyticsError, setAnalyticsError] = useState(false);
 
   // Contact Clicks is always the true total (like Total Views), not
   // scoped to the Daily Views chart's own range picker — so it's
   // fetched once, separately, with days=Infinity.
-  const [allTimeContacts, setAllTimeContacts] = useState(0);
-  const [allTimeReady, setAllTimeReady] = useState(false);
+  const allTimeCacheKey = registeredUid ? `allTimeContacts:${registeredUid}` : null;
+  const [allTimeContacts, setAllTimeContacts] = useState(() => (allTimeCacheKey ? getCached(allTimeCacheKey) ?? 0 : 0));
+  const [allTimeReady, setAllTimeReady] = useState(() => (allTimeCacheKey ? getCached(allTimeCacheKey) != null : false));
   const [allTimeError, setAllTimeError] = useState(false);
 
   useEffect(() => {
@@ -39,31 +49,37 @@ export default function Dashboard() {
     requireRegistered().catch((err) => console.error(err));
   }, [registeredUid]);
 
-  const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
-
   function loadDailyAnalytics() {
     if (!registeredUid) return;
-    setAnalyticsReady(false);
     setAnalyticsError(false);
     getSellerAnalytics(registeredUid, range.days)
-      .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
+      .then((data) => {
+        setAnalytics(data);
+        setAnalyticsReady(true);
+        setCached(`analytics:${registeredUid}:${range.key}`, data);
+      })
       .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
   }
   useEffect(loadDailyAnalytics, [registeredUid, range.days]);
 
   function loadAllTimeContacts() {
     if (!registeredUid) return;
-    setAllTimeReady(false);
     setAllTimeError(false);
     getSellerAnalytics(registeredUid, Infinity)
-      .then((data) => { setAllTimeContacts(data.reduce((s, a) => s + (a.contacts || 0), 0)); setAllTimeReady(true); })
+      .then((data) => {
+        const total = data.reduce((s, a) => s + (a.contacts || 0), 0);
+        setAllTimeContacts(total);
+        setAllTimeReady(true);
+        setCached(`allTimeContacts:${registeredUid}`, total);
+      })
       .catch(() => { setAllTimeReady(true); setAllTimeError(true); });
   }
   useEffect(loadAllTimeContacts, [registeredUid]);
 
   // Per-ad contact-click totals, for the Top Ads by Contact Clicks
   // card below — mirrors how adRankingItems is derived from `views`.
-  const [contactsPerAd, setContactsPerAd] = useState({});
+  const contactsPerAdCacheKey = registeredUid ? `contactsPerAd:${registeredUid}` : null;
+  const [contactsPerAd, setContactsPerAd] = useState(() => (contactsPerAdCacheKey ? getCached(contactsPerAdCacheKey) || {} : {}));
   const [contactsPerAdError, setContactsPerAdError] = useState(false);
   const [contactsPerAdErrMsg, setContactsPerAdErrMsg] = useState('');
   function loadContactsPerAd() {
@@ -76,6 +92,7 @@ export default function Dashboard() {
           totals[id] = days.reduce((s, d) => s + (d.contacts || 0), 0);
         });
         setContactsPerAd(totals);
+        setCached(`contactsPerAd:${registeredUid}`, totals);
       })
       .catch((err) => {
         console.error('getListingAnalyticsBulk failed:', err);

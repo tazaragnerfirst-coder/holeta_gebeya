@@ -5,6 +5,7 @@ import { getUnsafeUserPreview } from './telegram';
 import { getCached, setCached } from './pageCache';
 import { subscribeFavorites } from './favorites';
 import { isActiveAd } from './adStatus';
+import { getSellerRating } from './rating';
 
 const AppDataContext = createContext(null);
 
@@ -39,6 +40,17 @@ function knownRegisteredUid() {
  * ONE place that decides when/how this data loads, so any future
  * loading tweak happens here once, not inside every page.
  *
+ * PROJECT CONVENTION: any new page/feature that loads its own data
+ * from Firestore should be wired in here (or, if it's page-scoped
+ * and parameterized in a way that doesn't fit a shared context value
+ * — e.g. a date-range picker — should at least seed its initial
+ * state from pageCache.js's getCached()/setCached() the same way
+ * this file does) rather than doing a bare one-off fetch in a
+ * useEffect. Two profile/rating fields and Dashboard's analytics
+ * were originally built as page-local fetches with no cache, which
+ * is exactly the "reloads fresh + goes blank offline" gap this
+ * pattern exists to avoid — don't reintroduce that gap in new code.
+ *
  * - Home listings: public, starts the moment the app opens.
  * - Chats / Dashboard ads: need a registered account (phone on
  *   file). They start warming up in the background the moment we
@@ -61,6 +73,10 @@ export function AppDataProvider({ children }) {
   const [adsReady, setAdsReady] = useState(() => (initialUid ? getCached(`ads:${initialUid}`) != null : false));
   const [favorites, setFavorites] = useState(() => (initialUid ? getCached(`favorites:${initialUid}`) || [] : []));
   const [favoritesReady, setFavoritesReady] = useState(() => (initialUid ? getCached(`favorites:${initialUid}`) != null : false));
+  const [profile, setProfile] = useState(() => (initialUid ? getCached(`profile:${initialUid}`) || null : null));
+  const [profileReady, setProfileReady] = useState(() => (initialUid ? getCached(`profile:${initialUid}`) != null : false));
+  const [sellerRating, setSellerRating] = useState(() => (initialUid ? getCached(`sellerRating:${initialUid}`) || { avg: 0, count: 0 } : { avg: 0, count: 0 }));
+  const [sellerRatingReady, setSellerRatingReady] = useState(() => (initialUid ? getCached(`sellerRating:${initialUid}`) != null : false));
 
   const checkedSession = useRef(false);
 
@@ -123,6 +139,8 @@ export function AppDataProvider({ children }) {
     setChats([]); setChatsReady(false);
     setAds([]); setAdsReady(false);
     setFavorites([]); setFavoritesReady(false);
+    setProfile(null); setProfileReady(false);
+    setSellerRating({ avg: 0, count: 0 }); setSellerRatingReady(false);
   }
 
   useEffect(() => {
@@ -163,6 +181,49 @@ export function AppDataProvider({ children }) {
     return unsub;
   }, [registeredUid]);
 
+  // Own users/{uid} doc — name, photo, phone, location, subscription
+  // status. Live (not a one-off fetch) so a save from EditProfileSheet
+  // (via /updateProfile on the backend) reflects here automatically,
+  // no manual refetch needed.
+  useEffect(() => {
+    if (!registeredUid) { setProfile(null); setProfileReady(false); return; }
+    const preview = getUnsafeUserPreview();
+    const fallbackName = preview?.first_name || '';
+    const fallbackPhoto = preview?.photo_url || '';
+    const unsub = onSnapshot(doc(db, 'users', registeredUid), (snap) => {
+      const data = snap.exists() ? snap.data() : {};
+      const p = {
+        name: data.fullName || fallbackName || 'User',
+        // customPhotoUrl (uploaded via Edit Profile) takes priority
+        // over photoUrl (Telegram's own picture, re-synced on every
+        // login) so a custom photo sticks even after the next sign-in.
+        photo: data.customPhotoUrl || data.photoUrl || fallbackPhoto || '',
+        phone: data.phone || '',
+        location: data.location || '',
+        subscriptionActive: !!data.subscriptionActive,
+      };
+      setProfile(p);
+      setProfileReady(true);
+      setCached(`profile:${registeredUid}`, p);
+    }, () => setProfileReady(true));
+    return unsub;
+  }, [registeredUid]);
+
+  // Seller-level aggregate rating. getSellerRating() already caches
+  // (and falls back to its own cache on failure) — this just seeds
+  // the initial render from that same cache too, and keeps it
+  // re-fetched whenever the registered account changes.
+  useEffect(() => {
+    if (!registeredUid) { setSellerRating({ avg: 0, count: 0 }); setSellerRatingReady(false); return; }
+    let cancelled = false;
+    getSellerRating(registeredUid).then((r) => {
+      if (cancelled) return;
+      setSellerRating(r);
+      setSellerRatingReady(true);
+    });
+    return () => { cancelled = true; };
+  }, [registeredUid]);
+
   return (
     <AppDataContext.Provider value={{
       listings, listingsReady,
@@ -170,6 +231,8 @@ export function AppDataProvider({ children }) {
       chats, chatsReady,
       ads, adsReady,
       favorites, favoritesReady,
+      profile, profileReady,
+      sellerRating, sellerRatingReady,
     }}>
       {children}
     </AppDataContext.Provider>

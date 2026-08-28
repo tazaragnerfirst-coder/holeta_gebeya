@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getUnsafeUserPreview } from '../lib/telegram';
-import { getMyProfile } from '../lib/profile';
 import { useAppData } from '../lib/appData';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { auth, BACKEND_URL } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { SUPPORT_UID } from '../lib/constants';
 import { getAppBannerUrl, getCachedAppBannerUrl } from '../lib/appBanner';
-import { getSellerRating } from '../lib/rating';
 import Icon from '../components/Icon.jsx';
 import StarRow from '../components/StarRow.jsx';
 import EditProfileSheet from '../components/EditProfileSheet.jsx';
@@ -16,10 +14,8 @@ import EditProfileSheet from '../components/EditProfileSheet.jsx';
 export default function Profile() {
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
-  const { registeredUid, clearRegistered, ads } = useAppData();
-  const [profile, setProfile] = useState(null);
+  const { registeredUid, clearRegistered, ads, profile, sellerRating: rating } = useAppData();
   const [bannerUrl, setBannerUrl] = useState(() => getCachedAppBannerUrl());
-  const [rating, setRating] = useState({ avg: 0, count: 0 });
 
   const [editOpen, setEditOpen] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
@@ -27,21 +23,7 @@ export default function Profile() {
 
   const preview = getUnsafeUserPreview();
 
-  async function loadProfile() {
-    if (registeredUid) {
-      const p = await getMyProfile(registeredUid);
-      setProfile(p);
-    } else {
-      setProfile(null);
-    }
-  }
-
-  useEffect(() => { loadProfile(); }, [registeredUid]);
   useEffect(() => { getAppBannerUrl().then(setBannerUrl); }, []);
-  useEffect(() => {
-    if (registeredUid) getSellerRating(registeredUid).then(setRating);
-    else setRating({ avg: 0, count: 0 });
-  }, [registeredUid]);
 
   const name = profile?.name || [preview?.first_name, preview?.last_name].filter(Boolean).join(' ') || 'Guest';
   const photo = profile?.photo || preview?.photo_url || '';
@@ -70,7 +52,6 @@ export default function Profile() {
       const data = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(data.error || "Couldn't save your details.");
       setEditOpen(false);
-      await loadProfile();
     } catch (err) {
       setEditError(err.message || "Couldn't save your details. Please try again.");
     } finally {
@@ -97,7 +78,6 @@ export default function Profile() {
     const uid = registeredUid;
     try { await signOut(auth); } catch {}
     if (uid) clearRegistered(uid);
-    setProfile(null);
     navigate('/');
   }
 
