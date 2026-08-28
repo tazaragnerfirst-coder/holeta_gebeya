@@ -7,6 +7,7 @@ import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { isActiveAd, isPausedAd, isExpired, daysSincePosted } from '../lib/adStatus';
 import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
+import { getCached, setCached } from '../lib/pageCache';
 import Icon from '../components/Icon.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 import CombinedTrendChart from '../components/CombinedTrendChart.jsx';
@@ -74,7 +75,10 @@ export default function AdsManage() {
   // own page (Expired) and don't need push/edit/delete here.
   const manageable = ads.filter((a) => !isExpired(a));
 
-  const [perAd, setPerAd] = useState({});
+  // Page-scoped, so per the convention in appData.jsx these seed
+  // from pageCache.js rather than living in the shared context.
+  const perAdCacheKey = registeredUid ? `contactsPerAdManage:${registeredUid}` : null;
+  const [perAd, setPerAd] = useState(() => (perAdCacheKey ? getCached(perAdCacheKey) || {} : {}));
   const [perAdError, setPerAdError] = useState(false);
   const [perAdErrMsg, setPerAdErrMsg] = useState('');
 
@@ -82,7 +86,7 @@ export default function AdsManage() {
     if (manageable.length === 0) return;
     setPerAdError(false);
     getListingAnalyticsBulk(manageable.map((a) => a.id), registeredUid, Infinity)
-      .then(setPerAd)
+      .then((data) => { setPerAd(data); setCached(`contactsPerAdManage:${registeredUid}`, data); })
       .catch((err) => {
         console.error('getListingAnalyticsBulk failed:', err);
         setPerAdError(true);
@@ -94,17 +98,21 @@ export default function AdsManage() {
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);
-  const [analytics, setAnalytics] = useState([]);
-  const [analyticsReady, setAnalyticsReady] = useState(false);
-  const [analyticsError, setAnalyticsError] = useState(false);
   const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
+  const analyticsCacheKey = registeredUid ? `analytics:${registeredUid}:${range.key}` : null;
+  const [analytics, setAnalytics] = useState(() => (analyticsCacheKey ? getCached(analyticsCacheKey) || [] : []));
+  const [analyticsReady, setAnalyticsReady] = useState(() => (analyticsCacheKey ? getCached(analyticsCacheKey) != null : false));
+  const [analyticsError, setAnalyticsError] = useState(false);
 
   function loadAnalytics() {
     if (!registeredUid) return;
-    setAnalyticsReady(false);
     setAnalyticsError(false);
     getSellerAnalytics(registeredUid, range.days)
-      .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
+      .then((data) => {
+        setAnalytics(data);
+        setAnalyticsReady(true);
+        setCached(`analytics:${registeredUid}:${range.key}`, data);
+      })
       .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
   }
   useEffect(loadAnalytics, [registeredUid, range.days]);

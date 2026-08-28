@@ -3,6 +3,7 @@ import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
+import { getCached, setCached } from '../lib/pageCache';
 import Icon from '../components/Icon.jsx';
 import DailyRateChart from '../components/DailyRateChart.jsx';
 import RankedBarChart from '../components/RankedBarChart.jsx';
@@ -31,23 +32,31 @@ export default function ContactsDetail() {
 
   // One bulk fetch (all-time) per ad — gives the accurate all-time
   // contacts total used both for the stat card and to rank ads below.
-  const [perAd, setPerAd] = useState({});
-  const [perAdReady, setPerAdReady] = useState(false);
+  // Page-scoped, so per the convention in appData.jsx these seed
+  // from pageCache.js rather than living in the shared context.
+  const perAdCacheKey = registeredUid ? `contactsPerAdDetail:${registeredUid}` : null;
+  const [perAd, setPerAd] = useState(() => (perAdCacheKey ? getCached(perAdCacheKey) || {} : {}));
+  const [perAdReady, setPerAdReady] = useState(() => (perAdCacheKey ? getCached(perAdCacheKey) != null : false));
   const [perAdError, setPerAdError] = useState(false);
   const [perAdErrMsg, setPerAdErrMsg] = useState('');
 
   const [rangeKey, setRangeKey] = useState('30');
   const [rangeOpen, setRangeOpen] = useState(false);
-  const [analytics, setAnalytics] = useState([]);
-  const [analyticsReady, setAnalyticsReady] = useState(false);
+  const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
+  const analyticsCacheKey = registeredUid ? `analytics:${registeredUid}:${range.key}` : null;
+  const [analytics, setAnalytics] = useState(() => (analyticsCacheKey ? getCached(analyticsCacheKey) || [] : []));
+  const [analyticsReady, setAnalyticsReady] = useState(() => (analyticsCacheKey ? getCached(analyticsCacheKey) != null : false));
   const [analyticsError, setAnalyticsError] = useState(false);
 
   function loadPerAd() {
     if (!adsReady || ads.length === 0) { setPerAdReady(true); return; }
-    setPerAdReady(false);
     setPerAdError(false);
     getListingAnalyticsBulk(ads.map((a) => a.id), registeredUid, Infinity)
-      .then((data) => { setPerAd(data); setPerAdReady(true); })
+      .then((data) => {
+        setPerAd(data);
+        setPerAdReady(true);
+        setCached(`contactsPerAdDetail:${registeredUid}`, data);
+      })
       .catch((err) => {
         console.error('getListingAnalyticsBulk failed:', err);
         setPerAdReady(true);
@@ -57,14 +66,15 @@ export default function ContactsDetail() {
   }
   useEffect(loadPerAd, [adsReady, ads]);
 
-  const range = RANGE_OPTIONS.find((r) => r.key === rangeKey) || RANGE_OPTIONS[1];
-
   function loadAnalytics() {
     if (!registeredUid) return;
-    setAnalyticsReady(false);
     setAnalyticsError(false);
     getSellerAnalytics(registeredUid, range.days)
-      .then((data) => { setAnalytics(data); setAnalyticsReady(true); })
+      .then((data) => {
+        setAnalytics(data);
+        setAnalyticsReady(true);
+        setCached(`analytics:${registeredUid}:${range.key}`, data);
+      })
       .catch(() => { setAnalyticsReady(true); setAnalyticsError(true); });
   }
   useEffect(loadAnalytics, [registeredUid, range.days]);
