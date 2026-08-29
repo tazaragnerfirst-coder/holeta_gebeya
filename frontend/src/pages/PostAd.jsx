@@ -11,6 +11,7 @@ import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
 import ImageUploader from '../components/ImageUploader.jsx';
 import ChipSelect from '../components/ChipSelect.jsx';
 import { ErrorBanner } from '../components/Banner.jsx';
+import { runInBackground, isTransientError } from '../lib/postProgress';
 
 export default function PostAd() {
   const navigate = useNavigate();
@@ -123,6 +124,100 @@ export default function PostAd() {
     return errs;
   }
 
+  // Does the actual sign-in + photo compression + Firestore write.
+  // Safe to call more than once (each call re-checks auth/profile),
+  // which is what lets the background retry in submit() below just
+  // call this again rather than needing its own separate logic.
+  async function publish() {
+    // Registration (Telegram sign-in + phone/full name) is only
+    // requested at the moment of posting — browsing never requires it.
+    const user = await requireRegistered();
+
+    // Photos are resized + compressed client-side and stored as
+    // base64 strings directly on the listing document — no
+    // Firebase Storage (which needs the paid Blaze plan) involved.
+    // In edit mode, images already saved from before arrive here as
+    // plain data-URL strings (from the loaded doc) and are kept
+    // as-is; only newly-picked File objects need compressing.
+    let compressedImages = [];
+    if (images.length > 0) {
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        compressedImages.push(typeof img === 'string' ? img : await fileToCompressedBase64(img));
+      }
+    }
+
+    // Display name + avatar come from the seller's own verified
+    // profile (users/{uid}.fullName / photoUrl, set at signup and
+    // from Telegram) — not just the unsafe client-side preview —
+    // so buyers see who they'd actually be chatting with.
+    const myProfile = await getMyProfile(user.uid);
+
+    const payload = {
+      sellerId: user.uid,
+      sellerName: myProfile.name,
+      sellerPhoto: myProfile.photo,
+      title,
+      price: Number(price),
+      description,
+      location,
+      category: categoryId,
+      subcategory: subcategoryId,
+      attributes: attrs,
+      condition: attrs.condition || '',
+      images: compressedImages,
+    };
+
+    if (isEdit) {
+      // Edits don't touch createdAt/views/expiresAt/status — those
+      // are owned by the post flow and the Renew action respectively.
+      await updateDoc(doc(db, 'listings', editId), payload);
+      return { path: `/product/${editId}` };
+    }
+
+    const ref2 = await addDoc(collection(db, 'listings'), {
+      ...payload,
+      createdAt: serverTimestamp(),
+      expiresAt: computeExpiresAt(),
+      boostedUntil: null,
+      views: 0,
+      status: 'active',
+    });
+    // Records lastPostAt on the user's profile so the 2-minute
+    // cooldown (enforced in firestore.rules) applies to the next
+    // post attempt. Best-effort — the post above already
+    // succeeded, so a failure here shouldn't block navigation.
+    try {
+      const idToken = await auth.currentUser.getIdToken();
+      fetch(`${BACKEND_URL}/recordPost`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      }).catch(() => {});
+    } catch {}
+    return { path: `/product/${ref2.id}` };
+  }
+
+  // Tells the person's Support chat what happened, once, when a
+  // background retry runs out of attempts — best-effort, since if
+  // the backend never woke up this call may also fail silently.
+  async function notifySupportOfFailure() {
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+      fetch(`${BACKEND_URL}/notifySupportMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idToken,
+          text: isEdit
+            ? "Your ad edit didn't save after a few tries — the server may have been slow to respond. Please open the ad and try Save again."
+            : "Your ad didn't post after a few tries — the server may have been slow to respond. Please try posting again from the + button.",
+        }),
+      }).catch(() => {});
+    } catch {}
+  }
+
   async function submit() {
     const errs = validate();
     setErrors(errs);
@@ -134,92 +229,35 @@ export default function PostAd() {
     }
 
     setSubmitting(true);
-    setStatusMsg('Signing in...');
+    setStatusMsg(isEdit ? 'Saving...' : 'Publishing...');
     try {
-      // Registration (Telegram sign-in + phone/full name) is only
-      // requested at the moment of posting — browsing never requires it.
-      const user = await requireRegistered();
-
-      // Photos are resized + compressed client-side and stored as
-      // base64 strings directly on the listing document — no
-      // Firebase Storage (which needs the paid Blaze plan) involved.
-      // In edit mode, images already saved from before arrive here as
-      // plain data-URL strings (from the loaded doc) and are kept
-      // as-is; only newly-picked File objects need compressing.
-      let compressedImages = [];
-      if (images.length > 0) {
-        setStatusMsg(`Processing photos (0/${images.length})...`);
-        for (let i = 0; i < images.length; i++) {
-          const img = images[i];
-          compressedImages.push(typeof img === 'string' ? img : await fileToCompressedBase64(img));
-          setStatusMsg(`Processing photos (${i + 1}/${images.length})...`);
-        }
-      }
-
-      setStatusMsg(isEdit ? 'Saving...' : 'Publishing...');
-      // Display name + avatar come from the seller's own verified
-      // profile (users/{uid}.fullName / photoUrl, set at signup and
-      // from Telegram) — not just the unsafe client-side preview —
-      // so buyers see who they'd actually be chatting with.
-      const myProfile = await getMyProfile(user.uid);
-      const sellerName = myProfile.name;
-      const sellerPhoto = myProfile.photo;
-
-      const payload = {
-        sellerId: user.uid,
-        sellerName,
-        sellerPhoto,
-        title,
-        price: Number(price),
-        description,
-        location,
-        category: categoryId,
-        subcategory: subcategoryId,
-        attributes: attrs,
-        condition: attrs.condition || '',
-        images: compressedImages,
-      };
-
-      if (isEdit) {
-        // Edits don't touch createdAt/views/expiresAt/status — those
-        // are owned by the post flow and the Renew action respectively.
-        await updateDoc(doc(db, 'listings', editId), payload);
-        navigate(`/product/${editId}`);
-      } else {
-        const ref2 = await addDoc(collection(db, 'listings'), {
-          ...payload,
-          createdAt: serverTimestamp(),
-          expiresAt: computeExpiresAt(),
-          boostedUntil: null,
-          views: 0,
-          status: 'active',
-        });
-        // Records lastPostAt on the user's profile so the 2-minute
-        // cooldown (enforced in firestore.rules) applies to the next
-        // post attempt. Best-effort — the post above already
-        // succeeded, so a failure here shouldn't block navigation.
-        try {
-          const idToken = await auth.currentUser.getIdToken();
-          fetch(`${BACKEND_URL}/recordPost`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-          }).catch(() => {});
-        } catch {}
-        navigate(`/product/${ref2.id}`);
-      }
-    } catch (err) {
-      console.error(err);
-      const isColdStart = /fetch|network|failed/i.test(err.message || '');
-      const isCooldown = err.code === 'permission-denied' && !isEdit;
-      setErrors({
-        submit: isCooldown
-          ? "You're posting a bit too quickly — please wait a couple of minutes and try again."
-          : `Couldn't ${isEdit ? 'save' : 'post'} your ad: ${err.message || err}.${isColdStart ? ' If this is the first request in a while, the server may still be waking up — please try again in 30 seconds.' : ''}`,
-      });
-    } finally {
+      // First attempt happens right here, same as before — the
+      // normal case (server already warm) still posts and navigates
+      // in a second or two with no extra ceremony.
+      const { path } = await publish();
       setSubmitting(false);
       setStatusMsg('');
+      navigate(path);
+    } catch (err) {
+      console.error(err);
+      setSubmitting(false);
+      setStatusMsg('');
+      const isCooldown = err.code === 'permission-denied' && !isEdit;
+      if (isCooldown) {
+        setErrors({ submit: "You're posting a bit too quickly — please wait a couple of minutes and try again." });
+        return;
+      }
+      if (isTransientError(err)) {
+        // Looks like a cold-start/network hiccup, not a real
+        // rejection — free the page immediately (the person can
+        // navigate away) and keep retrying quietly in the
+        // background. The small ring at the top of every screen
+        // shows it's still working; Support chat gets a message
+        // only if every retry fails.
+        runInBackground(publish, { onFail: notifySupportOfFailure });
+        return;
+      }
+      setErrors({ submit: `Couldn't ${isEdit ? 'save' : 'post'} your ad: ${err.message || err}.` });
     }
   }
 

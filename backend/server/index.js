@@ -248,6 +248,58 @@ app.post('/recordPost', async (req, res) => {
   }
 });
 
+// Writes a system message from Support into the caller's own
+// support chat (id `support_{uid}`, creating it if needed) — used
+// when a background action (posting/saving an ad) keeps failing
+// after a few silent retries, so the person finds out without the
+// app having blocked them on the page while it retried. senderId
+// 'support' and the isSupport chat shape must match what
+// ChatThread.jsx creates on the client (see frontend/src/lib/
+// constants.js) — only this trusted backend, via the Admin SDK, can
+// post *as* Support; firestore.rules only lets a regular signed-in
+// user post with senderId == their own uid.
+app.post('/notifySupportMessage', async (req, res) => {
+  try {
+    const { idToken, text } = req.body || {};
+    if (!idToken || !text) return res.status(400).json({ error: 'Missing idToken or text.' });
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const chatRef = db.collection('chats').doc(`support_${uid}`);
+    const snap = await chatRef.get();
+    if (!snap.exists) {
+      await chatRef.set({
+        participants: ['support', uid],
+        buyerId: uid,
+        buyerName: 'You',
+        sellerId: 'support',
+        sellerName: 'Holeta Gebeya Support',
+        isSupport: true,
+        listingTitle: '',
+        listingPhoto: '',
+        lastMessage: '',
+        lastSenderId: '',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+    await chatRef.collection('messages').add({
+      senderId: 'support',
+      text,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    await chatRef.update({
+      lastMessage: text,
+      lastSenderId: 'support',
+      lastMessageAt: admin.firestore.FieldValue.serverTimestamp(),
+      [`unreadCount.${uid}`]: admin.firestore.FieldValue.increment(1),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('notifySupportMessage failed:', err);
+    res.json({ ok: false });
+  }
+});
+
 app.post('/incrementListingView', async (req, res) => {
   try {
     const id = req.body.listingId;

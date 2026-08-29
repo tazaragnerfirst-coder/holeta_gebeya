@@ -466,6 +466,13 @@ textarea.field{min-height:84px;resize:vertical;}
 .feature-row:last-child{border-bottom:none;}
 .feature-row .fi{width:28px;height:28px;border-radius:9px;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
 
+/* --- PostProgressRing: small top-of-app indicator for a post/save retrying in the background --- */
+.post-progress-ring{position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:14px;width:26px;height:26px;display:flex;align-items:center;justify-content:center;z-index:150;max-width:480px;margin:0 auto;pointer-events:none;}
+.ppr-track{stroke:var(--line);}
+.ppr-arc{stroke:var(--primary);stroke-linecap:round;stroke-dasharray:56.5;stroke-dashoffset:20;transform-origin:center;animation:ppr-spin .9s linear infinite;}
+.post-progress-ring.is-failed .ppr-arc{stroke:var(--safety);animation:none;stroke-dashoffset:0;}
+@keyframes ppr-spin{to{transform:rotate(360deg);}}
+
 .bottom-nav{display:flex;align-items:center;width:100%;height:72px;background:var(--surface);border-top:1px solid var(--line);padding:0 0 env(safe-area-inset-bottom,0px);position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:50;}
 .nav-icon-wrap{position:relative;display:flex;}
 .nav-badge{position:absolute;top:-4px;right:-8px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--primary);color:#fff;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;}

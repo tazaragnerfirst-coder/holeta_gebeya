@@ -6,6 +6,7 @@ import { AuthGateProvider } from './lib/authGate.jsx';
 import { AppDataProvider, useAppData } from './lib/appData.jsx';
 import { BACKEND_URL } from './lib/firebase';
 import { getTelegramWebApp } from './lib/telegram';
+import PostProgressRing from './components/PostProgressRing.jsx';
 
 // Home loads eagerly (it's the landing screen, needed immediately).
 // Everything else splits into its own chunk and loads on first visit
@@ -104,6 +105,7 @@ export default function App() {
             )}
           </div>
           <TelegramBackButton />
+          <PostProgressRing />
           <ConditionalBottomNav />
         </div>
       </AuthGateProvider>
