@@ -11,7 +11,7 @@ import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
 import ImageUploader from '../components/ImageUploader.jsx';
 import ChipSelect from '../components/ChipSelect.jsx';
 import { ErrorBanner } from '../components/Banner.jsx';
-import { runInBackground, isTransientError } from '../lib/postProgress';
+import { runInBackground, isTransientError, withMinDuration } from '../lib/postProgress';
 
 export default function PostAd() {
   const navigate = useNavigate();
@@ -231,10 +231,11 @@ export default function PostAd() {
     setSubmitting(true);
     setStatusMsg(isEdit ? 'Saving...' : 'Publishing...');
     try {
-      // First attempt happens right here, same as before — the
-      // normal case (server already warm) still posts and navigates
-      // in a second or two with no extra ceremony.
-      const { path } = await publish();
+      // First attempt happens right here, same as before — but even
+      // when it finishes almost instantly (server already warm),
+      // withMinDuration keeps the top ring showing briefly so
+      // posting never feels like it skipped doing any real work.
+      const { path } = await withMinDuration(publish);
       setSubmitting(false);
       setStatusMsg('');
       navigate(path);

@@ -30,6 +30,32 @@ export function isTransientError(err) {
   return /fetch|network|failed to fetch|unavailable/i.test(err?.message || '') || err?.code === 'unavailable';
 }
 
+// Shows the top ring for at least `minMs`, even when the call
+// underneath finishes almost instantly — an instant, no-ceremony
+// post reads as a cheap/unpolished app; a brief visible "working"
+// moment (even for genuinely fast work) reads as a real service
+// doing real checks. Unlike runInBackground, this never retries —
+// a real failure still surfaces to the caller right away, just not
+// before the minimum duration has elapsed.
+export async function withMinDuration(fn, minMs = 900) {
+  setState({ active: true, failed: false });
+  const start = Date.now();
+  const wait = async () => {
+    const remaining = minMs - (Date.now() - start);
+    if (remaining > 0) await new Promise((r) => setTimeout(r, remaining));
+  };
+  try {
+    const result = await fn();
+    await wait();
+    setState({ active: false, failed: false });
+    return result;
+  } catch (err) {
+    await wait();
+    setState({ active: false, failed: false });
+    throw err;
+  }
+}
+
 // Spread over ~35s — enough to cover a Render free-tier cold start
 // (up to ~30s) without hammering it.
 const RETRY_DELAYS_MS = [5000, 10000, 20000];
