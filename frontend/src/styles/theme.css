@@ -82,7 +82,11 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
    vertical space its own image needs, and the next card slots in
    right below it — not row-locked to whatever is tallest in the
    opposite column, the way CSS grid would do it. */
-.listing-grid{column-count:2;column-gap:6px;}
+/* Bleeds past .page's 16px side padding, leaving only a slim 6px
+   edge margin — the AliExpress-style tight grid Taza wants, without
+   hardcoding a pixel width (still relative to .page's own padding,
+   so it stays correct if that ever changes). */
+.listing-grid{column-count:2;column-gap:6px;margin:0 -10px;}
 .listing-grid > .listing-card{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:6px;}
 .listing-card{display:block;text-decoration:none;color:inherit;background:transparent;transition:transform .12s ease;}
 .listing-card:active{transform:scale(.97);}
