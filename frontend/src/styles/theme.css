@@ -14,8 +14,8 @@
   /* Plain neutral gray-black (no warm/green tint, not pure #000) —
      surfaces step up slightly for elevation, cards separated by the
      border (see .listing-card) rather than a color trick. */
-  --bg-app:#141414; --surface:#1E1E1E; --surface-sunken:#262626; --card-surface:#1E1E1E;
-  --ink:#F1EDE0; --ink-soft:#C9C4B0; --ink-faint:#83887A; --line:#2E2E2E;
+  --bg-app:#202124; --surface:#303134; --surface-sunken:#3C4043; --card-surface:#303134;
+  --ink:#E8EAED; --ink-soft:#BDC1C6; --ink-faint:#9AA0A6; --line:#5F6368;
   --primary:#4FA184; --primary-dark:#12332A; --primary-tint:#1C2E27;
   --accent:#E5A03B; --accent-dark:#E8AE56; --accent-tint:#3A2E16;
   --safety:#E5805F; --safety-tint:#3A2419; --ok:#4FA184;
