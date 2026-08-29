@@ -15,19 +15,11 @@ service cloud.firestore {
     // Anyone can browse listings — no login required to look around.
     match /listings/{listingId} {
       allow read: if true;
-      // Basic spam guard: a seller must wait at least 2 minutes
-      // between posts. lastPostAt lives on their own users/{uid} doc
-      // (admin-write-only — see below) and is bumped by the backend's
-      // /recordPost endpoint right after a successful post, so this
-      // check is enforced here in rules and can't be bypassed by
-      // calling Firestore directly instead of going through the app.
+      // Sellers can post as often as they like for now — the
+      // 2-minute cooldown spam guard is disabled (not needed at the
+      // moment). Only sellerId + not-suspended are still enforced.
       allow create: if request.auth != null
         && request.resource.data.sellerId == request.auth.uid
-        && (
-          !exists(/databases/$(database)/documents/users/$(request.auth.uid))
-          || !('lastPostAt' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data)
-          || request.time > get(/databases/$(database)/documents/users/$(request.auth.uid)).data.lastPostAt + duration.value(2, 'm')
-        )
         // A suspended seller (set by the admin panel) can't post new
         // listings. Their existing listings and browsing/messaging
         // are untouched — this only blocks new posts.

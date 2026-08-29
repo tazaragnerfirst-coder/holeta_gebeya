@@ -242,9 +242,9 @@ export default function PostAd() {
       console.error(err);
       setSubmitting(false);
       setStatusMsg('');
-      const isCooldown = err.code === 'permission-denied' && !isEdit;
-      if (isCooldown) {
-        setErrors({ submit: "You're posting a bit too quickly — please wait a couple of minutes and try again." });
+      const isSuspended = err.code === 'permission-denied' && !isEdit;
+      if (isSuspended) {
+        setErrors({ submit: "Your account can't post right now — please contact support." });
         return;
       }
       if (isTransientError(err)) {
