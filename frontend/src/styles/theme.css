@@ -322,7 +322,7 @@ textarea.field{min-height:84px;resize:vertical;}
 .range-option{display:block;width:100%;text-align:left;background:none;border:none;padding:8px 10px;border-radius:var(--radius-sm);font-size:12.5px;font-weight:600;color:var(--ink-soft);}
 .range-option.active{background:var(--primary-tint);color:var(--primary);}
 
-.chart-card{background:transparent;border:none;border-radius:0;padding:14px 0;box-shadow:none;}
+.chart-card{background:var(--surface-sunken);border:none;border-radius:var(--radius-md);padding:14px;box-shadow:none;}
 .chart-empty{display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-size:12.5px;font-weight:500;}
 
 /* Chart title (+ icon) and its range picker, living inside the
