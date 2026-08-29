@@ -13,7 +13,7 @@ import { getHomeBanners, getCachedHomeBanners } from '../lib/homeBanners';
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 
 export default function Home() {
-  const { listings, listingsReady } = useAppData();
+  const { listings, listingsReady, hasMoreListings, loadingMoreListings, loadMoreListings } = useAppData();
   const loading = !listingsReady;
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
@@ -24,6 +24,26 @@ export default function Home() {
   const [banners, setBanners] = useState(() => getCachedHomeBanners());
 
   useEffect(() => { getHomeBanners().then(setBanners); }, []);
+
+  // Fires loadMoreListings() while the sentinel is still well below
+  // the screen (rootMargin) — before the person has actually
+  // scrolled to the bottom — so the next page has usually already
+  // landed by the time they get there instead of them hitting a
+  // visible wait. Also runs while filtering: it just grows the pool
+  // `filtered` searches over, since search/category/price are all
+  // client-side over whatever's currently loaded.
+  const sentinelRef = useRef(null);
+  useEffect(() => {
+    if (!hasMoreListings) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMoreListings(); },
+      { rootMargin: '800px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMoreListings, loadMoreListings]);
 
   // Measures the real, rendered bottom edge of the search bar at the
   // moment it's tapped, so the dropdown lands exactly under it —
@@ -146,6 +166,13 @@ export default function Home() {
           {filtered.map((item) => <ListingCard key={item.id} item={item} />)}
         </div>
       )}
+
+      {/* Invisible trigger for the prefetch-ahead described above —
+          rootMargin means loadMoreListings() fires while this is
+          still hundreds of px offscreen, not once it's actually
+          visible. */}
+      {!loading && hasMoreListings && <div ref={sentinelRef} style={{ height: 1 }} />}
+      {loadingMoreListings && <p className="helper-text" style={{ textAlign: 'center' }}>Loading more…</p>}
     </div>
   );
 }

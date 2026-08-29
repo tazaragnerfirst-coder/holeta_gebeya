@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { collection, query, orderBy, limit, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { getUnsafeUserPreview } from './telegram';
 import { getCached, setCached } from './pageCache';
@@ -10,6 +10,13 @@ import { getSellerRating } from './rating';
 const AppDataContext = createContext(null);
 
 const REG_KEY = 'hg_registered:';
+
+// Small first page so the feed paints fast even on a slow
+// connection, instead of waiting on a bigger batch to arrive all at
+// once — loadMoreListings() below fetches further pages the same
+// size as the person scrolls (or as search/filter needs more to
+// search through — see Home.jsx's prefetch-ahead sentinel).
+const LISTINGS_PAGE_SIZE = 12;
 
 function expectedUid() {
   const tgUser = getUnsafeUserPreview();
@@ -64,6 +71,16 @@ function knownRegisteredUid() {
 export function AppDataProvider({ children }) {
   const [listings, setListings] = useState(() => getCached('listings') || []);
   const [listingsReady, setListingsReady] = useState(() => getCached('listings') != null);
+  // Whether a further (older) page of listings exists to fetch, and
+  // whether one is in flight right now — both read by Home.jsx's
+  // scroll sentinel to decide when to call loadMoreListings().
+  const [hasMoreListings, setHasMoreListings] = useState(true);
+  const [loadingMoreListings, setLoadingMoreListings] = useState(false);
+  // The last doc of whichever page most recently loaded (live page 1
+  // or a fetched-once later page) — Firestore's own cursor for
+  // "continue after this point", not re-derived from `listings`
+  // state so it stays correct even after de-duping merges below.
+  const lastListingDocRef = useRef(null);
 
   const initialUid = knownRegisteredUid();
   const [registeredUid, setRegisteredUid] = useState(initialUid);
@@ -81,7 +98,13 @@ export function AppDataProvider({ children }) {
   const checkedSession = useRef(false);
 
   useEffect(() => {
-    const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(30));
+    // Only the first page stays real-time — a brand new post should
+    // appear at the top instantly. Older pages (fetched by
+    // loadMoreListings below) are one-off reads: keeping a live
+    // listener open per page would mean as many Firestore listeners
+    // as pages scrolled, for no real benefit (nobody needs a stranger's
+    // 3-page-deep old listing to update live).
+    const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(LISTINGS_PAGE_SIZE));
     const unsub = onSnapshot(q, (snap) => {
       // Paused (and expired) listings stay in Firestore for the
       // seller to manage, but shouldn't show up in the public feed.
@@ -89,9 +112,47 @@ export function AppDataProvider({ children }) {
       setListings(data);
       setListingsReady(true);
       setCached('listings', data);
+      lastListingDocRef.current = snap.docs[snap.docs.length - 1] || null;
+      setHasMoreListings(snap.docs.length === LISTINGS_PAGE_SIZE);
     }, () => setListingsReady(true));
     return unsub;
   }, []);
+
+  // Fetches the next page (after whichever doc was loaded last) and
+  // appends it — called by Home.jsx's scroll sentinel before the
+  // person actually reaches the bottom, so the next batch is usually
+  // already there by the time they scroll that far. De-dupes by id
+  // since the live first page can occasionally overlap with a
+  // just-fetched later page (e.g. a listing's rank shifted between
+  // the two reads) — safe to call repeatedly; a call already in
+  // flight, or no further page, is a no-op.
+  async function loadMoreListings() {
+    if (loadingMoreListings || !hasMoreListings || !lastListingDocRef.current) return;
+    setLoadingMoreListings(true);
+    try {
+      const q = query(
+        collection(db, 'listings'),
+        orderBy('createdAt', 'desc'),
+        startAfter(lastListingDocRef.current),
+        limit(LISTINGS_PAGE_SIZE)
+      );
+      const snap = await getDocs(q);
+      const newDocs = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter(isActiveAd);
+      setListings((prev) => {
+        const seen = new Set(prev.map((l) => l.id));
+        const merged = [...prev, ...newDocs.filter((l) => !seen.has(l.id))];
+        setCached('listings', merged);
+        return merged;
+      });
+      lastListingDocRef.current = snap.docs[snap.docs.length - 1] || lastListingDocRef.current;
+      setHasMoreListings(snap.docs.length === LISTINGS_PAGE_SIZE);
+    } catch {
+      // Best-effort — leave hasMoreListings as-is so the sentinel
+      // just tries again next time it comes into view.
+    } finally {
+      setLoadingMoreListings(false);
+    }
+  }
 
   // Background re-verification of the optimistic localStorage flag
   // above. Doesn't gate the UI — by the time this resolves, chats/ads
@@ -227,6 +288,7 @@ export function AppDataProvider({ children }) {
   return (
     <AppDataContext.Provider value={{
       listings, listingsReady,
+      hasMoreListings, loadingMoreListings, loadMoreListings,
       registeredUid, markRegistered, clearRegistered,
       chats, chatsReady,
       ads, adsReady,
