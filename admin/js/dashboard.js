@@ -717,14 +717,17 @@ function initSupport() {
 
 // --- Categories / attribute schema (categories collection) +
 // reference data (referenceData collection) — see #hog001 in memory.
-// Category name/icon/popular/order get proper fields; the deeper
-// nested pieces (a subcategory's attribute definitions, a brand's
-// model list) are edited as JSON blocks rather than a full per-field
-// form-builder UI — still no-code/no-redeploy, just less UI to build
-// and maintain for something edited far less often than, say, the
-// carousel images.
+// Everything here is real form fields, no JSON editing: a category's
+// subcategories and a subcategory's attribute fields are built one
+// at a time (name/type/options inputs), and a brand's model list is
+// built the same way (name + comma-separated storage/RAM/color).
+// Edits happen against a working-copy draft, only written to
+// Firestore on Save.
 let categoriesData = [];
 let refDataBrands = [];
+let categoryDrafts = {};
+let expandedSubcat = {};
+let brandDrafts = {};
 
 function slugify(s) {
   return String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `item-${Date.now()}`;
@@ -795,56 +798,333 @@ function renderCategoriesList() {
 
 function toggleCategoryEditor(id) {
   const holder = document.getElementById(`cat-editor-${id}`);
-  if (holder.childElementCount > 0) { holder.innerHTML = ''; return; }
+  if (holder.childElementCount > 0) {
+    holder.innerHTML = '';
+    delete categoryDrafts[id];
+    delete expandedSubcat[id];
+    return;
+  }
   const cat = categoriesData.find((c) => c.id === id);
+  categoryDrafts[id] = JSON.parse(JSON.stringify(cat)); // working copy — only committed on Save
+  expandedSubcat[id] = null;
+  renderCategoryEditor(id);
+}
+
+function renderCategoryEditor(id) {
+  const holder = document.getElementById(`cat-editor-${id}`);
+  const draft = categoryDrafts[id];
   holder.innerHTML = `
     <div class="card">
       <label class="field-label">Name</label>
-      <input class="field" type="text" id="edit-name-${id}" value="${cat.name}" />
+      <input class="field" type="text" id="edit-name-${id}" value="${draft.name}" />
       <label class="field-label">Icon</label>
-      <input class="field" type="text" id="edit-icon-${id}" value="${cat.icon || ''}" />
+      <input class="field" type="text" id="edit-icon-${id}" value="${draft.icon || ''}" />
       <label class="field-label">Order</label>
-      <input class="field" type="number" id="edit-order-${id}" value="${cat.order}" />
-      <label class="field-label"><input type="checkbox" id="edit-popular-${id}" ${cat.popular ? 'checked' : ''}/> Popular (shown first)</label>
-      <label class="field-label">Subcategories (JSON) — array of { id, name, attributes: [...] }. Use an existing category as a template for the attribute shape (key/label/type/required/options, or dependsOn + refCollection for phone-style dependent chains).</label>
-      <textarea class="field" id="edit-subs-${id}" rows="14" style="font-family:monospace;font-size:12px;">${JSON.stringify(cat.subcategories, null, 2)}</textarea>
+      <input class="field" type="number" id="edit-order-${id}" value="${draft.order}" />
+      <label class="field-label"><input type="checkbox" id="edit-popular-${id}" ${draft.popular ? 'checked' : ''}/> Popular (shown first)</label>
+
+      <h4>Subcategories</h4>
+      <div id="subcat-list-${id}"></div>
+      <div class="row">
+        <input class="field" type="text" id="new-subcat-name-${id}" placeholder="New subcategory name" />
+        <button type="button" class="btn-ghost" id="add-subcat-${id}">+ Add subcategory</button>
+      </div>
+
       <div id="edit-error-${id}" class="error-banner" hidden></div>
       <div class="row">
-        <button type="button" class="btn-primary" id="edit-save-${id}">Save</button>
+        <button type="button" class="btn-primary" id="edit-save-${id}">Save category</button>
         <button type="button" class="btn-ghost" id="edit-cancel-${id}">Cancel</button>
       </div>
     </div>
   `;
-  document.getElementById(`edit-cancel-${id}`).addEventListener('click', () => { holder.innerHTML = ''; });
+  renderSubcatList(id);
+  document.getElementById(`add-subcat-${id}`).addEventListener('click', () => addSubcategory(id));
+  document.getElementById(`edit-cancel-${id}`).addEventListener('click', () => {
+    holder.innerHTML = ''; delete categoryDrafts[id]; delete expandedSubcat[id];
+  });
   document.getElementById(`edit-save-${id}`).addEventListener('click', () => saveCategory(id));
 }
 
+function addSubcategory(id) {
+  const draft = categoryDrafts[id];
+  const input = document.getElementById(`new-subcat-name-${id}`);
+  const name = input.value.trim();
+  if (!name) return;
+  const subId = uniqueId(slugify(name), draft.subcategories.map((s) => s.id));
+  draft.subcategories.push({ id: subId, name, attributes: [] });
+  input.value = '';
+  expandedSubcat[id] = subId;
+  renderSubcatList(id);
+}
+
+function renderSubcatList(id) {
+  const draft = categoryDrafts[id];
+  const listEl = document.getElementById(`subcat-list-${id}`);
+  if (draft.subcategories.length === 0) {
+    listEl.innerHTML = '<p class="muted">No subcategories yet.</p>';
+    return;
+  }
+  listEl.innerHTML = '';
+  draft.subcategories.forEach((sub, idx) => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.innerHTML = `
+      <div class="list-row-info">
+        <div><strong>${sub.name}</strong></div>
+        <div class="muted">${sub.attributes.length} field${sub.attributes.length === 1 ? '' : 's'}</div>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="icon-btn" data-idx="${idx}" data-act="expand">${expandedSubcat[id] === sub.id ? '▲' : '▼'}</button>
+        <button type="button" class="icon-btn danger" data-idx="${idx}" data-act="remove">✕</button>
+      </div>
+    `;
+    listEl.appendChild(row);
+    if (expandedSubcat[id] === sub.id) {
+      const detail = document.createElement('div');
+      listEl.appendChild(detail);
+      renderSubcatDetail(id, idx, detail);
+    }
+  });
+  listEl.querySelectorAll('button[data-act="expand"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.idx);
+      const subId = draft.subcategories[idx].id;
+      expandedSubcat[id] = expandedSubcat[id] === subId ? null : subId;
+      renderSubcatList(id);
+    });
+  });
+  listEl.querySelectorAll('button[data-act="remove"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.idx);
+      if (!confirm(`Remove subcategory "${draft.subcategories[idx].name}"? This also removes its fields.`)) return;
+      draft.subcategories.splice(idx, 1);
+      renderSubcatList(id);
+    });
+  });
+}
+
+// One subcategory's attribute-field editor: a list of existing fields
+// plus an "Add field" mini form. `type` picks which extra inputs show
+// (options for a plain choice list; dependsOn for a chained field like
+// model depending on brand). "Advanced: link to reference table" skips
+// inline options entirely — those come from the Reference Data tab
+// instead, same as the phone brand/model chain from #hog001.
+function renderSubcatDetail(id, idx, container) {
+  const draft = categoryDrafts[id];
+  const sub = draft.subcategories[idx];
+  container.innerHTML = `
+    <div class="card">
+      <div id="attr-list-${id}-${idx}"></div>
+      <h5>Add field</h5>
+      <label class="field-label">Field label</label>
+      <input class="field" type="text" id="new-attr-label-${id}-${idx}" placeholder="e.g. Color" />
+      <label class="field-label">Field type</label>
+      <select class="field" id="new-attr-type-${id}-${idx}">
+        <option value="text">Text</option>
+        <option value="textarea">Long text</option>
+        <option value="number">Number</option>
+        <option value="boolean">Yes / No</option>
+        <option value="select">Choice list</option>
+        <option value="select-dependent">Choice, depends on another field</option>
+        <option value="color">Color swatches</option>
+      </select>
+      <div id="new-attr-options-wrap-${id}-${idx}">
+        <label class="field-label">Options (comma-separated)</label>
+        <input class="field" type="text" id="new-attr-options-${id}-${idx}" placeholder="e.g. New, Used" />
+      </div>
+      <div id="new-attr-dependson-wrap-${id}-${idx}" hidden>
+        <label class="field-label">Depends on which field?</label>
+        <select class="field" id="new-attr-dependson-${id}-${idx}"></select>
+        <p class="muted">Set this field's per-value options afterwards from its ⚙ button below.</p>
+      </div>
+      <label class="field-label">
+        <input type="checkbox" id="new-attr-advanced-${id}-${idx}" />
+        Advanced: link to a shared reference table (e.g. phone brand/model) instead of options set here
+      </label>
+      <div id="new-attr-refcol-wrap-${id}-${idx}" hidden>
+        <label class="field-label">Reference table name</label>
+        <input class="field" type="text" id="new-attr-refcol-${id}-${idx}" placeholder="e.g. phoneModels" />
+      </div>
+      <label class="field-label"><input type="checkbox" id="new-attr-required-${id}-${idx}" /> Required</label>
+      <div id="new-attr-error-${id}-${idx}" class="error-banner" hidden></div>
+      <button type="button" class="btn-ghost" id="add-attr-${id}-${idx}">+ Add field</button>
+    </div>
+  `;
+  renderAttrList(id, idx);
+
+  const typeSelect = document.getElementById(`new-attr-type-${id}-${idx}`);
+  const advancedCheck = document.getElementById(`new-attr-advanced-${id}-${idx}`);
+  const optionsWrap = document.getElementById(`new-attr-options-wrap-${id}-${idx}`);
+  const dependsWrap = document.getElementById(`new-attr-dependson-wrap-${id}-${idx}`);
+  const dependsSelect = document.getElementById(`new-attr-dependson-${id}-${idx}`);
+  const refcolWrap = document.getElementById(`new-attr-refcol-wrap-${id}-${idx}`);
+  function syncUI() {
+    const t = typeSelect.value;
+    const isDependentType = t === 'select-dependent' || t === 'color';
+    const advanced = advancedCheck.checked;
+    optionsWrap.hidden = isDependentType || advanced;
+    dependsWrap.hidden = !isDependentType;
+    refcolWrap.hidden = !advanced;
+    if (isDependentType) {
+      dependsSelect.innerHTML = sub.attributes.map((a) => `<option value="${a.key}">${a.label}</option>`).join('');
+    }
+  }
+  typeSelect.addEventListener('change', syncUI);
+  advancedCheck.addEventListener('change', syncUI);
+  syncUI();
+
+  document.getElementById(`add-attr-${id}-${idx}`).addEventListener('click', () => addAttribute(id, idx));
+}
+
+function addAttribute(id, idx) {
+  const draft = categoryDrafts[id];
+  const sub = draft.subcategories[idx];
+  const errorBox = document.getElementById(`new-attr-error-${id}-${idx}`);
+  hideFieldError(errorBox);
+  const label = document.getElementById(`new-attr-label-${id}-${idx}`).value.trim();
+  const type = document.getElementById(`new-attr-type-${id}-${idx}`).value;
+  const required = document.getElementById(`new-attr-required-${id}-${idx}`).checked;
+  const advanced = document.getElementById(`new-attr-advanced-${id}-${idx}`).checked;
+  if (!label) { showFieldError(errorBox, 'Field label is required.'); return; }
+  const key = uniqueId(slugify(label), sub.attributes.map((a) => a.key));
+  const attr = { key, label, type, required };
+
+  if (advanced) {
+    const refCol = document.getElementById(`new-attr-refcol-${id}-${idx}`).value.trim();
+    if (!refCol) { showFieldError(errorBox, 'Reference table name is required for an advanced field.'); return; }
+    attr.refCollection = refCol;
+    if (type === 'select-dependent' || type === 'color') {
+      const dependsOn = document.getElementById(`new-attr-dependson-${id}-${idx}`).value;
+      if (!dependsOn) { showFieldError(errorBox, 'Pick which field this depends on.'); return; }
+      attr.dependsOn = dependsOn;
+    }
+  } else if (type === 'select') {
+    const opts = document.getElementById(`new-attr-options-${id}-${idx}`).value.split(',').map((s) => s.trim()).filter(Boolean);
+    if (opts.length === 0) { showFieldError(errorBox, 'Add at least one option.'); return; }
+    attr.options = opts;
+  } else if (type === 'select-dependent' || type === 'color') {
+    const dependsOn = document.getElementById(`new-attr-dependson-${id}-${idx}`).value;
+    if (!dependsOn) { showFieldError(errorBox, 'Pick which field this depends on.'); return; }
+    attr.dependsOn = dependsOn;
+    attr.optionsByParent = {};
+  }
+
+  sub.attributes.push(attr);
+  document.getElementById(`new-attr-label-${id}-${idx}`).value = '';
+  renderSubcatList(id);
+}
+
+function renderAttrList(id, idx) {
+  const draft = categoryDrafts[id];
+  const sub = draft.subcategories[idx];
+  const listEl = document.getElementById(`attr-list-${id}-${idx}`);
+  if (sub.attributes.length === 0) {
+    listEl.innerHTML = '<p class="muted">No fields yet.</p>';
+    return;
+  }
+  listEl.innerHTML = sub.attributes.map((attr, aidx) => `
+    <div class="list-row">
+      <div class="list-row-info">
+        <div><strong>${attr.label}</strong> (${attr.type}${attr.required ? ', required' : ''})</div>
+        <div class="muted">${attrSummary(attr)}</div>
+      </div>
+      <div class="row-actions">
+        ${(attr.type === 'select-dependent' || attr.type === 'color') && !attr.refCollection ? `<button type="button" class="icon-btn" data-act="editparent" data-aidx="${aidx}">⚙</button>` : ''}
+        <button type="button" class="icon-btn danger" data-act="removeattr" data-aidx="${aidx}">✕</button>
+      </div>
+    </div>
+    <div id="attr-parent-editor-${id}-${idx}-${aidx}"></div>
+  `).join('');
+  listEl.querySelectorAll('button[data-act="removeattr"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      sub.attributes.splice(Number(btn.dataset.aidx), 1);
+      renderSubcatList(id);
+    });
+  });
+  listEl.querySelectorAll('button[data-act="editparent"]').forEach((btn) => {
+    btn.addEventListener('click', () => toggleParentOptionsEditor(id, idx, Number(btn.dataset.aidx)));
+  });
+}
+
+function attrSummary(attr) {
+  if (attr.refCollection) return `linked to reference table "${attr.refCollection}"`;
+  if (attr.type === 'select') return (attr.options || []).join(', ');
+  if (attr.type === 'select-dependent' || attr.type === 'color') return `depends on "${attr.dependsOn}" · ${Object.keys(attr.optionsByParent || {}).length} value(s) configured`;
+  return '';
+}
+
+// Per-parent-value options for a plain (non-refCollection) dependent
+// field — e.g. a "Size" field that depends on "Category type" and
+// isn't big enough to warrant its own reference table.
+function toggleParentOptionsEditor(id, idx, aidx) {
+  const holder = document.getElementById(`attr-parent-editor-${id}-${idx}-${aidx}`);
+  if (holder.childElementCount > 0) { holder.innerHTML = ''; return; }
+  const draft = categoryDrafts[id];
+  const sub = draft.subcategories[idx];
+  const attr = sub.attributes[aidx];
+  const parentAttr = sub.attributes.find((a) => a.key === attr.dependsOn);
+  const parentOptions = (parentAttr && parentAttr.options) || [];
+  holder.innerHTML = `
+    <div class="card">
+      <p class="muted">Set "${attr.label}" options for each "${parentAttr ? parentAttr.label : attr.dependsOn}" value.</p>
+      <div id="parent-opts-existing-${id}-${idx}-${aidx}"></div>
+      <label class="field-label">Parent value</label>
+      ${parentOptions.length > 0
+        ? `<select class="field" id="parent-opt-value-${id}-${idx}-${aidx}">${parentOptions.map((o) => `<option>${o}</option>`).join('')}</select>`
+        : `<input class="field" type="text" id="parent-opt-value-${id}-${idx}-${aidx}" placeholder="e.g. Samsung" />`}
+      <label class="field-label">Options for this value (comma-separated)</label>
+      <input class="field" type="text" id="parent-opt-list-${id}-${idx}-${aidx}" placeholder="e.g. 64GB, 128GB, 256GB" />
+      <button type="button" class="btn-ghost" id="parent-opt-save-${id}-${idx}-${aidx}">+ Set options for this value</button>
+    </div>
+  `;
+  renderExistingParentOpts(id, idx, aidx);
+  document.getElementById(`parent-opt-save-${id}-${idx}-${aidx}`).addEventListener('click', () => {
+    const val = document.getElementById(`parent-opt-value-${id}-${idx}-${aidx}`).value.trim();
+    const opts = document.getElementById(`parent-opt-list-${id}-${idx}-${aidx}`).value.split(',').map((s) => s.trim()).filter(Boolean);
+    if (!val || opts.length === 0) return;
+    attr.optionsByParent = attr.optionsByParent || {};
+    attr.optionsByParent[val] = opts;
+    renderAttrList(id, idx);
+  });
+}
+
+function renderExistingParentOpts(id, idx, aidx) {
+  const draft = categoryDrafts[id];
+  const attr = draft.subcategories[idx].attributes[aidx];
+  const el = document.getElementById(`parent-opts-existing-${id}-${idx}-${aidx}`);
+  const entries = Object.entries(attr.optionsByParent || {});
+  el.innerHTML = entries.length === 0 ? '<p class="muted">None set yet.</p>' : entries.map(([val, opts]) => `
+    <div class="list-row"><div class="list-row-info"><strong>${val}</strong>: ${opts.join(', ')}</div>
+    <button type="button" class="icon-btn danger" data-val="${val}">✕</button></div>
+  `).join('');
+  el.querySelectorAll('button[data-val]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      delete attr.optionsByParent[btn.dataset.val];
+      renderAttrList(id, idx);
+    });
+  });
+}
+
 async function saveCategory(id) {
+  const draft = categoryDrafts[id];
   const errorBox = document.getElementById(`edit-error-${id}`);
   hideFieldError(errorBox);
   const name = document.getElementById(`edit-name-${id}`).value.trim();
   const icon = document.getElementById(`edit-icon-${id}`).value.trim();
   const order = Number(document.getElementById(`edit-order-${id}`).value) || 0;
   const popular = document.getElementById(`edit-popular-${id}`).checked;
-  let subcategories;
-  try {
-    subcategories = JSON.parse(document.getElementById(`edit-subs-${id}`).value);
-    if (!Array.isArray(subcategories)) throw new Error('Subcategories must be a JSON array.');
-  } catch (err) {
-    showFieldError(errorBox, `Invalid subcategories JSON: ${err.message}`);
-    return;
-  }
   if (!name) { showFieldError(errorBox, 'Name is required.'); return; }
   const saveBtn = document.getElementById(`edit-save-${id}`);
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving…';
   try {
-    await db.collection('categories').doc(id).set({ name, icon, order, popular, subcategories });
+    await db.collection('categories').doc(id).set({ name, icon, order, popular, subcategories: draft.subcategories });
+    delete categoryDrafts[id]; delete expandedSubcat[id];
     await loadCategories();
   } catch (err) {
     showFieldError(errorBox, describeFirestoreError(err));
     saveBtn.disabled = false;
-    saveBtn.textContent = 'Save';
+    saveBtn.textContent = 'Save category';
   }
 }
 
@@ -897,8 +1177,6 @@ async function importStarterCategories() {
     });
     await batch.commit();
 
-    // Also seed the matching reference data (e.g. phoneModels) the
-    // imported categories point at, if it isn't there already.
     for (const refId of Object.keys(REFERENCE_SEED)) {
       const brandNames = Object.keys(REFERENCE_SEED[refId]);
       const refBatch = db.batch();
@@ -956,52 +1234,101 @@ function renderRefDataList() {
   });
 }
 
+// Editing a brand's model list as real fields (name + comma-separated
+// storage/RAM/color) instead of a raw JSON blob — same simplification
+// as the category/attribute editor above.
 async function toggleBrandEditor(brand) {
   const id = slugify(brand);
   const holder = document.getElementById(`refdata-editor-${id}`);
-  if (holder.childElementCount > 0) { holder.innerHTML = ''; return; }
+  if (holder.childElementCount > 0) { holder.innerHTML = ''; delete brandDrafts[id]; return; }
   holder.innerHTML = `<div class="card"><p class="muted">Loading…</p></div>`;
   const refId = document.getElementById('refdata-refid').value.trim() || 'phoneModels';
   const snap = await db.collection('referenceData').doc(refId).collection('brands').doc(id).get();
   const models = snap.exists ? (snap.data().models || []) : [];
+  brandDrafts[id] = { brand, models: JSON.parse(JSON.stringify(models)) };
+  renderBrandEditor(id);
+}
+
+function renderBrandEditor(id) {
+  const holder = document.getElementById(`refdata-editor-${id}`);
   holder.innerHTML = `
     <div class="card">
-      <label class="field-label">Models (JSON) — one entry per model: {"model": "...", "storage": [], "ram": [], "color": []}</label>
-      <textarea class="field" id="refdata-models-${id}" rows="14" style="font-family:monospace;font-size:12px;">${JSON.stringify(models, null, 2)}</textarea>
+      <div id="model-list-${id}"></div>
+      <h5>Add model</h5>
+      <label class="field-label">Model name</label>
+      <input class="field" type="text" id="new-model-name-${id}" placeholder="e.g. Galaxy A15" />
+      <label class="field-label">Storage options (comma-separated)</label>
+      <input class="field" type="text" id="new-model-storage-${id}" placeholder="e.g. 64GB, 128GB" />
+      <label class="field-label">RAM options (comma-separated)</label>
+      <input class="field" type="text" id="new-model-ram-${id}" placeholder="e.g. 4GB, 6GB" />
+      <label class="field-label">Color options (comma-separated)</label>
+      <input class="field" type="text" id="new-model-color-${id}" placeholder="e.g. Black, Blue" />
+      <div id="new-model-error-${id}" class="error-banner" hidden></div>
+      <button type="button" class="btn-ghost" id="add-model-${id}">+ Add model</button>
       <div id="refdata-edit-error-${id}" class="error-banner" hidden></div>
       <div class="row">
-        <button type="button" class="btn-primary" id="refdata-save-${id}">Save</button>
+        <button type="button" class="btn-primary" id="refdata-save-${id}">Save brand</button>
         <button type="button" class="btn-ghost" id="refdata-cancel-${id}">Cancel</button>
       </div>
     </div>
   `;
-  document.getElementById(`refdata-cancel-${id}`).addEventListener('click', () => { holder.innerHTML = ''; });
-  document.getElementById(`refdata-save-${id}`).addEventListener('click', () => saveBrand(brand));
+  renderModelList(id);
+  document.getElementById(`add-model-${id}`).addEventListener('click', () => addModel(id));
+  document.getElementById(`refdata-cancel-${id}`).addEventListener('click', () => { holder.innerHTML = ''; delete brandDrafts[id]; });
+  document.getElementById(`refdata-save-${id}`).addEventListener('click', () => saveBrand(id));
 }
 
-async function saveBrand(brand) {
-  const id = slugify(brand);
+function renderModelList(id) {
+  const draft = brandDrafts[id];
+  const el = document.getElementById(`model-list-${id}`);
+  if (draft.models.length === 0) { el.innerHTML = '<p class="muted">No models yet.</p>'; return; }
+  el.innerHTML = draft.models.map((m, midx) => `
+    <div class="list-row">
+      <div class="list-row-info">
+        <div><strong>${m.model}</strong></div>
+        <div class="muted">Storage: ${(m.storage || []).join(', ') || '—'} · RAM: ${(m.ram || []).join(', ') || '—'} · Color: ${(m.color || []).join(', ') || '—'}</div>
+      </div>
+      <div class="row-actions"><button type="button" class="icon-btn danger" data-midx="${midx}">✕</button></div>
+    </div>
+  `).join('');
+  el.querySelectorAll('button[data-midx]').forEach((btn) => {
+    btn.addEventListener('click', () => { draft.models.splice(Number(btn.dataset.midx), 1); renderModelList(id); });
+  });
+}
+
+function addModel(id) {
+  const draft = brandDrafts[id];
+  const errorBox = document.getElementById(`new-model-error-${id}`);
+  hideFieldError(errorBox);
+  const model = document.getElementById(`new-model-name-${id}`).value.trim();
+  if (!model) { showFieldError(errorBox, 'Model name is required.'); return; }
+  const csv = (elId) => document.getElementById(elId).value.split(',').map((s) => s.trim()).filter(Boolean);
+  draft.models.push({
+    model,
+    storage: csv(`new-model-storage-${id}`),
+    ram: csv(`new-model-ram-${id}`),
+    color: csv(`new-model-color-${id}`),
+  });
+  ['name', 'storage', 'ram', 'color'].forEach((f) => { document.getElementById(`new-model-${f}-${id}`).value = ''; });
+  renderModelList(id);
+}
+
+async function saveBrand(id) {
+  const draft = brandDrafts[id];
   const errorBox = document.getElementById(`refdata-edit-error-${id}`);
   hideFieldError(errorBox);
-  let models;
-  try {
-    models = JSON.parse(document.getElementById(`refdata-models-${id}`).value);
-    if (!Array.isArray(models)) throw new Error('Models must be a JSON array.');
-  } catch (err) {
-    showFieldError(errorBox, `Invalid models JSON: ${err.message}`);
-    return;
-  }
   const refId = document.getElementById('refdata-refid').value.trim() || 'phoneModels';
   const saveBtn = document.getElementById(`refdata-save-${id}`);
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving…';
   try {
-    await db.collection('referenceData').doc(refId).collection('brands').doc(id).set({ brand, models });
+    await db.collection('referenceData').doc(refId).collection('brands').doc(id).set({ brand: draft.brand, models: draft.models });
+    delete brandDrafts[id];
     document.getElementById(`refdata-editor-${id}`).innerHTML = '';
   } catch (err) {
     showFieldError(errorBox, describeFirestoreError(err));
     saveBtn.disabled = false;
-    saveBtn.textContent = 'Save';
+    saveBtn.textContent = 'Save brand';
   }
 }
 

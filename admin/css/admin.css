@@ -117,6 +117,8 @@ input[type="file"] { margin-top: 8px; }
   border: 1px solid var(--line);
 }
 .card h3 { font-size: 15px; margin: 0 0 4px; }
+.card h4 { font-size: 14px; margin: 16px 0 4px; }
+.card h5 { font-size: 13px; margin: 12px 0 4px; color: var(--muted); }
 
 .row { display: flex; gap: 10px; margin-top: 14px; }
 
