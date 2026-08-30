@@ -12,8 +12,10 @@ import { getHomeBanners, getCachedHomeBanners } from '../lib/homeBanners';
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 
 export default function Home() {
-  const { categories, listings, listingsReady, hasMoreListings, loadingMoreListings, loadMoreListings } = useAppData();
-  const loading = !listingsReady;
+  const {
+    categories, listings, listingsReady, hasMoreListings, loadingMoreListings, loadMoreListings,
+    searchResults, searchLoading, searchListings,
+  } = useAppData();
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
@@ -24,16 +26,20 @@ export default function Home() {
 
   useEffect(() => { getHomeBanners().then(setBanners); }, []);
 
+  const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());
+  const term = search.trim().toLowerCase();
+  const filtering = Boolean(term || activeCategory || filters.minPrice != null || filters.maxPrice != null || filters.conditions.length > 0);
+
   // Fires loadMoreListings() while the sentinel is still well below
   // the screen (rootMargin) — before the person has actually
   // scrolled to the bottom — so the next page has usually already
   // landed by the time they get there instead of them hitting a
-  // visible wait. Also runs while filtering: it just grows the pool
-  // `filtered` searches over, since search/category/price are all
-  // client-side over whatever's currently loaded.
+  // visible wait. Only runs for the default (unfiltered) feed —
+  // while filtering, results come from the one-off server-side
+  // search below instead (#hog002), which isn't paginated the same way.
   const sentinelRef = useRef(null);
   useEffect(() => {
-    if (!hasMoreListings) return;
+    if (!hasMoreListings || filtering) return;
     const el = sentinelRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -42,7 +48,7 @@ export default function Home() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hasMoreListings, loadMoreListings]);
+  }, [hasMoreListings, loadMoreListings, filtering]);
 
   // Measures the real, rendered bottom edge of the search bar at the
   // moment it's tapped, so the dropdown lands exactly under it —
@@ -54,26 +60,38 @@ export default function Home() {
     setFilterSheetOpen(true);
   }
 
-  const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());
+  // Server-side search/filter (#hog002) over the FULL listings
+  // collection, not just whichever pages have been scrolled into
+  // above. Only the text term needs debouncing (fires on every
+  // keystroke); category/price/condition come from a deliberate
+  // discrete action (tapping a chip, applying the filter sheet) and
+  // can re-query right away.
+  useEffect(() => {
+    if (!filtering) return;
+    const t = setTimeout(() => {
+      searchListings({
+        term,
+        categoryId: activeCategory,
+        minPrice: filters.minPrice,
+        maxPrice: filters.maxPrice,
+        conditions: filters.conditions,
+      });
+    }, term ? 300 : 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtering, term, activeCategory, filters]);
 
-  const term = search.trim().toLowerCase();
+  const displayed = filtering ? searchResults : listings;
+  const loading = filtering ? (searchLoading && searchResults.length === 0) : !listingsReady;
 
-  const filtered = useMemo(() => {
-    return listings.filter((l) => {
-      const matchesTerm = !term || l.title?.toLowerCase().includes(term);
-      const matchesCategory = !activeCategory || l.category === activeCategory;
-      const matchesMin = filters.minPrice == null || (l.price || 0) >= filters.minPrice;
-      const matchesMax = filters.maxPrice == null || (l.price || 0) <= filters.maxPrice;
-      const matchesCondition = filters.conditions.length === 0 || filters.conditions.includes(l.condition);
-      return matchesTerm && matchesCategory && matchesMin && matchesMax && matchesCondition;
-    });
-  }, [listings, term, activeCategory, filters]);
-
+  // While a term's typed, suggestions come from the same full-
+  // collection search results above (accurate beyond just the
+  // currently-loaded page) rather than a separate lookup.
   const suggestions = useMemo(() => {
     if (!term) return [];
     const seen = new Set();
     const out = [];
-    for (const l of listings) {
+    for (const l of searchResults) {
       const title = l.title?.trim();
       if (title && title.toLowerCase().includes(term) && !seen.has(title)) {
         seen.add(title);
@@ -81,7 +99,7 @@ export default function Home() {
       }
     }
     return out;
-  }, [listings, term]);
+  }, [searchResults, term]);
 
   const popularTags = useMemo(() => {
     const seen = new Set();
@@ -97,7 +115,6 @@ export default function Home() {
     return out;
   }, [listings, boosted]);
 
-  const filtering = Boolean(term || activeCategory || filters.minPrice != null || filters.maxPrice != null || filters.conditions.length > 0);
   const activeFilterCount = (filters.minPrice != null ? 1 : 0) + (filters.maxPrice != null ? 1 : 0) + (filters.conditions.length > 0 ? 1 : 0);
 
   function clearAll() {
@@ -147,7 +164,7 @@ export default function Home() {
 
       {loading && <ListingGridSkeleton />}
 
-      {!loading && filtered.length === 0 && (
+      {!loading && displayed.length === 0 && (
         filtering ? (
           <EmptyState
             term={search.trim()}
@@ -160,18 +177,19 @@ export default function Home() {
         )
       )}
 
-      {!loading && filtered.length > 0 && (
+      {!loading && displayed.length > 0 && (
         <div className="listing-grid">
-          {filtered.map((item) => <ListingCard key={item.id} item={item} />)}
+          {displayed.map((item) => <ListingCard key={item.id} item={item} />)}
         </div>
       )}
 
       {/* Invisible trigger for the prefetch-ahead described above —
           rootMargin means loadMoreListings() fires while this is
           still hundreds of px offscreen, not once it's actually
-          visible. */}
-      {!loading && hasMoreListings && <div ref={sentinelRef} style={{ height: 1 }} />}
-      {loadingMoreListings && <p className="helper-text" style={{ textAlign: 'center' }}>Loading more…</p>}
+          visible. Hidden while filtering — that's a self-contained
+          server-side search result set, not a paginated feed. */}
+      {!loading && !filtering && hasMoreListings && <div ref={sentinelRef} style={{ height: 1 }} />}
+      {!filtering && loadingMoreListings && <p className="helper-text" style={{ textAlign: 'center' }}>Loading more…</p>}
     </div>
   );
 }

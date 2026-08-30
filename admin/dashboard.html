@@ -138,6 +138,15 @@
     <section id="tab-listings" class="tab-panel">
       <h2>Listings</h2>
       <p class="muted">Browse every listing on the marketplace. Pausing hides it from the public feed without deleting it; deleting is permanent.</p>
+
+      <div id="search-index-wrap" class="card" hidden>
+        <h3>Search index</h3>
+        <p class="muted">Listings posted before server-side search (#hog002) don't have a search index yet, so they won't turn up in a text search until this runs once (<span id="search-index-count"></span> listing(s) total — already-indexed ones are skipped automatically). New posts and edits get it automatically; this is only for older listings.</p>
+        <button type="button" class="btn-primary" id="search-index-backfill-btn">Build search index for older listings</button>
+        <div id="search-index-progress" class="muted" hidden></div>
+        <div id="search-index-error" class="error-banner" hidden></div>
+      </div>
+
       <div class="row-wrap">
         <input class="field" type="text" id="listings-search" placeholder="Search by title, seller, or category…" />
         <select class="field" id="listings-status-filter">
@@ -198,6 +207,7 @@
   <script src="js/firebase-init.js"></script>
   <script src="js/imageCompress.js"></script>
   <script src="js/categorySeed.js"></script>
+  <script src="js/searchTokens.js"></script>
   <script src="js/dashboard.js"></script>
 </body>
 </html>

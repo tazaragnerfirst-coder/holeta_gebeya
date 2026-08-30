@@ -6,6 +6,7 @@ import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getMyProfile } from '../lib/profile';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { computeExpiresAt } from '../lib/adStatus';
+import { buildSearchTokens } from '../lib/searchTokens';
 import { getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS } from '../data/categories';
 import { getBrandList, getBrandModels } from '../lib/referenceData';
 import { useAppData } from '../lib/appData';
@@ -246,6 +247,7 @@ export default function PostAd() {
       attributes: attrs,
       condition: attrs.condition || '',
       images: compressedImages,
+      searchTokens: buildSearchTokens(title, attrs),
     };
 
     if (isEdit) {

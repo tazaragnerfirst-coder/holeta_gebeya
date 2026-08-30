@@ -514,7 +514,63 @@ function initListings() {
   document.getElementById('listings-search').addEventListener('input', renderListingsList);
   document.getElementById('listings-status-filter').addEventListener('change', renderListingsList);
   document.getElementById('listings-load-more').addEventListener('click', loadListingsPage);
+  document.getElementById('search-index-backfill-btn').addEventListener('click', backfillSearchTokens);
+  initSearchIndexCard();
   loadListingsPage();
+}
+
+// One-time backfill so listings posted before #hog002 also get a
+// searchTokens field — new posts/edits get it automatically via
+// PostAd.jsx. Reads listings in batches (same page size as the
+// moderation list below) and only writes the ones missing the field,
+// so a second run is cheap/harmless if it's interrupted partway.
+async function initSearchIndexCard() {
+  try {
+    const total = await countOf(db.collection('listings'));
+    document.getElementById('search-index-count').textContent = total;
+    document.getElementById('search-index-wrap').hidden = false;
+  } catch {
+    // Non-critical — the card just won't show if the count fails.
+  }
+}
+
+async function backfillSearchTokens() {
+  const btn = document.getElementById('search-index-backfill-btn');
+  const progressEl = document.getElementById('search-index-progress');
+  const errorBox = document.getElementById('search-index-error');
+  hideFieldError(errorBox);
+  btn.disabled = true;
+  progressEl.hidden = false;
+  let scanned = 0, updated = 0, cursor = null;
+  try {
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      let q = db.collection('listings').orderBy('createdAt', 'desc').limit(100);
+      if (cursor) q = q.startAfter(cursor);
+      const snap = await q.get();
+      if (snap.empty) break;
+      const batch = db.batch();
+      let batchHasWrites = false;
+      snap.docs.forEach((d) => {
+        scanned++;
+        const data = d.data();
+        if (!data.searchTokens) {
+          batch.update(d.ref, { searchTokens: buildSearchTokens(data.title, data.attributes) });
+          batchHasWrites = true;
+          updated++;
+        }
+      });
+      if (batchHasWrites) await batch.commit();
+      progressEl.textContent = `Scanned ${scanned}, indexed ${updated}…`;
+      cursor = snap.docs[snap.docs.length - 1];
+      if (snap.docs.length < 100) break;
+    }
+    progressEl.textContent = `Done — scanned ${scanned}, indexed ${updated} listing(s) that needed it.`;
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // --- Platform analytics overview --------------------------------------

@@ -78,6 +78,12 @@ export function AppDataProvider({ children }) {
 
   const [listings, setListings] = useState(() => getCached('listings') || []);
   const [listingsReady, setListingsReady] = useState(() => getCached('listings') != null);
+  // Server-side search/filter results (#hog002) — over the FULL
+  // listings collection, not just whatever pages have been scrolled
+  // into above. Home.jsx swaps to rendering these while search/
+  // category/price/condition filtering is active.
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   // Whether a further (older) page of listings exists to fetch, and
   // whether one is in flight right now — both read by Home.jsx's
   // scroll sentinel to decide when to call loadMoreListings().
@@ -303,10 +309,51 @@ export function AppDataProvider({ children }) {
     return () => { cancelled = true; };
   }, [registeredUid]);
 
+  // Server-side search/filter (#hog002). `term`'s last (still-being-
+  // typed) word drives a Firestore `array-contains` on searchTokens
+  // — the typed string is itself one of the stored prefixes, so it
+  // matches directly with no debounce needed server-side. Earlier,
+  // already-typed words, plus price range and condition, are refined
+  // client-side over the (already narrowed by category/that one
+  // token) candidate set below — cheap at that point, and avoids
+  // needing a separate composite index for every filter combination.
+  async function searchListings({ term = '', categoryId = null, minPrice = null, maxPrice = null, conditions = [] } = {}) {
+    setSearchLoading(true);
+    try {
+      const words = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const liveWord = words[words.length - 1] || null;
+      const completedWords = words.slice(0, -1);
+
+      let q = query(collection(db, 'listings'));
+      if (categoryId) q = query(q, where('category', '==', categoryId));
+      if (liveWord) q = query(q, where('searchTokens', 'array-contains', liveWord));
+      q = query(q, orderBy('createdAt', 'desc'), limit(200));
+
+      const snap = await getDocs(q);
+      let results = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter(isActiveAd);
+
+      if (minPrice != null) results = results.filter((l) => (l.price || 0) >= minPrice);
+      if (maxPrice != null) results = results.filter((l) => (l.price || 0) <= maxPrice);
+      if (conditions.length > 0) results = results.filter((l) => conditions.includes(l.condition));
+      if (completedWords.length > 0) {
+        results = results.filter((l) => {
+          const hay = (l.title || '').toLowerCase();
+          return completedWords.every((w) => hay.includes(w));
+        });
+      }
+      setSearchResults(results);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
   return (
     <AppDataContext.Provider value={{
       categories, categoriesReady,
       listings, listingsReady,
+      searchResults, searchLoading, searchListings,
       hasMoreListings, loadingMoreListings, loadMoreListings,
       registeredUid, markRegistered, clearRegistered,
       chats, chatsReady,
