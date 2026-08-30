@@ -8,6 +8,7 @@ import { ListingGridSkeleton } from '../components/Skeletons.jsx';
 import PromoBannerCarousel from '../components/PromoBannerCarousel.jsx';
 import { useAppData } from '../lib/appData';
 import { getHomeBanners, getCachedHomeBanners } from '../lib/homeBanners';
+import { recordImpressions, rotate } from '../lib/sessionFeedRotation';
 
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 
@@ -81,8 +82,30 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtering, term, activeCategory, filters]);
 
-  const displayed = filtering ? searchResults : listings;
+  // #hog003: light session-only rotation so the same un-boosted
+  // listings don't sit at the front on every refresh. Boosted
+  // listings are exempt (see sessionFeedRotation.js). No extra
+  // Firestore reads — this only reorders what's already loaded.
+  const boostedIds = useMemo(() => new Set(boosted.map((l) => l.id)), [boosted]);
+  const rotatedListings = useMemo(
+    () => (filtering ? listings : rotate(listings, boostedIds)),
+    [listings, filtering, boostedIds]
+  );
+
+  const displayed = filtering ? searchResults : rotatedListings;
   const loading = filtering ? (searchLoading && searchResults.length === 0) : !listingsReady;
+
+  // Records an impression for whichever listings are currently at the
+  // front of the feed, but only after they've actually been on screen
+  // for a moment — skips a fast flick-through, matches the same dwell
+  // pattern ProductDetail.jsx uses for view counting. Session-only,
+  // never persisted (see sessionFeedRotation.js).
+  useEffect(() => {
+    if (filtering || rotatedListings.length === 0) return;
+    const ids = rotatedListings.slice(0, 12).map((l) => l.id);
+    const t = setTimeout(() => recordImpressions(ids), 2000);
+    return () => clearTimeout(t);
+  }, [rotatedListings, filtering]);
 
   // While a term's typed, suggestions come from the same full-
   // collection search results above (accurate beyond just the
