@@ -69,6 +69,13 @@ function knownRegisteredUid() {
  *   never stop, so every later visit to Chat/Dashboard is instant.
  */
 export function AppDataProvider({ children }) {
+  // Category/subcategory/attribute-schema definitions (see #hog001 in
+  // memory) — public like listings, so it loads the moment the app
+  // opens with no registration needed. Kept live (not a one-off
+  // fetch) so an admin edit shows up without the person reloading.
+  const [categories, setCategories] = useState(() => getCached('categories') || []);
+  const [categoriesReady, setCategoriesReady] = useState(() => getCached('categories') != null);
+
   const [listings, setListings] = useState(() => getCached('listings') || []);
   const [listingsReady, setListingsReady] = useState(() => getCached('listings') != null);
   // Whether a further (older) page of listings exists to fetch, and
@@ -96,6 +103,17 @@ export function AppDataProvider({ children }) {
   const [sellerRatingReady, setSellerRatingReady] = useState(() => (initialUid ? getCached(`sellerRating:${initialUid}`) != null : false));
 
   const checkedSession = useRef(false);
+
+  useEffect(() => {
+    const q = query(collection(db, 'categories'), orderBy('order'));
+    const unsub = onSnapshot(q, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setCategories(data);
+      setCategoriesReady(true);
+      setCached('categories', data);
+    }, () => setCategoriesReady(true));
+    return unsub;
+  }, []);
 
   useEffect(() => {
     // Only the first page stays real-time — a brand new post should
@@ -287,6 +305,7 @@ export function AppDataProvider({ children }) {
 
   return (
     <AppDataContext.Provider value={{
+      categories, categoriesReady,
       listings, listingsReady,
       hasMoreListings, loadingMoreListings, loadMoreListings,
       registeredUid, markRegistered, clearRegistered,

@@ -123,6 +123,34 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Category/subcategory/attribute-schema definitions that drive
+    // Home's category chips and PostAd's dynamic form (see
+    // frontend/src/data/categories.js). One doc per category so an
+    // edit to one category never touches the others. Publicly
+    // readable (needed just to browse/post); writable only by the
+    // admin panel's Categories tab.
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Large per-brand reference tables (e.g. phone brand -> model ->
+    // storage/RAM/color) that a `categories` attribute can point to
+    // via `refCollection` instead of embedding the options inline —
+    // keeps any one category doc small as the catalog of models
+    // grows. {refId} groups a reference table (e.g. "phoneModels");
+    // brands/{brandId} holds one brand's model list, so adding a
+    // model only touches its own brand's doc.
+    match /referenceData/{refId} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /brands/{brandId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
+    }
+
     // Chats: only the two participants can read/write, and only once
     // a chat exists — created by the buyer via the client SDK. The
     // buyer's client checks "does our chat already exist?" via a

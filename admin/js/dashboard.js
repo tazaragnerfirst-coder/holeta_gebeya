@@ -12,6 +12,7 @@ auth.onAuthStateChanged(async (user) => {
   }
   initBanner();
   initCarousel();
+  initCategories();
   initReports();
   initUsers();
   initListings();
@@ -712,4 +713,331 @@ function initSupport() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendSupportReply(); }
   });
   loadSupportPage();
+}
+
+// --- Categories / attribute schema (categories collection) +
+// reference data (referenceData collection) — see #hog001 in memory.
+// Category name/icon/popular/order get proper fields; the deeper
+// nested pieces (a subcategory's attribute definitions, a brand's
+// model list) are edited as JSON blocks rather than a full per-field
+// form-builder UI — still no-code/no-redeploy, just less UI to build
+// and maintain for something edited far less often than, say, the
+// carousel images.
+let categoriesData = [];
+let refDataBrands = [];
+
+function slugify(s) {
+  return String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `item-${Date.now()}`;
+}
+function uniqueId(base, existingIds) {
+  let id = base, n = 2;
+  while (existingIds.includes(id)) { id = `${base}-${n}`; n++; }
+  return id;
+}
+
+function initCategories() {
+  document.getElementById('cat-subtab-categories').addEventListener('click', () => switchCatSubtab('categories'));
+  document.getElementById('cat-subtab-refdata').addEventListener('click', () => switchCatSubtab('refdata'));
+  document.getElementById('cat-add-btn').addEventListener('click', addCategory);
+  document.getElementById('cat-import-btn').addEventListener('click', importStarterCategories);
+  document.getElementById('refdata-add-btn').addEventListener('click', addBrand);
+  document.getElementById('refdata-refid').addEventListener('change', loadRefDataBrands);
+
+  loadCategories();
+  loadRefDataBrands();
+}
+
+function switchCatSubtab(which) {
+  document.getElementById('cat-subtab-categories').classList.toggle('active', which === 'categories');
+  document.getElementById('cat-subtab-refdata').classList.toggle('active', which === 'refdata');
+  document.getElementById('cat-view-categories').hidden = which !== 'categories';
+  document.getElementById('cat-view-refdata').hidden = which !== 'refdata';
+}
+
+// --- Categories sub-view ---------------------------------------------
+async function loadCategories() {
+  const snap = await db.collection('categories').orderBy('order').get();
+  categoriesData = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  document.getElementById('cat-import-wrap').hidden = categoriesData.length > 0;
+  renderCategoriesList();
+}
+
+function renderCategoriesList() {
+  const listEl = document.getElementById('categories-list');
+  const emptyEl = document.getElementById('categories-empty');
+  listEl.innerHTML = '';
+  emptyEl.hidden = categoriesData.length > 0;
+  categoriesData.forEach((cat) => {
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.innerHTML = `
+      <div class="list-row-info">
+        <div><strong>${cat.name}</strong>${cat.popular ? ' · popular' : ''}</div>
+        <div class="muted">icon: ${cat.icon || '—'} · order: ${cat.order} · ${cat.subcategories.length} subcategor${cat.subcategories.length === 1 ? 'y' : 'ies'}</div>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="icon-btn" data-act="edit" data-id="${cat.id}">✎</button>
+        <button type="button" class="icon-btn danger" data-act="delete" data-id="${cat.id}">✕</button>
+      </div>
+    `;
+    listEl.appendChild(row);
+    const holder = document.createElement('div');
+    holder.id = `cat-editor-${cat.id}`;
+    listEl.appendChild(holder);
+  });
+  listEl.querySelectorAll('button[data-act="edit"]').forEach((btn) => {
+    btn.addEventListener('click', () => toggleCategoryEditor(btn.dataset.id));
+  });
+  listEl.querySelectorAll('button[data-act="delete"]').forEach((btn) => {
+    btn.addEventListener('click', () => deleteCategory(btn.dataset.id));
+  });
+}
+
+function toggleCategoryEditor(id) {
+  const holder = document.getElementById(`cat-editor-${id}`);
+  if (holder.childElementCount > 0) { holder.innerHTML = ''; return; }
+  const cat = categoriesData.find((c) => c.id === id);
+  holder.innerHTML = `
+    <div class="card">
+      <label class="field-label">Name</label>
+      <input class="field" type="text" id="edit-name-${id}" value="${cat.name}" />
+      <label class="field-label">Icon</label>
+      <input class="field" type="text" id="edit-icon-${id}" value="${cat.icon || ''}" />
+      <label class="field-label">Order</label>
+      <input class="field" type="number" id="edit-order-${id}" value="${cat.order}" />
+      <label class="field-label"><input type="checkbox" id="edit-popular-${id}" ${cat.popular ? 'checked' : ''}/> Popular (shown first)</label>
+      <label class="field-label">Subcategories (JSON) — array of { id, name, attributes: [...] }. Use an existing category as a template for the attribute shape (key/label/type/required/options, or dependsOn + refCollection for phone-style dependent chains).</label>
+      <textarea class="field" id="edit-subs-${id}" rows="14" style="font-family:monospace;font-size:12px;">${JSON.stringify(cat.subcategories, null, 2)}</textarea>
+      <div id="edit-error-${id}" class="error-banner" hidden></div>
+      <div class="row">
+        <button type="button" class="btn-primary" id="edit-save-${id}">Save</button>
+        <button type="button" class="btn-ghost" id="edit-cancel-${id}">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.getElementById(`edit-cancel-${id}`).addEventListener('click', () => { holder.innerHTML = ''; });
+  document.getElementById(`edit-save-${id}`).addEventListener('click', () => saveCategory(id));
+}
+
+async function saveCategory(id) {
+  const errorBox = document.getElementById(`edit-error-${id}`);
+  hideFieldError(errorBox);
+  const name = document.getElementById(`edit-name-${id}`).value.trim();
+  const icon = document.getElementById(`edit-icon-${id}`).value.trim();
+  const order = Number(document.getElementById(`edit-order-${id}`).value) || 0;
+  const popular = document.getElementById(`edit-popular-${id}`).checked;
+  let subcategories;
+  try {
+    subcategories = JSON.parse(document.getElementById(`edit-subs-${id}`).value);
+    if (!Array.isArray(subcategories)) throw new Error('Subcategories must be a JSON array.');
+  } catch (err) {
+    showFieldError(errorBox, `Invalid subcategories JSON: ${err.message}`);
+    return;
+  }
+  if (!name) { showFieldError(errorBox, 'Name is required.'); return; }
+  const saveBtn = document.getElementById(`edit-save-${id}`);
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+  try {
+    await db.collection('categories').doc(id).set({ name, icon, order, popular, subcategories });
+    await loadCategories();
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
+  }
+}
+
+async function deleteCategory(id) {
+  const cat = categoriesData.find((c) => c.id === id);
+  if (!confirm(`Delete category "${cat.name}"? This removes it (and its subcategories) from Home and Post Ad immediately.`)) return;
+  try {
+    await db.collection('categories').doc(id).delete();
+    await loadCategories();
+  } catch (err) {
+    alert(describeFirestoreError(err));
+  }
+}
+
+async function addCategory() {
+  const nameInput = document.getElementById('cat-add-name');
+  const iconInput = document.getElementById('cat-add-icon');
+  const popularInput = document.getElementById('cat-add-popular');
+  const errorBox = document.getElementById('cat-add-error');
+  hideFieldError(errorBox);
+  const name = nameInput.value.trim();
+  if (!name) { showFieldError(errorBox, 'Name is required.'); return; }
+  const id = uniqueId(slugify(name), categoriesData.map((c) => c.id));
+  const order = categoriesData.length ? Math.max(...categoriesData.map((c) => c.order || 0)) + 1 : 0;
+  const addBtn = document.getElementById('cat-add-btn');
+  addBtn.disabled = true;
+  try {
+    await db.collection('categories').doc(id).set({
+      name, icon: iconInput.value.trim(), popular: popularInput.checked, order, subcategories: [],
+    });
+    nameInput.value = ''; iconInput.value = ''; popularInput.checked = false;
+    await loadCategories();
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+  } finally {
+    addBtn.disabled = false;
+  }
+}
+
+async function importStarterCategories() {
+  const errorBox = document.getElementById('cat-import-error');
+  hideFieldError(errorBox);
+  const btn = document.getElementById('cat-import-btn');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  try {
+    const batch = db.batch();
+    CATEGORY_SEED.forEach((cat) => {
+      batch.set(db.collection('categories').doc(cat.id), cat);
+    });
+    await batch.commit();
+
+    // Also seed the matching reference data (e.g. phoneModels) the
+    // imported categories point at, if it isn't there already.
+    for (const refId of Object.keys(REFERENCE_SEED)) {
+      const brandNames = Object.keys(REFERENCE_SEED[refId]);
+      const refBatch = db.batch();
+      refBatch.set(db.collection('referenceData').doc(refId), { brands: brandNames }, { merge: true });
+      brandNames.forEach((brand) => {
+        const brandRef = db.collection('referenceData').doc(refId).collection('brands').doc(slugify(brand));
+        refBatch.set(brandRef, { brand, models: REFERENCE_SEED[refId][brand] });
+      });
+      await refBatch.commit();
+    }
+
+    await loadCategories();
+    await loadRefDataBrands();
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+    btn.disabled = false;
+    btn.textContent = 'Import starter categories';
+  }
+}
+
+// --- Reference data sub-view ------------------------------------------
+async function loadRefDataBrands() {
+  const refId = document.getElementById('refdata-refid').value.trim() || 'phoneModels';
+  const snap = await db.collection('referenceData').doc(refId).get();
+  refDataBrands = snap.exists ? (snap.data().brands || []) : [];
+  renderRefDataList();
+}
+
+function renderRefDataList() {
+  const listEl = document.getElementById('refdata-list');
+  const emptyEl = document.getElementById('refdata-empty');
+  listEl.innerHTML = '';
+  emptyEl.hidden = refDataBrands.length > 0;
+  refDataBrands.forEach((brand) => {
+    const id = slugify(brand);
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    row.innerHTML = `
+      <div class="list-row-info"><div><strong>${brand}</strong></div></div>
+      <div class="row-actions">
+        <button type="button" class="icon-btn" data-act="edit" data-brand="${brand}">✎</button>
+        <button type="button" class="icon-btn danger" data-act="delete" data-brand="${brand}">✕</button>
+      </div>
+    `;
+    listEl.appendChild(row);
+    const holder = document.createElement('div');
+    holder.id = `refdata-editor-${id}`;
+    listEl.appendChild(holder);
+  });
+  listEl.querySelectorAll('button[data-act="edit"]').forEach((btn) => {
+    btn.addEventListener('click', () => toggleBrandEditor(btn.dataset.brand));
+  });
+  listEl.querySelectorAll('button[data-act="delete"]').forEach((btn) => {
+    btn.addEventListener('click', () => deleteBrand(btn.dataset.brand));
+  });
+}
+
+async function toggleBrandEditor(brand) {
+  const id = slugify(brand);
+  const holder = document.getElementById(`refdata-editor-${id}`);
+  if (holder.childElementCount > 0) { holder.innerHTML = ''; return; }
+  holder.innerHTML = `<div class="card"><p class="muted">Loading…</p></div>`;
+  const refId = document.getElementById('refdata-refid').value.trim() || 'phoneModels';
+  const snap = await db.collection('referenceData').doc(refId).collection('brands').doc(id).get();
+  const models = snap.exists ? (snap.data().models || []) : [];
+  holder.innerHTML = `
+    <div class="card">
+      <label class="field-label">Models (JSON) — one entry per model: {"model": "...", "storage": [], "ram": [], "color": []}</label>
+      <textarea class="field" id="refdata-models-${id}" rows="14" style="font-family:monospace;font-size:12px;">${JSON.stringify(models, null, 2)}</textarea>
+      <div id="refdata-edit-error-${id}" class="error-banner" hidden></div>
+      <div class="row">
+        <button type="button" class="btn-primary" id="refdata-save-${id}">Save</button>
+        <button type="button" class="btn-ghost" id="refdata-cancel-${id}">Cancel</button>
+      </div>
+    </div>
+  `;
+  document.getElementById(`refdata-cancel-${id}`).addEventListener('click', () => { holder.innerHTML = ''; });
+  document.getElementById(`refdata-save-${id}`).addEventListener('click', () => saveBrand(brand));
+}
+
+async function saveBrand(brand) {
+  const id = slugify(brand);
+  const errorBox = document.getElementById(`refdata-edit-error-${id}`);
+  hideFieldError(errorBox);
+  let models;
+  try {
+    models = JSON.parse(document.getElementById(`refdata-models-${id}`).value);
+    if (!Array.isArray(models)) throw new Error('Models must be a JSON array.');
+  } catch (err) {
+    showFieldError(errorBox, `Invalid models JSON: ${err.message}`);
+    return;
+  }
+  const refId = document.getElementById('refdata-refid').value.trim() || 'phoneModels';
+  const saveBtn = document.getElementById(`refdata-save-${id}`);
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+  try {
+    await db.collection('referenceData').doc(refId).collection('brands').doc(id).set({ brand, models });
+    document.getElementById(`refdata-editor-${id}`).innerHTML = '';
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save';
+  }
+}
+
+async function deleteBrand(brand) {
+  if (!confirm(`Delete brand "${brand}"? This removes all its models.`)) return;
+  const refId = document.getElementById('refdata-refid').value.trim() || 'phoneModels';
+  const id = slugify(brand);
+  try {
+    await db.collection('referenceData').doc(refId).collection('brands').doc(id).delete();
+    refDataBrands = refDataBrands.filter((b) => b !== brand);
+    await db.collection('referenceData').doc(refId).set({ brands: refDataBrands }, { merge: true });
+    renderRefDataList();
+  } catch (err) {
+    alert(describeFirestoreError(err));
+  }
+}
+
+async function addBrand() {
+  const nameInput = document.getElementById('refdata-add-brand');
+  const errorBox = document.getElementById('refdata-add-error');
+  hideFieldError(errorBox);
+  const brand = nameInput.value.trim();
+  if (!brand) { showFieldError(errorBox, 'Brand name is required.'); return; }
+  const refId = document.getElementById('refdata-refid').value.trim() || 'phoneModels';
+  const id = slugify(brand);
+  const addBtn = document.getElementById('refdata-add-btn');
+  addBtn.disabled = true;
+  try {
+    await db.collection('referenceData').doc(refId).collection('brands').doc(id).set({ brand, models: [] });
+    const newBrands = refDataBrands.includes(brand) ? refDataBrands : [...refDataBrands, brand];
+    await db.collection('referenceData').doc(refId).set({ brands: newBrands }, { merge: true });
+    nameInput.value = '';
+    await loadRefDataBrands();
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+  } finally {
+    addBtn.disabled = false;
+  }
 }

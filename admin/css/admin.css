@@ -41,6 +41,7 @@ input[type="file"] { margin-top: 8px; }
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn-ghost.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
 .error-banner {
   background: #fdecea;

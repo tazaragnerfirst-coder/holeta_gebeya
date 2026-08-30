@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { CATEGORIES } from '../data/categories';
 import Icon from '../components/Icon.jsx';
 import SearchHeader from '../components/SearchHeader.jsx';
 import FilterSheet from '../components/FilterSheet.jsx';
@@ -13,7 +12,7 @@ import { getHomeBanners, getCachedHomeBanners } from '../lib/homeBanners';
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 
 export default function Home() {
-  const { listings, listingsReady, hasMoreListings, loadingMoreListings, loadMoreListings } = useAppData();
+  const { categories, listings, listingsReady, hasMoreListings, loadingMoreListings, loadMoreListings } = useAppData();
   const loading = !listingsReady;
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState(null);
@@ -116,7 +115,7 @@ export default function Home() {
           onSubmit={() => {}}
           suggestions={suggestions}
           popularTags={popularTags}
-          categories={CATEGORIES}
+          categories={categories}
           activeCategory={activeCategory}
           onCategoryChange={setActiveCategory}
           onOpenFilters={openFilters}

@@ -6,7 +6,9 @@ import { useRequireRegistered } from '../lib/authGate.jsx';
 import { getMyProfile } from '../lib/profile';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { computeExpiresAt } from '../lib/adStatus';
-import { CATEGORIES, getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS } from '../data/categories';
+import { getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS } from '../data/categories';
+import { getBrandList, getBrandModels } from '../lib/referenceData';
+import { useAppData } from '../lib/appData';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
 import ImageUploader from '../components/ImageUploader.jsx';
 import ChipSelect from '../components/ChipSelect.jsx';
@@ -18,6 +20,14 @@ export default function PostAd() {
   const { id: editId } = useParams();
   const isEdit = !!editId;
   const requireRegistered = useRequireRegistered();
+  const { categories: CATEGORIES } = useAppData();
+  // Options fetched from referenceData for attributes that point at a
+  // refCollection instead of embedding options inline (see #hog001) —
+  // keyed by attribute key. Populated lazily: the root attribute's
+  // (e.g. brand) option list loads once the subcategory is picked;
+  // the dependent attributes (model/storage/ram/color) fill in once
+  // a value for their parent is chosen.
+  const [refOptions, setRefOptions] = useState({});
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
   const [attrs, setAttrs] = useState({});
@@ -68,8 +78,78 @@ export default function PostAd() {
   }, [isEdit, editId]);
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
-  const subcategory = category && subcategoryId ? getSubcategory(categoryId, subcategoryId) : null;
+  const subcategory = category && subcategoryId ? getSubcategory(CATEGORIES, categoryId, subcategoryId) : null;
   const wordCount = description.trim() ? description.trim().split(/\s+/).length : 0;
+
+  // Attributes as DynamicAttributeForm actually renders: refCollection
+  // attributes get their `options` (root, e.g. brand) or
+  // `optionsByParent` (dependent, e.g. model/storage/ram/color)
+  // filled in from whatever's landed in refOptions so far — everything
+  // else passes through unchanged. DynamicAttributeForm itself stays
+  // Firestore-unaware.
+  const effectiveAttributes = subcategory
+    ? subcategory.attributes.map((attr) => {
+        if (!attr.refCollection) return attr;
+        const loaded = refOptions[attr.key];
+        // Always provide the shape DynamicAttributeForm expects, even
+        // before the fetch above resolves — an empty list/map, never
+        // undefined, so a select-dependent attribute never reads
+        // `.optionsByParent[x]` off undefined mid-load.
+        return attr.dependsOn
+          ? { ...attr, optionsByParent: loaded?.optionsByParent || {} }
+          : { ...attr, options: loaded?.options || [] };
+      })
+    : [];
+
+  // Root refCollection attribute (e.g. brand) — its option list only
+  // depends on the subcategory, so load it once when the subcategory
+  // is picked.
+  useEffect(() => {
+    if (!subcategory) return;
+    const rootAttr = subcategory.attributes.find((a) => a.refCollection && !a.dependsOn);
+    if (!rootAttr) return;
+    let cancelled = false;
+    getBrandList(rootAttr.refCollection).then((brands) => {
+      if (!cancelled) setRefOptions((o) => ({ ...o, [rootAttr.key]: { options: brands } }));
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subcategory?.id]);
+
+  // Dependent refCollection attributes (model/storage/ram/color) —
+  // fetch the chosen brand's full model list once, then fan its
+  // per-model fields out to whichever attribute keys match them
+  // (e.g. a model object's `storage` field feeds the `storage`
+  // attribute's optionsByParent, keyed by model name).
+  useEffect(() => {
+    if (!subcategory) return;
+    const rootAttr = subcategory.attributes.find((a) => a.refCollection && !a.dependsOn);
+    const brand = rootAttr && attrs[rootAttr.key];
+    if (!rootAttr || !brand) return;
+    let cancelled = false;
+    getBrandModels(rootAttr.refCollection, brand).then((models) => {
+      if (cancelled) return;
+      setRefOptions((o) => {
+        const next = { ...o };
+        for (const attr of subcategory.attributes) {
+          if (!attr.refCollection || attr.dependsOn !== rootAttr.key) continue;
+          // e.g. the `model` attribute: dependsOn brand, one option per model
+          next[attr.key] = { optionsByParent: { ...(o[attr.key]?.optionsByParent), [brand]: models.map((m) => m.model) } };
+        }
+        for (const attr of subcategory.attributes) {
+          if (!attr.refCollection || attr.dependsOn !== 'model') continue;
+          // e.g. storage/ram/color: dependsOn model, options come from
+          // that model's own field of the same name
+          const byModel = { ...(o[attr.key]?.optionsByParent) };
+          for (const m of models) byModel[m.model] = m[attr.key] || [];
+          next[attr.key] = { optionsByParent: byModel };
+        }
+        return next;
+      });
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subcategory?.id, attrs.brand]);
 
   function onCategoryChange(id) {
     setCategoryId(id);
@@ -317,7 +397,7 @@ export default function PostAd() {
             src/data/categories.js — add a subcategory there and its
             form appears here automatically. */}
         {subcategory && (
-          <DynamicAttributeForm attributes={subcategory.attributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
+          <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
         )}
 
         {subcategory && (

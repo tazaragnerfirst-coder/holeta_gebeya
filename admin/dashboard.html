@@ -19,6 +19,7 @@
   <nav class="tabbar">
     <button type="button" class="tab active" data-tab="banner">Profile Banner</button>
     <button type="button" class="tab" data-tab="carousel">Search Carousel</button>
+    <button type="button" class="tab" data-tab="categories">Categories</button>
     <button type="button" class="tab" data-tab="reports">Reports</button>
     <button type="button" class="tab" data-tab="users">Users</button>
     <button type="button" class="tab" data-tab="listings">Listings</button>
@@ -62,6 +63,57 @@
 
       <div id="carousel-list" class="list"></div>
       <div id="carousel-size" class="size-indicator"></div>
+    </section>
+
+    <!-- Categories / attribute schema (categories collection) +
+         reference data (referenceData collection) — see #hog001 -->
+    <section id="tab-categories" class="tab-panel">
+      <h2>Categories</h2>
+      <p class="muted">Drives Home's category chips and Post Ad's dynamic form. Changes apply immediately — no redeploy needed.</p>
+
+      <div class="row">
+        <button type="button" class="btn-ghost active" id="cat-subtab-categories">Categories</button>
+        <button type="button" class="btn-ghost" id="cat-subtab-refdata">Reference Data</button>
+      </div>
+
+      <div id="cat-import-wrap" class="card" hidden>
+        <h3>No categories saved yet</h3>
+        <p class="muted">Import the starter set (Electronics, Vehicles, Fashion, Home &amp; Furniture, Other) to get going, or add your own below instead.</p>
+        <button type="button" class="btn-primary" id="cat-import-btn">Import starter categories</button>
+        <div id="cat-import-error" class="error-banner" hidden></div>
+      </div>
+
+      <!-- Categories sub-view -->
+      <div id="cat-view-categories">
+        <div class="card">
+          <h3>Add a category</h3>
+          <label class="field-label" for="cat-add-name">Name</label>
+          <input class="field" type="text" id="cat-add-name" placeholder="e.g. Electronics" />
+          <label class="field-label" for="cat-add-icon">Icon</label>
+          <input class="field" type="text" id="cat-add-icon" placeholder="e.g. cpu — see src/components/Icon.jsx for valid names" />
+          <label class="field-label"><input type="checkbox" id="cat-add-popular" /> Popular (shown first)</label>
+          <div id="cat-add-error" class="error-banner" hidden></div>
+          <button type="button" class="btn-primary" id="cat-add-btn">Add category</button>
+        </div>
+        <div id="categories-list" class="list"></div>
+        <div id="categories-empty" class="empty-hint" hidden>No categories yet.</div>
+      </div>
+
+      <!-- Reference data sub-view -->
+      <div id="cat-view-refdata" hidden>
+        <p class="muted">Large lookup tables (e.g. phone brand → model → storage/RAM/color) that a category's attribute points to via <code>refCollection</code> instead of embedding options inline, so the category doc stays small as the catalog grows.</p>
+        <div class="card">
+          <h3>Add a brand</h3>
+          <label class="field-label" for="refdata-refid">Reference table</label>
+          <input class="field" type="text" id="refdata-refid" value="phoneModels" placeholder="e.g. phoneModels" />
+          <label class="field-label" for="refdata-add-brand">Brand name</label>
+          <input class="field" type="text" id="refdata-add-brand" placeholder="e.g. Samsung" />
+          <div id="refdata-add-error" class="error-banner" hidden></div>
+          <button type="button" class="btn-primary" id="refdata-add-btn">Add brand</button>
+        </div>
+        <div id="refdata-list" class="list"></div>
+        <div id="refdata-empty" class="empty-hint" hidden>No brands yet for this table.</div>
+      </div>
     </section>
 
     <!-- Reports queue (config-independent, reports collection) -->
@@ -145,6 +197,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="js/firebase-init.js"></script>
   <script src="js/imageCompress.js"></script>
+  <script src="js/categorySeed.js"></script>
   <script src="js/dashboard.js"></script>
 </body>
 </html>
