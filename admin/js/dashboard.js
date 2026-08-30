@@ -525,12 +525,12 @@ function initListings() {
 // moderation list below) and only writes the ones missing the field,
 // so a second run is cheap/harmless if it's interrupted partway.
 async function initSearchIndexCard() {
+  document.getElementById('search-index-wrap').hidden = false;
   try {
     const total = await countOf(db.collection('listings'));
     document.getElementById('search-index-count').textContent = total;
-    document.getElementById('search-index-wrap').hidden = false;
   } catch {
-    // Non-critical — the card just won't show if the count fails.
+    document.getElementById('search-index-count').textContent = 'some';
   }
 }
 
