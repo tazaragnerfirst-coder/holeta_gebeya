@@ -37,6 +37,7 @@ export default function ListingCard({ item, boosted }) {
   const photos = item.images && item.images.length ? item.images : (item.photo ? [item.photo] : []);
   const photo = photos[0];
   const posted = timeAgo(item.createdAt);
+  const isJob = item.categoryType === 'job';
   const priceDisplay = formatListingPrice(item);
   const isFavorited = registeredUid ? favorites.some((f) => f.listingId === item.id) : false;
 
@@ -58,10 +59,14 @@ export default function ListingCard({ item, boosted }) {
   }
 
   return (
-    <Link to={`/product/${item.id}`} state={productLinkState(location)} className="listing-card">
+    <Link to={`/product/${item.id}`} state={productLinkState(location)} className={`listing-card ${isJob ? 'card-job' : ''}`}>
       <div className="thumb">
         {photo ? (
           <img className="thumb-img" src={photo} alt={item.title} loading="lazy" />
+        ) : isJob ? (
+          <div className="thumb-placeholder" style={{ background: colorFor(item.id) }}>
+            <Icon name="briefcase" size={22} />
+          </div>
         ) : (
           <div className="thumb-placeholder" style={{ background: colorFor(item.id) }}>
             <Icon name="image" size={22} />
@@ -92,7 +97,7 @@ export default function ListingCard({ item, boosted }) {
             <span>({item.reviewCount})</span>
           </div>
         ) : null}
-        <div className="card-price">{priceDisplay.text}{priceDisplay.currency && <span>ETB</span>}</div>
+        {!isJob && <div className="card-price">{priceDisplay.text}{priceDisplay.currency && <span>ETB</span>}</div>}
         <div className="card-meta">
           {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}
           {posted && <span><Icon name="clock" size={11} /> {posted}</span>}

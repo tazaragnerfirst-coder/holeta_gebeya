@@ -94,6 +94,14 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
   .listing-card:hover{transform:translateY(-3px);}
 }
 .boost-scroll .listing-card{flex:0 0 152px;flex-shrink:0;}
+/* Job posts break out of the 2-column masonry into one full-width
+   row (column-span:all) instead of taking a normal column slot.
+   Thumb keeps the same square shape as a normal card, just narrower
+   relative to the wider card, so the row's height stays close to a
+   normal card's — only the width changes, per Taza's request. */
+.listing-card.card-job{column-span:all;display:flex;gap:10px;align-items:flex-start;background:var(--card-surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px;}
+.card-job .thumb{flex:0 0 40%;max-width:170px;}
+.card-job .card-footer{flex:1;min-width:0;padding:2px 2px 0 0;}
 /* Fixed 1:1 square, image cropped to fill edge-to-edge (object-fit:
    cover) — AliExpress-style dense grid card. Title/price/meta sit in
    a plain block below the photo, not overlaid on it. */
@@ -247,6 +255,7 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .req{color:var(--safety);margin-left:3px;}
 .field{border:1.5px solid var(--line);border-radius:12px;padding:12px 13px;font-size:14px;font-family:var(--font-ui);background:var(--surface);color:var(--ink);}
 textarea.field{min-height:84px;resize:vertical;}
+textarea.field.field-tall{min-height:220px;}
 .toggle-row{display:flex;gap:8px;}
 
 .upload-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
