@@ -211,7 +211,7 @@ function BottomNav() {
       <div className="nav-fab-wrapper">
         {onPostPage ? (
           <button type="button" className="nav-fab" onClick={() => triggerPostAdSubmit()}>
-            <Icon name="check" size={24} />
+            <Icon name="arrowUp" size={24} />
           </button>
         ) : (
           <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
