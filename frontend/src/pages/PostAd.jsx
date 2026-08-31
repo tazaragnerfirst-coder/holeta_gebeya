@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, addDoc, updateDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db, auth, BACKEND_URL } from '../lib/firebase';
@@ -16,6 +16,7 @@ import ChipSelect from '../components/ChipSelect.jsx';
 import { ErrorBanner } from '../components/Banner.jsx';
 import { runInBackground, isTransientError, withMinDuration } from '../lib/postProgress';
 import { loadDraft, saveDraft, clearDraft } from '../lib/postDraft';
+import { registerPostAdSubmit, unregisterPostAdSubmit } from '../lib/postAdFab';
 
 export default function PostAd() {
   const navigate = useNavigate();
@@ -368,6 +369,18 @@ export default function PostAd() {
       setErrors({ submit: `Couldn't ${isEdit ? 'save' : 'post'} your ad: ${err.message || err}.` });
     }
   }
+
+  // Lets the bottom-nav fab (rendered in App.jsx, outside this
+  // component tree) call submit() while this page is mounted — the
+  // ref always points at the current submit closure so the bridge
+  // never calls a stale one.
+  const submitRef = useRef();
+  submitRef.current = submit;
+  useEffect(() => {
+    registerPostAdSubmit(() => submitRef.current());
+    return () => unregisterPostAdSubmit();
+  }, []);
+
 
   if (isEdit && loadingExisting) {
     return (

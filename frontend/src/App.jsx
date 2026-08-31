@@ -7,6 +7,7 @@ import { AppDataProvider, useAppData } from './lib/appData.jsx';
 import { BACKEND_URL } from './lib/firebase';
 import { getTelegramWebApp } from './lib/telegram';
 import PostProgressRing from './components/PostProgressRing.jsx';
+import { triggerPostAdSubmit } from './lib/postAdFab';
 
 // Home loads eagerly (it's the landing screen, needed immediately).
 // Everything else splits into its own chunk and loads on first visit
@@ -180,6 +181,11 @@ function TelegramBackButton() {
 
 function BottomNav() {
   const { chats, registeredUid } = useAppData();
+  const { pathname } = useLocation();
+  // While already on /post, the fab acts on the open form (same
+  // action as tapping Continue/Save Changes) instead of navigating
+  // to a page the person is already on.
+  const onPostPage = pathname === '/post';
   // Sum of every conversation's unread count for this user — the
   // same total-unread badge pattern Telegram shows on its chat tab.
   const totalUnread = registeredUid
@@ -203,7 +209,13 @@ function BottomNav() {
       {item('/dashboard', 'Dashboard', 'briefcase')}
       {item('/profile', 'Profile', 'user')}
       <div className="nav-fab-wrapper">
-        <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
+        {onPostPage ? (
+          <button type="button" className="nav-fab" onClick={() => triggerPostAdSubmit()}>
+            <Icon name="check" size={24} />
+          </button>
+        ) : (
+          <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
+        )}
       </div>
     </nav>
   );
