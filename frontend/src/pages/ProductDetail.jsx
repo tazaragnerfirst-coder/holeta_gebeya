@@ -20,7 +20,7 @@ import { ProductDetailSkeleton } from '../components/Skeletons.jsx';
 import { getCached, setCached } from '../lib/pageCache';
 import { logListingView, logContactClick } from '../lib/analytics';
 import { setFavorite } from '../lib/favorites';
-import { formatPrice, conditionTone } from '../lib/format';
+import { formatListingPrice, conditionTone } from '../lib/format';
 import { getSellerRating } from '../lib/rating';
 
 function timeAgo(ts) {
@@ -171,6 +171,7 @@ export default function ProductDetail() {
             listingTitle: item.title,
             listingPhoto: item.images?.[0] || '',
             listingPrice: item.price,
+            listingPriceType: item.priceType || 'fixed',
             sellerId: item.sellerId,
             sellerName: item.sellerName || 'Seller',
             sellerPhoto: item.sellerPhoto || '',
@@ -317,6 +318,7 @@ export default function ProductDetail() {
   const hasAttrs = item.attributes && Object.values(item.attributes).some((v) => v !== '' && v !== undefined);
   const sellerInitial = (item.sellerName || 'S')[0].toUpperCase();
   const isBoosted = item.boostedUntil?.toDate?.() > new Date();
+  const priceDisplay = formatListingPrice(item);
 
   return (
     <div className="pd-page">
@@ -350,7 +352,7 @@ export default function ProductDetail() {
           <Icon name="bookmark" size={15} {...(isFavorited ? { fill: 'currentColor' } : {})} />
         </button>
         <div className="pd-title">{item.title}</div>
-        <div className="pd-price">{formatPrice(item.price)}<span>ETB</span></div>
+        <div className="pd-price">{priceDisplay.text}{priceDisplay.currency && <span>ETB</span>}</div>
         <div className="pd-meta-row">
           <span><Icon name="mapPin" size={13} /> {item.location}</span>
           <span><Icon name="grid" size={13} /> {item.category} / {item.subcategory}</span>

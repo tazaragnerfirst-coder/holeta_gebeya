@@ -18,7 +18,8 @@ export async function setFavorite(uid, listing, isFavorited) {
     await setDoc(ref, {
       listingId: listing.id,
       title: listing.title || '',
-      price: listing.price || '',
+      price: listing.price ?? null,
+      priceType: listing.priceType || 'fixed',
       photo: (listing.images && listing.images[0]) || '',
       location: listing.location || '',
       condition: listing.condition || '',

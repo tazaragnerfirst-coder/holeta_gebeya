@@ -8,6 +8,7 @@ import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { isActiveAd, isPausedAd, isExpired, daysSincePosted } from '../lib/adStatus';
 import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
 import { getCached, setCached } from '../lib/pageCache';
+import { formatListingPrice } from '../lib/format';
 import Icon from '../components/Icon.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 import CombinedTrendChart from '../components/CombinedTrendChart.jsx';
@@ -197,6 +198,7 @@ export default function AdsManage() {
         const contactsTotal = days.reduce((s, d) => s + (d.contacts || 0), 0);
         const paused = isPausedAd(a);
         const flag = isActiveAd(a) ? getPerfFlag(a, days) : null;
+        const priceDisplay = formatListingPrice(a);
         return (
           <div className="ad-manage-card" key={a.id}>
             <div className="view-ad-card-top">
@@ -206,7 +208,7 @@ export default function AdsManage() {
                 </div>
                 <div className="info">
                   <div className="t">{a.title}</div>
-                  <div className="p">{a.price} ETB</div>
+                  <div className="p">{priceDisplay.text}{priceDisplay.currency ? ' ETB' : ''}</div>
                 </div>
                 <span className={`status-pill ${paused ? 'paused' : 'active'}`}>{paused ? 'paused' : 'active'}</span>
               </Link>

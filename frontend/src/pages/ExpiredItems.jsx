@@ -7,6 +7,7 @@ import { useLoadTimeout } from '../lib/useLoadTimeout';
 import { isExpired, computeExpiresAt } from '../lib/adStatus';
 import { productLinkState } from '../lib/nav';
 import Icon from '../components/Icon.jsx';
+import { formatListingPrice } from '../lib/format';
 
 // Opened from the "Expired" card on the Dashboard. An ad lands here
 // once its 30-day expiresAt has passed (set at posting time) or its
@@ -48,6 +49,7 @@ export default function ExpiredItems() {
       )}
       {expired.map((a) => {
         const photo = a.images && a.images[0];
+        const priceDisplay = formatListingPrice(a);
         return (
           <div className="ad-row" key={a.id}>
             <Link to={`/product/${a.id}`} state={productLinkState(location)} style={{ display: 'flex', flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
@@ -56,7 +58,7 @@ export default function ExpiredItems() {
               </div>
               <div className="info">
                 <div className="t">{a.title}</div>
-                <div className="p">{a.price} ETB</div>
+                <div className="p">{priceDisplay.text}{priceDisplay.currency ? ' ETB' : ''}</div>
               </div>
             </Link>
             <button

@@ -23,7 +23,7 @@ export default function Favorites() {
       {favorites.length > 0 && (
         <div className="listing-grid">
           {favorites.map((f) => (
-            <ListingCard key={f.id} item={{ id: f.listingId, title: f.title, price: f.price, photo: f.photo, location: f.location, condition: f.condition }} />
+            <ListingCard key={f.id} item={{ id: f.listingId, title: f.title, price: f.price, priceType: f.priceType, photo: f.photo, location: f.location, condition: f.condition }} />
           ))}
         </div>
       )}

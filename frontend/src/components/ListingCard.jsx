@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 import { useAppData } from '../lib/appData';
 import { useRequireRegistered } from '../lib/authGate';
 import { setFavorite } from '../lib/favorites';
-import { formatPrice, conditionTone } from '../lib/format';
+import { formatListingPrice, conditionTone } from '../lib/format';
 import { productLinkState } from '../lib/nav';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
@@ -37,6 +37,7 @@ export default function ListingCard({ item, boosted }) {
   const photos = item.images && item.images.length ? item.images : (item.photo ? [item.photo] : []);
   const photo = photos[0];
   const posted = timeAgo(item.createdAt);
+  const priceDisplay = formatListingPrice(item);
   const isFavorited = registeredUid ? favorites.some((f) => f.listingId === item.id) : false;
 
   async function toggleFavorite(e) {
@@ -91,7 +92,7 @@ export default function ListingCard({ item, boosted }) {
             <span>({item.reviewCount})</span>
           </div>
         ) : null}
-        <div className="card-price">{formatPrice(item.price)}<span>ETB</span></div>
+        <div className="card-price">{priceDisplay.text}{priceDisplay.currency && <span>ETB</span>}</div>
         <div className="card-meta">
           {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}
           {posted && <span><Icon name="clock" size={11} /> {posted}</span>}

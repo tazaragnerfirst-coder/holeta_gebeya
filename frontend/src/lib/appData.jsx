@@ -332,8 +332,8 @@ export function AppDataProvider({ children }) {
       const snap = await getDocs(q);
       let results = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter(isActiveAd);
 
-      if (minPrice != null) results = results.filter((l) => (l.price || 0) >= minPrice);
-      if (maxPrice != null) results = results.filter((l) => (l.price || 0) <= maxPrice);
+      if (minPrice != null) results = results.filter((l) => l.price != null && l.price >= minPrice);
+      if (maxPrice != null) results = results.filter((l) => l.price != null && l.price <= maxPrice);
       if (conditions.length > 0) results = results.filter((l) => conditions.includes(l.condition));
       if (completedWords.length > 0) {
         results = results.filter((l) => {

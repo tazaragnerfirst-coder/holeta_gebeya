@@ -424,8 +424,12 @@ function listingMatchesFilters(l, q, statusFilter) {
 }
 
 function formatListingPrice(l) {
+  const type = l.priceType || 'fixed';
+  if (type === 'free') return 'Free';
+  if (type === 'contact') return 'Contact seller';
   const n = Number(l.price);
-  return Number.isFinite(n) ? `${n.toLocaleString()} ETB` : '—';
+  const amount = Number.isFinite(n) ? `${n.toLocaleString()} ETB` : '—';
+  return type === 'negotiable' && Number.isFinite(n) ? `${amount} (negotiable)` : (type === 'negotiable' ? 'Negotiable' : amount);
 }
 
 function renderListingsList() {
@@ -831,7 +835,7 @@ function renderCategoriesList() {
     row.className = 'list-row';
     row.innerHTML = `
       <div class="list-row-info">
-        <div><strong>${cat.name}</strong>${cat.popular ? ' · popular' : ''}</div>
+        <div><strong>${cat.name}</strong>${cat.popular ? ' · popular' : ''}${cat.type === 'service' ? ' · service' : ''}</div>
         <div class="muted">icon: ${cat.icon || '—'} · order: ${cat.order} · ${cat.subcategories.length} subcategor${cat.subcategories.length === 1 ? 'y' : 'ies'}</div>
       </div>
       <div class="row-actions">
@@ -878,6 +882,11 @@ function renderCategoryEditor(id) {
       <label class="field-label">Order</label>
       <input class="field" type="number" id="edit-order-${id}" value="${draft.order}" />
       <label class="field-label"><input type="checkbox" id="edit-popular-${id}" ${draft.popular ? 'checked' : ''}/> Popular (shown first)</label>
+      <label class="field-label">Type</label>
+      <select class="field" id="edit-type-${id}">
+        <option value="product" ${draft.type !== 'service' ? 'selected' : ''}>Product (photos required)</option>
+        <option value="service" ${draft.type === 'service' ? 'selected' : ''}>Service (photos optional)</option>
+      </select>
 
       <h4>Subcategories</h4>
       <div id="subcat-list-${id}"></div>
@@ -1169,12 +1178,13 @@ async function saveCategory(id) {
   const icon = document.getElementById(`edit-icon-${id}`).value.trim();
   const order = Number(document.getElementById(`edit-order-${id}`).value) || 0;
   const popular = document.getElementById(`edit-popular-${id}`).checked;
+  const type = document.getElementById(`edit-type-${id}`).value;
   if (!name) { showFieldError(errorBox, 'Name is required.'); return; }
   const saveBtn = document.getElementById(`edit-save-${id}`);
   saveBtn.disabled = true;
   saveBtn.textContent = 'Saving…';
   try {
-    await db.collection('categories').doc(id).set({ name, icon, order, popular, subcategories: draft.subcategories });
+    await db.collection('categories').doc(id).set({ name, icon, order, popular, type, subcategories: draft.subcategories });
     delete categoryDrafts[id]; delete expandedSubcat[id];
     await loadCategories();
   } catch (err) {
@@ -1199,6 +1209,7 @@ async function addCategory() {
   const nameInput = document.getElementById('cat-add-name');
   const iconInput = document.getElementById('cat-add-icon');
   const popularInput = document.getElementById('cat-add-popular');
+  const typeInput = document.getElementById('cat-add-type');
   const errorBox = document.getElementById('cat-add-error');
   hideFieldError(errorBox);
   const name = nameInput.value.trim();
@@ -1209,9 +1220,9 @@ async function addCategory() {
   addBtn.disabled = true;
   try {
     await db.collection('categories').doc(id).set({
-      name, icon: iconInput.value.trim(), popular: popularInput.checked, order, subcategories: [],
+      name, icon: iconInput.value.trim(), popular: popularInput.checked, type: typeInput.value, order, subcategories: [],
     });
-    nameInput.value = ''; iconInput.value = ''; popularInput.checked = false;
+    nameInput.value = ''; iconInput.value = ''; popularInput.checked = false; typeInput.value = 'product';
     await loadCategories();
   } catch (err) {
     showFieldError(errorBox, describeFirestoreError(err));

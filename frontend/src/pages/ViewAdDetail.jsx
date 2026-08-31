@@ -13,6 +13,7 @@ import RankedBarChart from '../components/RankedBarChart.jsx';
 import BoostCard from '../components/BoostCard.jsx';
 import StarRow from '../components/StarRow.jsx';
 import StateMessage from '../components/StateMessage.jsx';
+import { formatListingPrice } from '../lib/format';
 
 const RANGE_OPTIONS = [
   { key: '7', label: '7 days', days: 7 },
@@ -128,6 +129,7 @@ export default function ViewAdDetail() {
   }
 
   const photo = ad.images && ad.images[0];
+  const priceDisplay = formatListingPrice(ad);
 
   return (
     <div className="page">
@@ -139,7 +141,7 @@ export default function ViewAdDetail() {
         </div>
         <div className="info">
           <div className="t">{ad.title}</div>
-          <div className="p">{ad.price} ETB</div>
+          <div className="p">{priceDisplay.text}{priceDisplay.currency ? ' ETB' : ''}</div>
         </div>
         <div className={`status-pill ${ad.status}`}>{isActiveAd(ad) ? 'active' : ad.status}</div>
       </div>

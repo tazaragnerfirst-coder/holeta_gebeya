@@ -14,6 +14,7 @@ import { productLinkState } from '../lib/nav';
 import Icon from '../components/Icon.jsx';
 import { ErrorBanner } from '../components/Banner.jsx';
 import { getCached, setCached } from '../lib/pageCache';
+import { formatListingPrice } from '../lib/format';
 
 function formatClock(ts) {
   if (!ts?.toDate) return '';
@@ -279,6 +280,7 @@ export default function ChatThread() {
           listingTitle: listingToAttach.listingTitle,
           listingPhoto: listingToAttach.listingPhoto,
           listingPrice: listingToAttach.listingPrice,
+          listingPriceType: listingToAttach.listingPriceType || 'fixed',
           createdAt: serverTimestamp(),
         });
       }
@@ -364,6 +366,10 @@ export default function ChatThread() {
     }
   }
 
+  const pendingPriceDisplay = pendingListing
+    ? formatListingPrice({ price: pendingListing.listingPrice, priceType: pendingListing.listingPriceType })
+    : null;
+
   return (
     <div className="page thread-page">
       <div className="chat-context">
@@ -424,7 +430,7 @@ export default function ChatThread() {
               </div>
               <div className="thread-listing-info">
                 <div className="t">{pendingListing.listingTitle}</div>
-                <div className="p">{pendingListing.listingPrice} ETB</div>
+                <div className="p">{pendingPriceDisplay.text}{pendingPriceDisplay.currency ? ' ETB' : ''}</div>
               </div>
             </Link>
           )}
@@ -441,7 +447,9 @@ export default function ChatThread() {
                   </div>
                   <div className="thread-listing-info">
                     <div className="t">{m.listingTitle}</div>
-                    <div className="p">{m.listingPrice} ETB</div>
+                    <div className="p">
+                      {(() => { const pd = formatListingPrice({ price: m.listingPrice, priceType: m.listingPriceType }); return `${pd.text}${pd.currency ? ' ETB' : ''}`; })()}
+                    </div>
                   </div>
                 </Link>
               );

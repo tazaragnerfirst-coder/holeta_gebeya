@@ -92,6 +92,11 @@
           <label class="field-label" for="cat-add-icon">Icon</label>
           <input class="field" type="text" id="cat-add-icon" placeholder="e.g. cpu — see src/components/Icon.jsx for valid names" />
           <label class="field-label"><input type="checkbox" id="cat-add-popular" /> Popular (shown first)</label>
+          <label class="field-label" for="cat-add-type">Type</label>
+          <select class="field" id="cat-add-type">
+            <option value="product">Product (photos required)</option>
+            <option value="service">Service (photos optional)</option>
+          </select>
           <div id="cat-add-error" class="error-banner" hidden></div>
           <button type="button" class="btn-primary" id="cat-add-btn">Add category</button>
         </div>

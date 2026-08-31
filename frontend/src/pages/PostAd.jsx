@@ -36,6 +36,7 @@ export default function PostAd() {
   const [attrs, setAttrs] = useState({});
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
+  const [priceType, setPriceType] = useState('fixed');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('Holeta');
   const [images, setImages] = useState([]);
@@ -72,6 +73,7 @@ export default function PostAd() {
         setTitle(a.title || '');
         setTitleTouched(true); // don't let the auto-suggest effect overwrite the loaded title
         setPrice(a.price != null ? String(a.price) : '');
+        setPriceType(a.priceType || 'fixed');
         setDescription(a.description || '');
         setLocation(a.location || 'Holeta');
         setImages(a.images || []); // existing images stay as data-URL strings until re-saved
@@ -97,6 +99,7 @@ export default function PostAd() {
       setTitle(draft.title || '');
       if (draft.title) setTitleTouched(true); // don't let the auto-suggest effect overwrite the restored title
       setPrice(draft.price || '');
+      setPriceType(draft.priceType || 'fixed');
       setDescription(draft.description || '');
       setLocation(draft.location || 'Holeta');
     }
@@ -110,10 +113,11 @@ export default function PostAd() {
   // out a real draft with the form's blank initial state.
   useEffect(() => {
     if (isEdit || !draftReady) return;
-    saveDraft({ categoryId, subcategoryId, attrs, title, price, description, location });
-  }, [isEdit, draftReady, categoryId, subcategoryId, attrs, title, price, description, location]);
+    saveDraft({ categoryId, subcategoryId, attrs, title, price, priceType, description, location });
+  }, [isEdit, draftReady, categoryId, subcategoryId, attrs, title, price, priceType, description, location]);
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
+  const isService = category?.type === 'service';
   const subcategory = category && subcategoryId ? getSubcategory(CATEGORIES, categoryId, subcategoryId) : null;
   const wordCount = description.trim() ? description.trim().split(/\s+/).length : 0;
 
@@ -220,11 +224,12 @@ export default function PostAd() {
   // it. Dynamic attribute errors are nested under `attrs`.
   function validate() {
     const errs = {};
-    if (images.length === 0) errs.photos = 'Add at least 1 photo — listings without photos get far fewer replies.';
+    if (!isService && images.length === 0) errs.photos = 'Add at least 1 photo — listings without photos get far fewer replies.';
     if (!categoryId) errs.categoryId = 'Select a category to continue.';
     if (categoryId && !subcategoryId) errs.subcategoryId = 'Select a subcategory to continue.';
     if (!title.trim()) errs.title = 'Title is required — give buyers a short, clear name for the item.';
-    if (!price || Number(price) <= 0) errs.price = 'Enter a valid price greater than 0.';
+    if (priceType === 'fixed' && (!price || Number(price) <= 0)) errs.price = 'Enter a valid price greater than 0.';
+    if (priceType === 'negotiable' && price && Number(price) <= 0) errs.price = 'Enter a valid asking price, or leave it blank.';
     if (wordCount > 0 && wordCount < DESCRIPTION_MIN_WORDS) errs.description = `Add a bit more detail — at least ${DESCRIPTION_MIN_WORDS} words helps buyers trust the listing.`;
     else if (wordCount === 0) errs.description = `Description is required — at least ${DESCRIPTION_MIN_WORDS} words about condition, accessories, etc.`;
 
@@ -269,12 +274,20 @@ export default function PostAd() {
     // so buyers see who they'd actually be chatting with.
     const myProfile = await getMyProfile(user.uid);
 
+    // Fixed: amount required (enforced in validate()). Negotiable: an
+    // asking amount if the seller gave one, else null (still
+    // negotiable, just no starting number shown). Free/contact never
+    // carry an amount — 0 reads oddly for "contact seller", and null
+    // is unambiguous for both.
+    const numericPrice = priceType === 'free' ? 0 : (priceType === 'contact' ? null : (price ? Number(price) : null));
+
     const payload = {
       sellerId: user.uid,
       sellerName: myProfile.name,
       sellerPhoto: myProfile.photo,
       title,
-      price: Number(price),
+      price: numericPrice,
+      priceType,
       description,
       location,
       category: categoryId,
@@ -405,8 +418,9 @@ export default function PostAd() {
 
       <div className="form-block">
         <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
-          <label className="field-label">Photos<span className="req">*</span></label>
+          <label className="field-label">Photos{!isService && <span className="req">*</span>}</label>
           <ImageUploader files={images} onChange={setImages} maxImages={5} />
+          {!errors.photos && isService && <p className="helper-text">Optional for services — add photos if they help buyers, e.g. past work.</p>}
           {errors.photos && <p className="field-error">{errors.photos}</p>}
         </div>
 
@@ -454,8 +468,24 @@ export default function PostAd() {
               {errors.title && <p className="field-error">{errors.title}</p>}
             </div>
             <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
-              <label className="field-label">Price (ETB)<span className="req">*</span></label>
-              <input className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)} />
+              <label className="field-label">Price<span className="req">*</span></label>
+              <ChipSelect
+                options={[
+                  { label: 'Fixed price', value: 'fixed' },
+                  { label: 'Negotiable', value: 'negotiable' },
+                  { label: 'Free', value: 'free' },
+                  { label: 'Contact seller', value: 'contact' },
+                ]}
+                value={priceType}
+                onChange={(v) => setPriceType(v)}
+              />
+              {(priceType === 'fixed' || priceType === 'negotiable') && (
+                <input
+                  className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)}
+                  placeholder={priceType === 'negotiable' ? 'Asking price (ETB) — optional' : 'Price (ETB)'}
+                  style={{ marginTop: 8 }}
+                />
+              )}
               {errors.price && <p className="field-error">{errors.price}</p>}
             </div>
             <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
