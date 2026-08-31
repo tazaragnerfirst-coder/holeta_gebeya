@@ -15,6 +15,7 @@ import ImageUploader from '../components/ImageUploader.jsx';
 import ChipSelect from '../components/ChipSelect.jsx';
 import { ErrorBanner } from '../components/Banner.jsx';
 import { runInBackground, isTransientError, withMinDuration } from '../lib/postProgress';
+import { loadDraft, saveDraft, clearDraft } from '../lib/postDraft';
 
 export default function PostAd() {
   const navigate = useNavigate();
@@ -46,6 +47,11 @@ export default function PostAd() {
   // need to be pre-selected before rendering makes sense.
   const [loadingExisting, setLoadingExisting] = useState(isEdit);
   const [loadError, setLoadError] = useState('');
+  // Ready immediately in edit mode (drafts are never used there);
+  // in new-post mode this flips true right after the one-time draft
+  // restore below, so the autosave effect can't fire on the initial
+  // empty render and overwrite a real draft with blank fields.
+  const [draftReady, setDraftReady] = useState(isEdit);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -77,6 +83,34 @@ export default function PostAd() {
     })();
     return () => { cancelled = true; };
   }, [isEdit, editId]);
+
+  // One-time restore of an in-progress draft (new-post mode only) —
+  // e.g. after an accidental back-navigation or app close mid-form.
+  useEffect(() => {
+    if (isEdit) return;
+    const draft = loadDraft();
+    if (draft) {
+      setCategoryId(draft.categoryId || '');
+      setSubcategoryId(draft.subcategoryId || '');
+      setAttrs(draft.attrs || {});
+      setTitle(draft.title || '');
+      if (draft.title) setTitleTouched(true); // don't let the auto-suggest effect overwrite the restored title
+      setPrice(draft.price || '');
+      setDescription(draft.description || '');
+      setLocation(draft.location || 'Holeta');
+    }
+    setDraftReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keeps the draft in sync with every field change so the restore
+  // above always has something recent to work with. Gated on
+  // draftReady so this can't fire before the restore runs and wipe
+  // out a real draft with the form's blank initial state.
+  useEffect(() => {
+    if (isEdit || !draftReady) return;
+    saveDraft({ categoryId, subcategoryId, attrs, title, price, description, location });
+  }, [isEdit, draftReady, categoryId, subcategoryId, attrs, title, price, description, location]);
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
   const subcategory = category && subcategoryId ? getSubcategory(CATEGORIES, categoryId, subcategoryId) : null;
@@ -306,6 +340,7 @@ export default function PostAd() {
       // withMinDuration keeps the top ring showing briefly so
       // posting never feels like it skipped doing any real work.
       const { path } = await withMinDuration(publish);
+      clearDraft();
       setSubmitting(false);
       setStatusMsg('');
       navigate(path);
@@ -325,7 +360,9 @@ export default function PostAd() {
         // background. The small ring at the top of every screen
         // shows it's still working; Support chat gets a message
         // only if every retry fails.
-        runInBackground(publish, { onFail: notifySupportOfFailure });
+        runInBackground(publish, { onFail: notifySupportOfFailure }).then((result) => {
+          if (result) clearDraft();
+        });
         return;
       }
       setErrors({ submit: `Couldn't ${isEdit ? 'save' : 'post'} your ad: ${err.message || err}.` });
