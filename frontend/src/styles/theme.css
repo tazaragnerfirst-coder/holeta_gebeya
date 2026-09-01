@@ -81,13 +81,19 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 /* True masonry: a 2-column flow where each card only takes the
    vertical space its own image needs, and the next card slots in
    right below it — not row-locked to whatever is tallest in the
-   opposite column, the way CSS grid would do it. */
+   opposite column, the way CSS grid would do it. Column assignment
+   is decided in JS (components/ListingGrid.jsx), not via CSS
+   column-count's "balance" fill — balance recalculates the whole
+   layout as content grows, which visibly moves already-rendered
+   cards between columns; a fixed per-item column assignment can't. */
 /* Bleeds past .page's 16px side padding, leaving only a slim 6px
    edge margin — the AliExpress-style tight grid Taza wants, without
    hardcoding a pixel width (still relative to .page's own padding,
    so it stays correct if that ever changes). */
-.listing-grid{column-count:2;column-gap:6px;margin:0 -10px;}
-.listing-grid > .listing-card{-webkit-column-break-inside:avoid;break-inside:avoid;margin-bottom:6px;}
+.listing-grid{display:flex;flex-direction:column;gap:6px;margin:0 -10px;}
+.listing-grid-cols{display:flex;gap:6px;align-items:flex-start;}
+.listing-grid-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.listing-grid-full{width:100%;}
 .listing-card{display:block;text-decoration:none;color:inherit;background:transparent;transition:transform .12s ease;}
 .listing-card:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){
@@ -99,7 +105,7 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
    Thumb keeps the same square shape as a normal card, just narrower
    relative to the wider card, so the row's height stays close to a
    normal card's — only the width changes, per Taza's request. */
-.listing-card.card-job{column-span:all;display:flex;gap:9px;align-items:flex-start;background:var(--card-surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:7px;}
+.listing-card.card-job{display:flex;gap:9px;align-items:flex-start;background:var(--card-surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:7px;}
 .card-job .thumb{flex:0 0 30%;max-width:110px;}
 .card-job .card-footer{flex:1;min-width:0;padding:1px 2px 0 0;}
 /* Fixed 1:1 square, image cropped to fill edge-to-edge (object-fit:

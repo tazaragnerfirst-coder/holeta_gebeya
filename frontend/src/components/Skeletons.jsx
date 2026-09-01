@@ -1,4 +1,5 @@
 import React from 'react';
+import ListingGrid from './ListingGrid.jsx';
 
 // Placeholder shaped like ListingCard (Home.jsx) — shown while the
 // listings query is in flight so the grid never looks empty/blank.
@@ -17,9 +18,10 @@ export function ListingCardSkeleton() {
 
 export function ListingGridSkeleton({ count = 6 }) {
   return (
-    <div className="listing-grid">
-      {Array.from({ length: count }).map((_, i) => <ListingCardSkeleton key={i} />)}
-    </div>
+    <ListingGrid
+      items={Array.from({ length: count }, (_, i) => ({ id: i }))}
+      renderItem={(item) => <ListingCardSkeleton key={item.id} />}
+    />
   );
 }
 

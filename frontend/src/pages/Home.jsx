@@ -4,6 +4,7 @@ import SearchHeader from '../components/SearchHeader.jsx';
 import FilterSheet from '../components/FilterSheet.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import ListingCard from '../components/ListingCard.jsx';
+import ListingGrid from '../components/ListingGrid.jsx';
 import { ListingGridSkeleton } from '../components/Skeletons.jsx';
 import PromoBannerCarousel from '../components/PromoBannerCarousel.jsx';
 import { useAppData } from '../lib/appData';
@@ -214,9 +215,7 @@ export default function Home() {
       )}
 
       {!loading && displayed.length > 0 && (
-        <div className="listing-grid">
-          {displayed.map((item) => <ListingCard key={item.id} item={item} />)}
-        </div>
+        <ListingGrid items={displayed} renderItem={(item) => <ListingCard key={item.id} item={item} />} />
       )}
 
       {/* Invisible trigger for the prefetch-ahead described above —

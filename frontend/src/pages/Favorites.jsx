@@ -1,6 +1,7 @@
 import React from 'react';
 import Icon from '../components/Icon.jsx';
 import ListingCard from '../components/ListingCard.jsx';
+import ListingGrid from '../components/ListingGrid.jsx';
 import { useAppData } from '../lib/appData';
 
 export default function Favorites() {
@@ -21,11 +22,12 @@ export default function Favorites() {
       )}
 
       {favorites.length > 0 && (
-        <div className="listing-grid">
-          {favorites.map((f) => (
+        <ListingGrid
+          items={favorites}
+          renderItem={(f) => (
             <ListingCard key={f.id} item={{ id: f.listingId, title: f.title, price: f.price, priceType: f.priceType, photo: f.photo, location: f.location, condition: f.condition }} />
-          ))}
-        </div>
+          )}
+        />
       )}
     </div>
   );
