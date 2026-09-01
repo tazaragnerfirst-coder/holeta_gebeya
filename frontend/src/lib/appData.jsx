@@ -317,7 +317,7 @@ export function AppDataProvider({ children }) {
   // client-side over the (already narrowed by category/that one
   // token) candidate set below — cheap at that point, and avoids
   // needing a separate composite index for every filter combination.
-  async function searchListings({ term = '', categoryId = null, minPrice = null, maxPrice = null, conditions = [] } = {}) {
+  async function searchListings({ term = '', categoryId = null, categoryType = null, minPrice = null, maxPrice = null, conditions = [] } = {}) {
     setSearchLoading(true);
     try {
       const words = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -325,7 +325,8 @@ export function AppDataProvider({ children }) {
       const completedWords = words.slice(0, -1);
 
       let q = query(collection(db, 'listings'));
-      if (categoryId) q = query(q, where('category', '==', categoryId));
+      if (categoryType) q = query(q, where('categoryType', '==', categoryType));
+      else if (categoryId) q = query(q, where('category', '==', categoryId));
       if (liveWord) q = query(q, where('searchTokens', 'array-contains', liveWord));
       q = query(q, orderBy('createdAt', 'desc'), limit(200));
 

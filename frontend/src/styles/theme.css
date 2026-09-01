@@ -99,9 +99,9 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
    Thumb keeps the same square shape as a normal card, just narrower
    relative to the wider card, so the row's height stays close to a
    normal card's — only the width changes, per Taza's request. */
-.listing-card.card-job{column-span:all;display:flex;gap:10px;align-items:flex-start;background:var(--card-surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px;}
-.card-job .thumb{flex:0 0 40%;max-width:170px;}
-.card-job .card-footer{flex:1;min-width:0;padding:2px 2px 0 0;}
+.listing-card.card-job{column-span:all;display:flex;gap:9px;align-items:flex-start;background:var(--card-surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:7px;}
+.card-job .thumb{flex:0 0 30%;max-width:110px;}
+.card-job .card-footer{flex:1;min-width:0;padding:1px 2px 0 0;}
 /* Fixed 1:1 square, image cropped to fill edge-to-edge (object-fit:
    cover) — AliExpress-style dense grid card. Title/price/meta sit in
    a plain block below the photo, not overlaid on it. */

@@ -11,6 +11,10 @@ import { getHomeBanners, getCachedHomeBanners } from '../lib/homeBanners';
 import { recordImpressions, rotate } from '../lib/sessionFeedRotation';
 
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
+// Not a real category doc — a synthetic chip id for filtering to job
+// posts specifically (they have no real category, see #hog009), kept
+// distinct from any real Firestore category id.
+const JOB_CHIP_ID = '__job__';
 
 export default function Home() {
   const {
@@ -72,7 +76,8 @@ export default function Home() {
     const t = setTimeout(() => {
       searchListings({
         term,
-        categoryId: activeCategory,
+        categoryId: activeCategory === JOB_CHIP_ID ? null : activeCategory,
+        categoryType: activeCategory === JOB_CHIP_ID ? 'job' : null,
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
         conditions: filters.conditions,
@@ -86,9 +91,13 @@ export default function Home() {
   // listings don't sit at the front on every refresh. Boosted
   // listings are exempt (see sessionFeedRotation.js). No extra
   // Firestore reads — this only reorders what's already loaded.
+  // Job posts are excluded from the default feed entirely — they
+  // only show up when the Job chip is tapped (see categoryChips
+  // below) — since they don't belong to a browsable category the
+  // way product/service listings do.
   const boostedIds = useMemo(() => new Set(boosted.map((l) => l.id)), [boosted]);
   const rotatedListings = useMemo(
-    () => (filtering ? listings : rotate(listings, boostedIds)),
+    () => (filtering ? listings : rotate(listings.filter((l) => l.categoryType !== 'job'), boostedIds)),
     [listings, filtering, boostedIds]
   );
 
@@ -139,6 +148,10 @@ export default function Home() {
   }, [listings, boosted]);
 
   const activeFilterCount = (filters.minPrice != null ? 1 : 0) + (filters.maxPrice != null ? 1 : 0) + (filters.conditions.length > 0 ? 1 : 0);
+  // The Job chip sits alongside real categories but isn't one — job
+  // posts have no category of their own (#hog009), so this is the
+  // only way to filter to them from Home.
+  const categoryChips = useMemo(() => [{ id: JOB_CHIP_ID, name: 'Job', icon: 'briefcase' }, ...categories], [categories]);
 
   function clearAll() {
     setSearch('');
@@ -155,7 +168,7 @@ export default function Home() {
           onSubmit={() => {}}
           suggestions={suggestions}
           popularTags={popularTags}
-          categories={categories}
+          categories={categoryChips}
           activeCategory={activeCategory}
           onCategoryChange={setActiveCategory}
           onOpenFilters={openFilters}
