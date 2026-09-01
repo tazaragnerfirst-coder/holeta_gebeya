@@ -255,7 +255,16 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .req{color:var(--safety);margin-left:3px;}
 .field{border:1.5px solid var(--line);border-radius:12px;padding:12px 13px;font-size:14px;font-family:var(--font-ui);background:var(--surface);color:var(--ink);}
 textarea.field{min-height:84px;resize:vertical;}
-textarea.field.field-tall{min-height:220px;}
+/* Job post block: a visually distinct "notebook page" instead of the
+   normal boxed field-group list — title reads like a heading (no
+   border, underline only), description is a plain lined writing
+   area with generous height. Sets it apart from Product/Service's
+   ordinary field styling, per Taza's request. */
+.job-note-block{background:var(--surface-sunken);border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px 16px;}
+.job-note-title{border:none;border-bottom:1.5px solid var(--line);border-radius:0;background:transparent;padding:6px 2px;font-size:17px;font-weight:700;}
+.job-note-title:focus{outline:none;border-bottom-color:var(--primary);}
+.job-note-body{border:none;background:transparent;background-image:repeating-linear-gradient(var(--surface-sunken) 0 27px, var(--line) 27px 28px);line-height:28px;padding:8px 2px 0;min-height:240px;border-radius:0;}
+.job-note-body:focus{outline:none;}
 .toggle-row{display:flex;gap:8px;}
 
 .upload-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}

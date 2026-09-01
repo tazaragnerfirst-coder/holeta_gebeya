@@ -18,15 +18,18 @@ import { runInBackground, isTransientError, withMinDuration } from '../lib/postP
 import { loadDraft, saveDraft, clearDraft } from '../lib/postDraft';
 import { registerPostAdSubmit, unregisterPostAdSubmit } from '../lib/postAdFab';
 
-// Top-of-page type selector — picking one filters which categories
-// show below and switches the form structure: 'service' relaxes the
-// photo requirement (existing #hog004 behavior), 'job' drops
-// subcategory/attributes/price entirely for a plain title+description
-// post (see #hog009 in memory).
+// Top-of-page type selector. Each type renders its own separate form
+// block below (see the three renderXForm() blocks near the bottom) —
+// not one shared form with type-gated fields threaded through it.
+// Product: subcategory/attributes, required photos, simple required
+// price. Service: subcategory/attributes, optional photos, flexible
+// priceType (fixed/negotiable/free/contact) — the #hog004 behavior,
+// scoped to Service only. Job: no subcategory/attributes/price at
+// all — just title + description + optional photo (see #hog009).
 const POST_TYPES = [
-  { key: 'product', label: 'ምርት' },
-  { key: 'service', label: 'አገልግሎት' },
-  { key: 'job', label: 'ስራ' },
+  { key: 'product', label: 'Product' },
+  { key: 'service', label: 'Service' },
+  { key: 'job', label: 'Job' },
 ];
 
 export default function PostAd() {
@@ -132,17 +135,13 @@ export default function PostAd() {
   }, [isEdit, draftReady, categoryId, subcategoryId, attrs, title, price, priceType, description, location]);
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
-  const isService = category?.type === 'service';
-  const isJob = category?.type === 'job';
-  const photoOptional = isService || isJob;
+  const isProduct = postType === 'product';
+  const isService = postType === 'service';
+  const isJob = postType === 'job';
   // Only categories matching the top-of-page type selector show in
   // the Category picker below it.
   const filteredCategories = sortByPopular(CATEGORIES).filter((c) => (c.type || 'product') === postType);
   const subcategory = category && subcategoryId ? getSubcategory(CATEGORIES, categoryId, subcategoryId) : null;
-  // Job categories have no subcategory step — the title/price/description
-  // block appears as soon as a job category is picked instead of
-  // waiting on a subcategory.
-  const showDetails = isJob ? !!categoryId : !!subcategory;
   const wordCount = description.trim() ? description.trim().split(/\s+/).length : 0;
 
   // Attributes as DynamicAttributeForm actually renders: refCollection
@@ -222,7 +221,11 @@ export default function PostAd() {
     setAttrs({});
     setTitleTouched(false);
     setTitle('');
-    setErrors((e) => ({ ...e, categoryId: undefined, subcategoryId: undefined }));
+    setPrice('');
+    setPriceType('fixed');
+    setDescription('');
+    setImages([]);
+    setErrors({});
   }
   function onCategoryChange(id) {
     setCategoryId(id);
@@ -257,12 +260,13 @@ export default function PostAd() {
   // it. Dynamic attribute errors are nested under `attrs`.
   function validate() {
     const errs = {};
-    if (!photoOptional && images.length === 0) errs.photos = 'Add at least 1 photo — listings without photos get far fewer replies.';
+    if (isProduct && images.length === 0) errs.photos = 'Add at least 1 photo — listings without photos get far fewer replies.';
     if (!categoryId) errs.categoryId = 'Select a category to continue.';
     if (categoryId && !isJob && !subcategoryId) errs.subcategoryId = 'Select a subcategory to continue.';
     if (!title.trim()) errs.title = 'Title is required — give buyers a short, clear name for the item.';
-    if (!isJob && priceType === 'fixed' && (!price || Number(price) <= 0)) errs.price = 'Enter a valid price greater than 0.';
-    if (!isJob && priceType === 'negotiable' && price && Number(price) <= 0) errs.price = 'Enter a valid asking price, or leave it blank.';
+    if (isProduct && (!price || Number(price) <= 0)) errs.price = 'Enter a valid price greater than 0.';
+    if (isService && priceType === 'fixed' && (!price || Number(price) <= 0)) errs.price = 'Enter a valid price greater than 0.';
+    if (isService && priceType === 'negotiable' && price && Number(price) <= 0) errs.price = 'Enter a valid asking price, or leave it blank.';
     if (wordCount > 0 && wordCount < DESCRIPTION_MIN_WORDS) errs.description = `Add a bit more detail — at least ${DESCRIPTION_MIN_WORDS} words helps buyers trust the listing.`;
     else if (wordCount === 0) errs.description = `Description is required — at least ${DESCRIPTION_MIN_WORDS} words about condition, accessories, etc.`;
 
@@ -307,12 +311,22 @@ export default function PostAd() {
     // so buyers see who they'd actually be chatting with.
     const myProfile = await getMyProfile(user.uid);
 
-    // Fixed: amount required (enforced in validate()). Negotiable: an
-    // asking amount if the seller gave one, else null (still
-    // negotiable, just no starting number shown). Free/contact never
-    // carry an amount — 0 reads oddly for "contact seller", and null
-    // is unambiguous for both.
-    const numericPrice = isJob ? null : (priceType === 'free' ? 0 : (priceType === 'contact' ? null : (price ? Number(price) : null)));
+    // Product: simple required price, always 'fixed' — no priceType
+    // flexibility (Taza's call: that's Service-only for now, can
+    // extend to Product later if actually needed). Service: full
+    // priceType flexibility (#hog004). Job: no price at all.
+    let numericPrice;
+    let priceTypeToSave;
+    if (isJob) {
+      numericPrice = null;
+      priceTypeToSave = 'contact';
+    } else if (isProduct) {
+      numericPrice = price ? Number(price) : null;
+      priceTypeToSave = 'fixed';
+    } else {
+      numericPrice = priceType === 'free' ? 0 : (priceType === 'contact' ? null : (price ? Number(price) : null));
+      priceTypeToSave = priceType;
+    }
 
     const payload = {
       sellerId: user.uid,
@@ -320,14 +334,14 @@ export default function PostAd() {
       sellerPhoto: myProfile.photo,
       title,
       price: numericPrice,
-      priceType: isJob ? 'contact' : priceType,
+      priceType: priceTypeToSave,
       description,
       location,
       category: categoryId,
       // Denormalized like priceType/condition below — lets ListingCard
       // and Home render job posts differently (full-width row card,
       // no price/condition) without a categories lookup on every card.
-      categoryType: category?.type || 'product',
+      categoryType: category?.type || postType,
       subcategory: subcategoryId,
       attributes: attrs,
       condition: attrs.condition || '',
@@ -470,105 +484,228 @@ export default function PostAd() {
           </div>
         </div>
 
-        <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
-          <label className="field-label">Photos{!photoOptional && <span className="req">*</span>}</label>
-          <ImageUploader files={images} onChange={setImages} maxImages={5} />
-          {!errors.photos && isService && <p className="helper-text">Optional for services — add photos if they help buyers, e.g. past work.</p>}
-          {!errors.photos && isJob && <p className="helper-text">Optional — add a photo if you have one.</p>}
-          {errors.photos && <p className="field-error">{errors.photos}</p>}
-        </div>
-
-        <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
-          <label className="field-label">Category<span className="req">*</span></label>
-          <ChipSelect
-            options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
-            value={categoryId}
-            onChange={onCategoryChange}
-            placeholder={filteredCategories.length === 0 ? 'No categories of this type yet.' : ''}
-          />
-          {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
-        </div>
-
-        {category && !isJob && (
-          <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
-            <label className="field-label">Subcategory<span className="req">*</span></label>
-            <ChipSelect
-              options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
-              value={subcategoryId}
-              onChange={onSubcategoryChange}
-            />
-            {errors.subcategoryId && <p className="field-error">{errors.subcategoryId}</p>}
-          </div>
-        )}
-
-        {/* This is where Jiji-style specs appear: brand → popular
-            models → RAM/storage/screen size/etc, driven entirely by
-            src/data/categories.js — add a subcategory there and its
-            form appears here automatically. */}
-        {subcategory && !isJob && (
-          <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
-        )}
-
-        {showDetails && (
+        {isProduct && (
           <>
-            <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
-              <label className="field-label">Title<span className="req">*</span></label>
-              <input
-                className="field"
-                value={title}
-                onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
-                placeholder={isJob ? 'e.g. Shop attendant needed' : 'e.g. Samsung Galaxy A54, 128GB'}
-              />
-              {!errors.title && !isJob && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
-              {errors.title && <p className="field-error">{errors.title}</p>}
+            <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
+              <label className="field-label">Photos<span className="req">*</span></label>
+              <ImageUploader files={images} onChange={setImages} maxImages={5} />
+              {errors.photos && <p className="field-error">{errors.photos}</p>}
             </div>
-            {!isJob && (
-              <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
-                <label className="field-label">Price<span className="req">*</span></label>
+
+            <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
+              <label className="field-label">Category<span className="req">*</span></label>
+              <ChipSelect
+                options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
+                value={categoryId}
+                onChange={onCategoryChange}
+                placeholder={filteredCategories.length === 0 ? 'No categories of this type yet.' : ''}
+              />
+              {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
+            </div>
+
+            {category && (
+              <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
+                <label className="field-label">Subcategory<span className="req">*</span></label>
                 <ChipSelect
-                  options={[
-                    { label: 'Fixed price', value: 'fixed' },
-                    { label: 'Negotiable', value: 'negotiable' },
-                    { label: 'Free', value: 'free' },
-                    { label: 'Contact seller', value: 'contact' },
-                  ]}
-                  value={priceType}
-                  onChange={(v) => setPriceType(v)}
+                  options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
+                  value={subcategoryId}
+                  onChange={onSubcategoryChange}
                 />
-                {(priceType === 'fixed' || priceType === 'negotiable') && (
-                  <input
-                    className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)}
-                    placeholder={priceType === 'negotiable' ? 'Asking price (ETB) — optional' : 'Price (ETB)'}
-                    style={{ marginTop: 8 }}
-                  />
-                )}
-                {errors.price && <p className="field-error">{errors.price}</p>}
+                {errors.subcategoryId && <p className="field-error">{errors.subcategoryId}</p>}
               </div>
             )}
-            <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
-              <label className="field-label">Description<span className="req">*</span></label>
-              <textarea
-                className={`field ${isJob ? 'field-tall' : ''}`}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder={isJob ? 'Role, responsibilities, requirements, how to apply...' : 'Condition, reason for selling, accessories included...'}
-              />
-              <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
-              {!isJob && (
-                <div className="desc-hint-row">
-                  {DESCRIPTION_HINTS.map((h) => (
-                    <button type="button" key={h} className="desc-hint-chip" onClick={() => addHintToDescription(h)}>+ {h}</button>
-                  ))}
+
+            {/* This is where Jiji-style specs appear: brand → popular
+                models → RAM/storage/screen size/etc, driven entirely by
+                src/data/categories.js — add a subcategory there and its
+                form appears here automatically. */}
+            {subcategory && (
+              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
+            )}
+
+            {subcategory && (
+              <>
+                <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
+                  <label className="field-label">Title<span className="req">*</span></label>
+                  <input
+                    className="field"
+                    value={title}
+                    onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                    placeholder="e.g. Samsung Galaxy A54, 128GB"
+                  />
+                  {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
+                  {errors.title && <p className="field-error">{errors.title}</p>}
                 </div>
-              )}
-              {errors.description && <p className="field-error">{errors.description}</p>}
+                <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
+                  <label className="field-label">Price (ETB)<span className="req">*</span></label>
+                  <input className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (ETB)" />
+                  {errors.price && <p className="field-error">{errors.price}</p>}
+                </div>
+                <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
+                  <label className="field-label">Description<span className="req">*</span></label>
+                  <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
+                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                  <div className="desc-hint-row">
+                    {DESCRIPTION_HINTS.map((h) => (
+                      <button type="button" key={h} className="desc-hint-chip" onClick={() => addHintToDescription(h)}>+ {h}</button>
+                    ))}
+                  </div>
+                  {errors.description && <p className="field-error">{errors.description}</p>}
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Location</label>
+                  <select className="field" value={location} onChange={(e) => setLocation(e.target.value)}>
+                    {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {isService && (
+          <>
+            <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
+              <label className="field-label">Photos</label>
+              <ImageUploader files={images} onChange={setImages} maxImages={5} />
+              {!errors.photos && <p className="helper-text">Optional for services — add photos if they help buyers, e.g. past work.</p>}
+              {errors.photos && <p className="field-error">{errors.photos}</p>}
             </div>
-            <div className="field-group">
-              <label className="field-label">Location</label>
-              <select className="field" value={location} onChange={(e) => setLocation(e.target.value)}>
-                {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
-              </select>
+
+            <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
+              <label className="field-label">Category<span className="req">*</span></label>
+              <ChipSelect
+                options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
+                value={categoryId}
+                onChange={onCategoryChange}
+                placeholder={filteredCategories.length === 0 ? 'No categories of this type yet.' : ''}
+              />
+              {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
             </div>
+
+            {category && (
+              <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
+                <label className="field-label">Subcategory<span className="req">*</span></label>
+                <ChipSelect
+                  options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
+                  value={subcategoryId}
+                  onChange={onSubcategoryChange}
+                />
+                {errors.subcategoryId && <p className="field-error">{errors.subcategoryId}</p>}
+              </div>
+            )}
+
+            {subcategory && (
+              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
+            )}
+
+            {subcategory && (
+              <>
+                <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
+                  <label className="field-label">Title<span className="req">*</span></label>
+                  <input
+                    className="field"
+                    value={title}
+                    onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                    placeholder="e.g. Samsung Galaxy A54, 128GB"
+                  />
+                  {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
+                  {errors.title && <p className="field-error">{errors.title}</p>}
+                </div>
+                <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
+                  <label className="field-label">Price<span className="req">*</span></label>
+                  <ChipSelect
+                    options={[
+                      { label: 'Fixed price', value: 'fixed' },
+                      { label: 'Negotiable', value: 'negotiable' },
+                      { label: 'Free', value: 'free' },
+                      { label: 'Contact seller', value: 'contact' },
+                    ]}
+                    value={priceType}
+                    onChange={(v) => setPriceType(v)}
+                  />
+                  {(priceType === 'fixed' || priceType === 'negotiable') && (
+                    <input
+                      className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)}
+                      placeholder={priceType === 'negotiable' ? 'Asking price (ETB) — optional' : 'Price (ETB)'}
+                      style={{ marginTop: 8 }}
+                    />
+                  )}
+                  {errors.price && <p className="field-error">{errors.price}</p>}
+                </div>
+                <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
+                  <label className="field-label">Description<span className="req">*</span></label>
+                  <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
+                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                  <div className="desc-hint-row">
+                    {DESCRIPTION_HINTS.map((h) => (
+                      <button type="button" key={h} className="desc-hint-chip" onClick={() => addHintToDescription(h)}>+ {h}</button>
+                    ))}
+                  </div>
+                  {errors.description && <p className="field-error">{errors.description}</p>}
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Location</label>
+                  <select className="field" value={location} onChange={(e) => setLocation(e.target.value)}>
+                    {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {isJob && (
+          <>
+            <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
+              <label className="field-label">Photo</label>
+              <ImageUploader files={images} onChange={setImages} maxImages={5} />
+              {!errors.photos && <p className="helper-text">Optional — add a photo if you have one.</p>}
+              {errors.photos && <p className="field-error">{errors.photos}</p>}
+            </div>
+
+            <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
+              <label className="field-label">Category<span className="req">*</span></label>
+              <ChipSelect
+                options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
+                value={categoryId}
+                onChange={onCategoryChange}
+                placeholder={filteredCategories.length === 0 ? 'No job categories yet.' : ''}
+              />
+              {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
+            </div>
+
+            {!!categoryId && (
+              <div className="job-note-block">
+                <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
+                  <label className="field-label">Title<span className="req">*</span></label>
+                  <input
+                    className="field job-note-title"
+                    value={title}
+                    onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                    placeholder="e.g. Shop attendant needed"
+                  />
+                  {errors.title && <p className="field-error">{errors.title}</p>}
+                </div>
+                <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
+                  <label className="field-label">Description<span className="req">*</span></label>
+                  <textarea
+                    className="field job-note-body"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Role, responsibilities, requirements, how to apply..."
+                  />
+                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                  {errors.description && <p className="field-error">{errors.description}</p>}
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Location</label>
+                  <select className="field" value={location} onChange={(e) => setLocation(e.target.value)}>
+                    {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
           </>
         )}
 
