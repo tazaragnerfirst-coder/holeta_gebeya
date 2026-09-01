@@ -133,9 +133,25 @@ export function AppDataProvider({ children }) {
       // Paused (and expired) listings stay in Firestore for the
       // seller to manage, but shouldn't show up in the public feed.
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() })).filter(isActiveAd);
-      setListings(data);
+      // This listener re-fires on ANY change to the top 12 (e.g. a
+      // new listing anywhere posts), so it can't just replace
+      // `listings` wholesale — that would wipe out further pages
+      // loadMoreListings already appended, and reorder/shuffle cards
+      // the person has already scrolled past. Instead: refresh
+      // already-rendered items in place (position untouched) and
+      // append any brand-new id to the end, so new arrivals land at
+      // the bottom of what's already showing instead of disturbing it.
+      setListings((prev) => {
+        const prevIds = new Set(prev.map((l) => l.id));
+        const byId = new Map(data.map((l) => [l.id, l]));
+        const merged = prev.map((item) => byId.get(item.id) || item);
+        for (const item of data) {
+          if (!prevIds.has(item.id)) merged.push(item);
+        }
+        setCached('listings', merged);
+        return merged;
+      });
       setListingsReady(true);
-      setCached('listings', data);
       lastListingDocRef.current = snap.docs[snap.docs.length - 1] || null;
       setHasMoreListings(snap.docs.length === LISTINGS_PAGE_SIZE);
     }, () => setListingsReady(true));
