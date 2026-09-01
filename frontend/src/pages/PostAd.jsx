@@ -83,7 +83,7 @@ export default function PostAd() {
         }
         const a = snap.data();
         setCategoryId(a.category || '');
-        setPostType(CATEGORIES.find((c) => c.id === a.category)?.type || 'product');
+        setPostType(a.categoryType === 'job' ? 'job' : (CATEGORIES.find((c) => c.id === a.category)?.type || 'product'));
         setSubcategoryId(a.subcategory || '');
         setAttrs(a.attributes || {});
         setTitle(a.title || '');
@@ -111,7 +111,7 @@ export default function PostAd() {
     const draft = loadDraft();
     if (draft) {
       setCategoryId(draft.categoryId || '');
-      setPostType(CATEGORIES.find((c) => c.id === draft.categoryId)?.type || 'product');
+      setPostType(draft.postType || (CATEGORIES.find((c) => c.id === draft.categoryId)?.type || 'product'));
       setSubcategoryId(draft.subcategoryId || '');
       setAttrs(draft.attrs || {});
       setTitle(draft.title || '');
@@ -131,8 +131,8 @@ export default function PostAd() {
   // out a real draft with the form's blank initial state.
   useEffect(() => {
     if (isEdit || !draftReady) return;
-    saveDraft({ categoryId, subcategoryId, attrs, title, price, priceType, description, location });
-  }, [isEdit, draftReady, categoryId, subcategoryId, attrs, title, price, priceType, description, location]);
+    saveDraft({ postType, categoryId, subcategoryId, attrs, title, price, priceType, description, location });
+  }, [isEdit, draftReady, postType, categoryId, subcategoryId, attrs, title, price, priceType, description, location]);
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
   const isProduct = postType === 'product';
@@ -261,7 +261,7 @@ export default function PostAd() {
   function validate() {
     const errs = {};
     if (isProduct && images.length === 0) errs.photos = 'Add at least 1 photo — listings without photos get far fewer replies.';
-    if (!categoryId) errs.categoryId = 'Select a category to continue.';
+    if (!isJob && !categoryId) errs.categoryId = 'Select a category to continue.';
     if (categoryId && !isJob && !subcategoryId) errs.subcategoryId = 'Select a subcategory to continue.';
     if (!title.trim()) errs.title = 'Title is required — give buyers a short, clear name for the item.';
     if (isProduct && (!price || Number(price) <= 0)) errs.price = 'Enter a valid price greater than 0.';
@@ -337,11 +337,13 @@ export default function PostAd() {
       priceType: priceTypeToSave,
       description,
       location,
-      category: categoryId,
+      category: isJob ? '' : categoryId,
       // Denormalized like priceType/condition below — lets ListingCard
       // and Home render job posts differently (full-width row card,
       // no price/condition) without a categories lookup on every card.
-      categoryType: category?.type || postType,
+      // Job has no category doc at all, so this comes straight from
+      // postType rather than category?.type.
+      categoryType: isJob ? 'job' : (category?.type || postType),
       subcategory: subcategoryId,
       attributes: attrs,
       condition: attrs.condition || '',
@@ -659,53 +661,40 @@ export default function PostAd() {
           <>
             <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
               <label className="field-label">Photo</label>
-              <ImageUploader files={images} onChange={setImages} maxImages={5} />
+              <ImageUploader files={images} onChange={setImages} maxImages={3} compact />
               {!errors.photos && <p className="helper-text">Optional — add a photo if you have one.</p>}
               {errors.photos && <p className="field-error">{errors.photos}</p>}
             </div>
 
-            <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
-              <label className="field-label">Category<span className="req">*</span></label>
-              <ChipSelect
-                options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
-                value={categoryId}
-                onChange={onCategoryChange}
-                placeholder={filteredCategories.length === 0 ? 'No job categories yet.' : ''}
-              />
-              {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
-            </div>
-
-            {!!categoryId && (
-              <div className="job-note-block">
-                <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
-                  <label className="field-label">Title<span className="req">*</span></label>
-                  <input
-                    className="field job-note-title"
-                    value={title}
-                    onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
-                    placeholder="e.g. Shop attendant needed"
-                  />
-                  {errors.title && <p className="field-error">{errors.title}</p>}
-                </div>
-                <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
-                  <label className="field-label">Description<span className="req">*</span></label>
-                  <textarea
-                    className="field job-note-body"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Role, responsibilities, requirements, how to apply..."
-                  />
-                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
-                  {errors.description && <p className="field-error">{errors.description}</p>}
-                </div>
-                <div className="field-group">
-                  <label className="field-label">Location</label>
-                  <select className="field" value={location} onChange={(e) => setLocation(e.target.value)}>
-                    {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
-                  </select>
-                </div>
+            <div className="job-note-block">
+              <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
+                <label className="field-label">Title<span className="req">*</span></label>
+                <input
+                  className="field job-note-title"
+                  value={title}
+                  onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                  placeholder="e.g. Shop attendant needed"
+                />
+                {errors.title && <p className="field-error">{errors.title}</p>}
               </div>
-            )}
+              <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
+                <label className="field-label">Description<span className="req">*</span></label>
+                <textarea
+                  className="field job-note-body"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Role, responsibilities, requirements, how to apply..."
+                />
+                <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                {errors.description && <p className="field-error">{errors.description}</p>}
+              </div>
+              <div className="field-group">
+                <label className="field-label">Location</label>
+                <select className="field" value={location} onChange={(e) => setLocation(e.target.value)}>
+                  {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
+                </select>
+              </div>
+            </div>
           </>
         )}
 

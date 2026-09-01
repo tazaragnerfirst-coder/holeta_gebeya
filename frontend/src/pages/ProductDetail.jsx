@@ -355,7 +355,7 @@ export default function ProductDetail() {
         <div className="pd-price">{priceDisplay.text}{priceDisplay.currency && <span>ETB</span>}</div>
         <div className="pd-meta-row">
           <span><Icon name="mapPin" size={13} /> {item.location}</span>
-          <span><Icon name="grid" size={13} /> {item.category} / {item.subcategory}</span>
+          {item.category && <span><Icon name="grid" size={13} /> {item.category} / {item.subcategory}</span>}
           <span><Icon name="eye" size={13} /> {item.views || 0}</span>
           {item.createdAt && <span><Icon name="clock" size={13} /> {timeAgo(item.createdAt)}</span>}
         </div>

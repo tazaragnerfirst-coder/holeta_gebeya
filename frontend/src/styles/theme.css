@@ -271,6 +271,15 @@ textarea.field{min-height:84px;resize:vertical;}
 .upload-slot{aspect-ratio:1;border-radius:12px;border:1.5px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-faint);background:var(--surface-sunken);cursor:pointer;font-size:20px;position:relative;background-size:cover;background-position:center;}
 .upload-slot.filled{border-style:solid;}
 .upload-slot .x{position:absolute;top:4px;right:4px;width:20px;height:20px;background:rgba(0,0,0,.5);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;line-height:1;}
+/* Compact ImageUploader variant (Job posts): a small pill button
+   instead of the full upload-grid box, since a job post's photo is
+   a plain optional attachment, not primary content like a product
+   photo. */
+.attach-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.attach-btn{display:flex;align-items:center;gap:6px;border:1.5px solid var(--line);border-radius:20px;padding:7px 13px;background:var(--surface);color:var(--ink-soft);font-size:13px;font-family:var(--font-ui);cursor:pointer;}
+.attach-btn:disabled{opacity:.6;cursor:default;}
+.attach-thumb{position:relative;width:34px;height:34px;border-radius:8px;background-color:var(--surface-sunken);flex-shrink:0;}
+.attach-thumb .x{position:absolute;top:-5px;right:-5px;width:16px;height:16px;background:rgba(0,0,0,.55);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;}
 
 .chat-list-item{position:relative;display:flex;align-items:center;gap:11px;text-decoration:none;color:inherit;padding:12px 0;border-bottom:1px solid var(--line);}
 .chat-thumb{width:50px;height:50px;border-radius:12px;flex:0 0 auto;background:var(--surface-sunken);display:flex;align-items:center;justify-content:center;color:var(--ink-faint);font-weight:800;font-size:17px;}

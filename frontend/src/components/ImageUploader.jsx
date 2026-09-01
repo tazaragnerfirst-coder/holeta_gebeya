@@ -28,7 +28,7 @@ async function toBrowserReadable(file) {
 
 let keySeq = 0;
 
-export default function ImageUploader({ files, onChange, maxImages = 8 }) {
+export default function ImageUploader({ files, onChange, maxImages = 8, compact = false }) {
   const inputRef = useRef(null);
   // entries: { key, kind: 'existing' (edit-mode preload, fixed) |
   // 'new' (freshly picked, its File kept so it can be recompressed
@@ -115,6 +115,37 @@ export default function ImageUploader({ files, onChange, maxImages = 8 }) {
     recompute(entries.filter((_, idx) => idx !== i));
   }
 
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="image/*"
+      multiple
+      style={{ display: 'none' }}
+      onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
+    />
+  );
+
+  if (compact) {
+    return (
+      <div>
+        <div className="attach-row">
+          <button type="button" className="attach-btn" onClick={() => !converting && entries.length < maxImages && inputRef.current?.click()} disabled={converting || entries.length >= maxImages}>
+            {converting ? <span className="spinner" /> : <Icon name="paperclip" size={15} />}
+            <span>{entries.length > 0 ? 'Add another' : 'Attach photo'}</span>
+          </button>
+          {entries.map((e, i) => (
+            <div className="attach-thumb" key={e.key} style={{ backgroundImage: `url(${e.dataUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+              <span className="x" onClick={() => removeAt(i)}><Icon name="x" size={10} /></span>
+            </div>
+          ))}
+        </div>
+        {fileInput}
+        {warning && <p className="helper-text error-text">{warning}</p>}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="upload-grid">
@@ -129,14 +160,7 @@ export default function ImageUploader({ files, onChange, maxImages = 8 }) {
           </div>
         )}
       </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        style={{ display: 'none' }}
-        onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
-      />
+      {fileInput}
       <p className="helper-text">{converting ? 'Processing photos...' : `${entries.length}/${maxImages} photos`}</p>
       {warning && <p className="helper-text error-text">{warning}</p>}
     </div>

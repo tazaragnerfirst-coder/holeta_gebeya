@@ -53,6 +53,7 @@ const PATHS = {
   sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.5M12 19v2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2.5 12H5M19 12h2.5M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 119.5 4a7 7 0 0010.5 10.5z"/>',
   monitor: '<rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M8 19.5h8M12 16.5v3"/>',
+  paperclip: '<path d="M7 12.5l6.5-6.5a3.2 3.2 0 014.5 4.5l-8 8a5.4 5.4 0 01-7.6-7.6l7.5-7.4"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {
