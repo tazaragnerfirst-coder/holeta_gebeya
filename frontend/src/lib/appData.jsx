@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { collection, query, orderBy, limit, startAfter, getDocs, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, getDocs, where, onSnapshot, doc, getDoc, documentId } from 'firebase/firestore';
 import { auth, db } from './firebase';
 import { getUnsafeUserPreview } from './telegram';
 import { getCached, setCached } from './pageCache';
@@ -128,7 +128,13 @@ export function AppDataProvider({ children }) {
     // listener open per page would mean as many Firestore listeners
     // as pages scrolled, for no real benefit (nobody needs a stranger's
     // 3-page-deep old listing to update live).
-    const q = query(collection(db, 'listings'), orderBy('createdAt', 'desc'), limit(LISTINGS_PAGE_SIZE));
+    // Ordered by Firestore's own document key, not createdAt — Taza
+    // wants the feed NOT recency-based (older posts stay mixed in
+    // with new ones instead of always sinking below anything newer).
+    // documentId() is stable/paginable like createdAt was, just not
+    // correlated with post time. No where() clause on this query, so
+    // this needs no composite index.
+    const q = query(collection(db, 'listings'), orderBy(documentId()), limit(LISTINGS_PAGE_SIZE));
     const unsub = onSnapshot(q, (snap) => {
       // Paused (and expired) listings stay in Firestore for the
       // seller to manage, but shouldn't show up in the public feed.
@@ -172,7 +178,7 @@ export function AppDataProvider({ children }) {
     try {
       const q = query(
         collection(db, 'listings'),
-        orderBy('createdAt', 'desc'),
+        orderBy(documentId()),
         startAfter(lastListingDocRef.current),
         limit(LISTINGS_PAGE_SIZE)
       );
