@@ -54,6 +54,7 @@ const PATHS = {
   moon: '<path d="M20 14.5A8.5 8.5 0 119.5 4a7 7 0 0010.5 10.5z"/>',
   monitor: '<rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M8 19.5h8M12 16.5v3"/>',
   paperclip: '<path d="M7 12.5l6.5-6.5a3.2 3.2 0 014.5 4.5l-8 8a5.4 5.4 0 01-7.6-7.6l7.5-7.4"/>',
+  wifiOff: '<path d="M3 3l18 18"/><path d="M5 12.5a12.9 12.9 0 013.6-2.5M19 12.5a12.9 12.9 0 00-3.3-2.3M8.5 16a7.4 7.4 0 017-.1M12 20.5h.01"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {

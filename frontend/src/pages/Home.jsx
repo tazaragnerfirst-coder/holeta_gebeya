@@ -29,8 +29,23 @@ export default function Home() {
   const headerWrapRef = useRef(null);
   const [filterAnchorTop, setFilterAnchorTop] = useState(null);
   const [banners, setBanners] = useState(() => getCachedHomeBanners());
+  // #hog011: distinguishes a genuinely empty feed from a connection
+  // drop, so the empty state can say the right thing instead of
+  // always defaulting to "nothing posted yet".
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator === 'undefined' ? true : navigator.onLine));
 
   useEffect(() => { getHomeBanners().then(setBanners); }, []);
+
+  useEffect(() => {
+    function goOnline() { setIsOnline(true); }
+    function goOffline() { setIsOnline(false); }
+    window.addEventListener('online', goOnline);
+    window.addEventListener('offline', goOffline);
+    return () => {
+      window.removeEventListener('online', goOnline);
+      window.removeEventListener('offline', goOffline);
+    };
+  }, []);
 
   const boosted = listings.filter((l) => l.boostedUntil && l.boostedUntil.toDate?.() > new Date());
   const term = search.trim().toLowerCase();
@@ -220,12 +235,31 @@ export default function Home() {
 
       {!loading && displayed.length === 0 && (
         filtering ? (
-          <EmptyState
-            term={search.trim()}
-            suggestions={popularTags.slice(0, 4)}
-            onSuggestionClick={(s) => setSearch(s)}
-            onClear={clearAll}
-          />
+          <>
+            <EmptyState
+              term={search.trim()}
+              suggestions={popularTags.slice(0, 4)}
+              onSuggestionClick={(s) => setSearch(s)}
+              onClear={clearAll}
+            />
+            {/* #hog012: a dead-end zero-result screen still leaves
+                other listings to browse — surface some instead of
+                just tag suggestions. Reuses the already-loaded feed,
+                no extra query. */}
+            {rotatedListings.length > 0 && (
+              <>
+                <h3 className="section-title" style={{ marginTop: 18 }}>You might also like</h3>
+                <ListingGrid items={rotatedListings.slice(0, 8)} renderItem={(item) => <ListingCard key={item.id} item={item} />} />
+              </>
+            )}
+          </>
+        ) : !isOnline ? (
+          <div className="empty-state">
+            <div className="empty-state-icon"><Icon name="wifiOff" size={30} /></div>
+            <div className="empty-state-title">You're offline</div>
+            <div className="empty-state-sub">Check your connection and try again.</div>
+            <button type="button" className="link-btn" style={{ marginTop: 14 }} onClick={() => window.location.reload()}>Refresh</button>
+          </div>
         ) : (
           <p className="helper-text">No listings yet — be the first to post one.</p>
         )

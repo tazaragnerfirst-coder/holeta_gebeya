@@ -18,9 +18,9 @@ import { runInBackground, isTransientError, withMinDuration } from '../lib/postP
 import { loadDraft, saveDraft, clearDraft } from '../lib/postDraft';
 import { registerPostAdSubmit, unregisterPostAdSubmit } from '../lib/postAdFab';
 
-// Top-of-page type selector. Each type renders its own separate form
-// block below (see the three renderXForm() blocks near the bottom) —
-// not one shared form with type-gated fields threaded through it.
+// Chosen on the type-selection screen shown before the form (#hog013).
+// Each type renders its own separate form block below — not one
+// shared form with type-gated fields threaded through it.
 // Product: subcategory/attributes, required photos, simple required
 // price. Service: subcategory/attributes, optional photos, flexible
 // priceType (fixed/negotiable/free/contact) — the #hog004 behavior,
@@ -45,7 +45,13 @@ export default function PostAd() {
   // the dependent attributes (model/storage/ram/color) fill in once
   // a value for their parent is chosen.
   const [refOptions, setRefOptions] = useState({});
-  const [postType, setPostType] = useState('product');
+  // null = not yet chosen. New-post mode opens on a type-selection
+  // screen (see the early return near the bottom) instead of
+  // defaulting to 'product' with a switchable chip row — #hog013.
+  // Edit mode always resolves this from the loaded listing before
+  // the form (gated by loadingExisting) ever renders, so it's never
+  // null there in practice.
+  const [postType, setPostType] = useState(null);
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
   const [attrs, setAttrs] = useState({});
@@ -111,7 +117,11 @@ export default function PostAd() {
     const draft = loadDraft();
     if (draft) {
       setCategoryId(draft.categoryId || '');
-      setPostType(draft.postType || (CATEGORIES.find((c) => c.id === draft.categoryId)?.type || 'product'));
+      // A saved draft always has postType recorded (saveDraft below
+      // has stored it since #hog007) — restoring it means a person
+      // resuming an in-progress post skips the type-selection screen
+      // and lands straight back in their form.
+      setPostType(draft.postType || null);
       setSubcategoryId(draft.subcategoryId || '');
       setAttrs(draft.attrs || {});
       setTitle(draft.title || '');
@@ -465,27 +475,40 @@ export default function PostAd() {
     );
   }
 
+  // New-post mode, no type chosen yet: show only the type-selection
+  // screen. Picking one moves straight into that type's own form
+  // below (#hog013) — there's no in-app way back to this screen;
+  // the phone's own back button is enough to leave the flow.
+  if (!isEdit && postType === null) {
+    return (
+      <div className="page">
+        <h2 className="page-title">Post an Ad</h2>
+        <div className="form-block">
+          <div className="field-group">
+            <label className="field-label">What are you posting?</label>
+            <div className="post-type-select">
+              {POST_TYPES.map((t) => (
+                <button
+                  type="button"
+                  key={t.key}
+                  className="post-type-card"
+                  onClick={() => onPostTypeChange(t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page">
       <h2 className="page-title">{isEdit ? 'Edit Ad' : 'Post an Ad'}</h2>
 
       <div className="form-block">
-        <div className="field-group">
-          <label className="field-label">What are you posting?</label>
-          <div className="chip-row">
-            {POST_TYPES.map((t) => (
-              <button
-                type="button"
-                key={t.key}
-                className={`chip ${postType === t.key ? 'active' : ''}`}
-                onClick={() => onPostTypeChange(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {isProduct && (
           <>
             <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
