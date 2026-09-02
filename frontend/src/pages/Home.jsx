@@ -9,7 +9,7 @@ import { ListingGridSkeleton } from '../components/Skeletons.jsx';
 import PromoBannerCarousel from '../components/PromoBannerCarousel.jsx';
 import { useAppData } from '../lib/appData';
 import { getHomeBanners, getCachedHomeBanners } from '../lib/homeBanners';
-import { recordImpressions, rotate } from '../lib/sessionFeedRotation';
+import { recordImpressions, rotate, shuffle } from '../lib/sessionFeedRotation';
 
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 // Not a real category doc — a synthetic chip id for filtering to job
@@ -88,24 +88,15 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtering, term, activeCategory, filters]);
 
-  // #hog003: light session-only rotation so the same un-boosted
-  // listings don't sit at the front on every refresh. Boosted
-  // listings are exempt (see sessionFeedRotation.js). No extra
-  // Firestore reads — this only reorders what's already loaded.
-  // Job posts are excluded from the default feed entirely — they
-  // only show up when the Job chip is tapped (see categoryChips
-  // below) — since they don't belong to a browsable category the
-  // way product/service listings do.
-  //
-  // Rotation must run exactly ONCE per page view (at the initial
-  // load/refresh), not every time `listings` changes — otherwise a
-  // brand new post landing re-triggers rotate() against whatever
-  // impressions have piled up since, visibly reordering cards the
-  // person is already looking at, which is what made new posts
-  // appear to "shuffle" the feed. After that first pass, this only
-  // ever refreshes already-known items' data in place and appends
-  // brand-new arrivals at the end — it never re-sorts again this
-  // page view.
+  // #hog003 (extended): feed order is session-random, not fixed —
+  // Taza wants a different mix each time the app opens (TikTok-style
+  // discovery), not the same documentId() order every time. Shuffled
+  // once per page view (frozen after, so scrolling never jitters —
+  // see the stability notes above), and again for each newly-loaded
+  // batch (live arrivals or loadMoreListings pages) so pagination
+  // keeps feeling freshly discovered rather than DB-order predictable.
+  // Boosted listings are exempt from the overexposure sink below
+  // (see sessionFeedRotation.js) but not from the shuffle itself.
   const boostedIds = useMemo(() => new Set(boosted.map((l) => l.id)), [boosted]);
   const rotationDone = useRef(false);
   const [rotatedListings, setRotatedListings] = useState([]);
@@ -115,16 +106,15 @@ export default function Home() {
     if (!rotationDone.current) {
       if (!listingsReady) return;
       rotationDone.current = true;
-      setRotatedListings(rotate(nonJob, boostedIds));
+      setRotatedListings(rotate(shuffle(nonJob), boostedIds));
       return;
     }
     setRotatedListings((prev) => {
       const byId = new Map(nonJob.map((l) => [l.id, l]));
       const prevIds = new Set(prev.map((l) => l.id));
       const merged = prev.map((item) => byId.get(item.id) || item);
-      for (const item of nonJob) {
-        if (!prevIds.has(item.id)) merged.push(item);
-      }
+      const newOnes = nonJob.filter((item) => !prevIds.has(item.id));
+      merged.push(...shuffle(newOnes));
       return merged;
     });
   }, [listings, filtering, listingsReady, boostedIds]);

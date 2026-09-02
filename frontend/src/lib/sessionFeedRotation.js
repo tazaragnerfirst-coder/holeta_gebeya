@@ -8,6 +8,21 @@
 // over-shown listing down once it's been seen a few times, nothing
 // more elaborate than that.
 
+// Fisher-Yates shuffle, pure (returns a new array, doesn't mutate
+// `items`). Used to give the feed a different order each time a
+// person opens the app (TikTok-style discovery) instead of a fixed
+// order that never changes — Home.jsx shuffles once at load, then
+// freezes, so the person's own scroll session stays stable; it's
+// only the NEXT time they open the app that they see a new shuffle.
+export function shuffle(items) {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 const impressions = new Map();
 
 // How many times a listing can appear at the front of the feed this
