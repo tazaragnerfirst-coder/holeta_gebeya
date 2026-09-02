@@ -588,9 +588,16 @@ function daysAgoTimestamp(days) {
   return firebase.firestore.Timestamp.fromDate(new Date(Date.now() - days * 24 * 60 * 60 * 1000));
 }
 
+// Uses a plain query fetch rather than the count() aggregation API —
+// dashboard.html only loads the Firestore *compat* SDK bundle, and
+// that bundle doesn't expose count()/getCountFromServer() on Query
+// (it's only wired up on the full modular SDK). Reads full docs
+// instead of a count-only aggregate read, so it costs more per call,
+// but these collections are small enough for now that it's not worth
+// pulling in the modular SDK as a second script just for this.
 async function countOf(query) {
-  const snap = await query.count().get();
-  return snap.data().count;
+  const snap = await query.get();
+  return snap.size;
 }
 
 async function initAnalytics() {
