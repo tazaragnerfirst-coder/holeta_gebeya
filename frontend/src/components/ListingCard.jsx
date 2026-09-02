@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 import { useAppData } from '../lib/appData';
 import { useRequireRegistered } from '../lib/authGate';
 import { setFavorite } from '../lib/favorites';
-import { formatListingPrice, conditionTone } from '../lib/format';
+import { formatListingPrice } from '../lib/format';
 import { productLinkState } from '../lib/nav';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
@@ -74,8 +74,6 @@ export default function ListingCard({ item, boosted }) {
         )}
         {boosted ? (
           <div className="badge-boost"><Icon name="trendingUp" size={12} /> Featured</div>
-        ) : item.condition ? (
-          <div className={`badge-condition tone-${conditionTone(item.condition)}`}>{item.condition}</div>
         ) : null}
         <button
           type="button"
@@ -99,7 +97,6 @@ export default function ListingCard({ item, boosted }) {
         ) : null}
         {!isJob && <div className="card-price">{priceDisplay.text}{priceDisplay.currency && <span>ETB</span>}</div>}
         <div className="card-meta">
-          {item.location && <span><Icon name="mapPin" size={11} /> {item.location}</span>}
           {posted && <span><Icon name="clock" size={11} /> {posted}</span>}
           {photos.length > 1 && <span><Icon name="camera" size={11} /> {photos.length}</span>}
         </div>
