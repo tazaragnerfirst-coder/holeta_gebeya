@@ -96,11 +96,38 @@ export default function Home() {
   // only show up when the Job chip is tapped (see categoryChips
   // below) — since they don't belong to a browsable category the
   // way product/service listings do.
+  //
+  // Rotation must run exactly ONCE per page view (at the initial
+  // load/refresh), not every time `listings` changes — otherwise a
+  // brand new post landing re-triggers rotate() against whatever
+  // impressions have piled up since, visibly reordering cards the
+  // person is already looking at, which is what made new posts
+  // appear to "shuffle" the feed. After that first pass, this only
+  // ever refreshes already-known items' data in place and appends
+  // brand-new arrivals at the end — it never re-sorts again this
+  // page view.
   const boostedIds = useMemo(() => new Set(boosted.map((l) => l.id)), [boosted]);
-  const rotatedListings = useMemo(
-    () => (filtering ? listings : rotate(listings.filter((l) => l.categoryType !== 'job'), boostedIds)),
-    [listings, filtering, boostedIds]
-  );
+  const rotationDone = useRef(false);
+  const [rotatedListings, setRotatedListings] = useState([]);
+  useEffect(() => {
+    if (filtering) return;
+    const nonJob = listings.filter((l) => l.categoryType !== 'job');
+    if (!rotationDone.current) {
+      if (!listingsReady) return;
+      rotationDone.current = true;
+      setRotatedListings(rotate(nonJob, boostedIds));
+      return;
+    }
+    setRotatedListings((prev) => {
+      const byId = new Map(nonJob.map((l) => [l.id, l]));
+      const prevIds = new Set(prev.map((l) => l.id));
+      const merged = prev.map((item) => byId.get(item.id) || item);
+      for (const item of nonJob) {
+        if (!prevIds.has(item.id)) merged.push(item);
+      }
+      return merged;
+    });
+  }, [listings, filtering, listingsReady, boostedIds]);
 
   const displayed = filtering ? searchResults : rotatedListings;
   const loading = filtering ? (searchLoading && searchResults.length === 0) : !listingsReady;
