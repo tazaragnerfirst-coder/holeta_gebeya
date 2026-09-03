@@ -10,6 +10,14 @@
 }
 
 * { box-sizing: border-box; }
+html, body {
+  /* A flex row of 8 tabs doesn't fit small screens; scoping the
+     scroll to .tabbar (below) is the real fix, but this is a safety
+     net against any other element pushing the page wider than the
+     viewport — was previously missing, which let the whole page
+     render desktop-width and shrink-to-fit on mobile. */
+  overflow-x: hidden;
+}
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -70,12 +78,13 @@ input[type="file"] { margin-top: 8px; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 16px 20px;
   background: var(--card-bg);
   border-bottom: 1px solid var(--line);
 }
 .topbar h1 { font-size: 18px; margin: 0; }
-.topbar-right { display: flex; align-items: center; gap: 12px; }
+.topbar-right { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
 .badge {
   background: var(--error);
   color: #fff;
@@ -91,7 +100,15 @@ input[type="file"] { margin-top: 8px; }
   padding: 10px 20px 0;
   background: var(--card-bg);
   border-bottom: 1px solid var(--line);
+  /* 8 tabs don't fit narrow screens — scroll the tab row itself
+     instead of letting it overflow the page (which used to force
+     the whole site to render at desktop width and shrink-to-fit on
+     phones). Desktop is unaffected since the row already fits. */
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.tabbar::-webkit-scrollbar { display: none; }
 .tab {
   background: transparent;
   border: none;
@@ -101,6 +118,8 @@ input[type="file"] { margin-top: 8px; }
   color: var(--muted);
   cursor: pointer;
   border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
@@ -108,6 +127,14 @@ input[type="file"] { margin-top: 8px; }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 .tab-panel h2 { font-size: 17px; margin-bottom: 4px; }
+
+@media (max-width: 480px) {
+  /* Same layout as desktop, just tighter spacing — nothing here
+     needs a different structure, only smaller gutters. */
+  .topbar, .tabbar { padding-left: 14px; padding-right: 14px; }
+  .content { padding-left: 14px; padding-right: 14px; }
+  .row-wrap .field { min-width: 0; }
+}
 
 .card {
   background: var(--card-bg);
