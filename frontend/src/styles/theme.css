@@ -277,6 +277,20 @@ textarea.field{min-height:84px;resize:vertical;}
 .job-note-title:focus{outline:none;border-bottom-color:var(--primary);}
 .job-note-body{border:none;background:transparent;background-image:repeating-linear-gradient(var(--surface-sunken) 0 27px, var(--line) 27px 28px);line-height:28px;padding:8px 2px 0;min-height:240px;border-radius:0;}
 .job-note-body:focus{outline:none;}
+
+/* Rent post block (#hog014): grouped into labeled sections instead
+   of Product's flat field list — "What's for rent" (photos/category/
+   attributes/title), a visually separated "Rent terms" card (amount+
+   unit/deposit/term — primary-tinted so the money terms stand out,
+   the way Ethiopian rental listings lead with price), then
+   description/location. Sets it apart from Product/Service/Job,
+   per Taza's request that each post type get its own structure. */
+.rent-section{margin-bottom:18px;}
+.rent-section-title{font-size:13px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;margin:0 0 10px;}
+.rent-terms-card{background:var(--primary-tint);border:1px solid var(--primary);border-radius:var(--radius-lg);padding:14px 16px 4px;margin-bottom:18px;}
+.rent-terms-card .rent-section-title{color:var(--primary);}
+.rent-terms-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+
 .toggle-row{display:flex;gap:8px;}
 
 .upload-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}

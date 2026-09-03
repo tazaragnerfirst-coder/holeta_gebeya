@@ -7,7 +7,7 @@ import { getMyProfile } from '../lib/profile';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { computeExpiresAt } from '../lib/adStatus';
 import { buildSearchTokens } from '../lib/searchTokens';
-import { getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS } from '../data/categories';
+import { getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS, RENT_DESCRIPTION_HINTS } from '../data/categories';
 import { getBrandList, getBrandModels } from '../lib/referenceData';
 import { useAppData } from '../lib/appData';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
@@ -26,11 +26,15 @@ import { registerPostAdSubmit, unregisterPostAdSubmit } from '../lib/postAdFab';
 // priceType (fixed/negotiable/free/contact) — the #hog004 behavior,
 // scoped to Service only. Job: no subcategory/attributes/price at
 // all — just title + description + optional photo (see #hog009).
-// Rent (#hog014): subcategory/attributes + required photos like
-// Product, but shares Product's category tree instead of having its
-// own (filteredCategories below special-cases this) — and swaps the
-// single price field for a rent-specific block: amount + unit
-// (month/day), plus optional deposit and minimum term.
+// Rent (#hog014): subcategory/attributes + required photos, own
+// category tree (type:'rent' in the admin, same schema/mechanism as
+// Product/Service/Job — see #hog001 — but never shares Product's
+// entries, since a rental's relevant fields, e.g. bedrooms/furnished/
+// deposit, are genuinely different from a sale listing's condition/
+// warranty). Its own visually distinct layout (see the isRent render
+// block) instead of Product's flat field list — standing principle
+// per Taza: each post type gets its own structure, not shared just
+// because it's convenient.
 const POST_TYPES = [
   { key: 'product', label: 'Product' },
   { key: 'service', label: 'Service' },
@@ -168,12 +172,9 @@ export default function PostAd() {
   const isJob = postType === 'job';
   const isRent = postType === 'rent';
   // Only categories matching the top-of-page type selector show in
-  // the Category picker below it — except Rent, which deliberately
-  // has no category tree of its own and reuses Product's (Taza's
-  // call, #hog014: e.g. "House" should offer both a for-sale and a
-  // for-rent listing without a duplicate category admin has to keep
-  // in sync).
-  const filteredCategories = sortByPopular(CATEGORIES).filter((c) => (c.type || 'product') === (isRent ? 'product' : postType));
+  // the Category picker below it. Rent has its own tree (type:'rent')
+  // rather than borrowing Product's — see #hog014 note above.
+  const filteredCategories = sortByPopular(CATEGORIES).filter((c) => (c.type || 'product') === postType);
   const subcategory = category && subcategoryId ? getSubcategory(CATEGORIES, categoryId, subcategoryId) : null;
   const wordCount = description.trim() ? description.trim().split(/\s+/).length : 0;
 
@@ -388,9 +389,10 @@ export default function PostAd() {
       // and Home render job posts differently (full-width row card,
       // no price/condition) without a categories lookup on every card.
       // Job has no category doc at all, so this comes straight from
-      // postType rather than category?.type. Rent shares Product's
-      // category tree (category?.type would read 'product'), so it
-      // also needs to come from postType rather than the category doc.
+      // postType rather than category?.type. Rent has its own tree
+      // (type:'rent') so category?.type would already read 'rent' —
+      // the isRent fallback here just guards the moment before that
+      // category doc has resolved.
       categoryType: isJob ? 'job' : (isRent ? 'rent' : (category?.type || postType)),
       subcategory: subcategoryId,
       attributes: attrs,
@@ -720,41 +722,42 @@ export default function PostAd() {
 
         {isRent && (
           <>
-            <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
-              <label className="field-label">Photos<span className="req">*</span></label>
-              <ImageUploader files={images} onChange={setImages} maxImages={5} />
-              {errors.photos && <p className="field-error">{errors.photos}</p>}
-            </div>
-
-            <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
-              <label className="field-label">Category<span className="req">*</span></label>
-              <ChipSelect
-                options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
-                value={categoryId}
-                onChange={onCategoryChange}
-                placeholder={filteredCategories.length === 0 ? 'No categories of this type yet.' : ''}
-              />
-              {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
-            </div>
-
-            {category && (
-              <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
-                <label className="field-label">Subcategory<span className="req">*</span></label>
-                <ChipSelect
-                  options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
-                  value={subcategoryId}
-                  onChange={onSubcategoryChange}
-                />
-                {errors.subcategoryId && <p className="field-error">{errors.subcategoryId}</p>}
+            <div className="rent-section">
+              <h3 className="rent-section-title">What's for rent</h3>
+              <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
+                <label className="field-label">Photos<span className="req">*</span></label>
+                <ImageUploader files={images} onChange={setImages} maxImages={5} />
+                {errors.photos && <p className="field-error">{errors.photos}</p>}
               </div>
-            )}
 
-            {subcategory && (
-              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
-            )}
+              <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
+                <label className="field-label">Category<span className="req">*</span></label>
+                <ChipSelect
+                  options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
+                  value={categoryId}
+                  onChange={onCategoryChange}
+                  placeholder={filteredCategories.length === 0 ? 'No rental categories yet — add some from the admin panel.' : ''}
+                />
+                {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
+              </div>
 
-            {subcategory && (
-              <>
+              {category && (
+                <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
+                  <label className="field-label">Subcategory<span className="req">*</span></label>
+                  <ChipSelect
+                    options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
+                    value={subcategoryId}
+                    onChange={onSubcategoryChange}
+                  />
+                  {errors.subcategoryId && <p className="field-error">{errors.subcategoryId}</p>}
+                </div>
+              )}
+
+              {subcategory && (
+                <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
+              )}
+
+              {subcategory && (
                 <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
                   <label className="field-label">Title<span className="req">*</span></label>
                   <input
@@ -766,8 +769,14 @@ export default function PostAd() {
                   {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
                   {errors.title && <p className="field-error">{errors.title}</p>}
                 </div>
+              )}
+            </div>
+
+            {subcategory && (
+              <div className="rent-terms-card">
+                <h3 className="rent-section-title">Rent terms</h3>
                 <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
-                  <label className="field-label">Rent<span className="req">*</span></label>
+                  <label className="field-label">Rent amount<span className="req">*</span></label>
                   <ChipSelect
                     options={[
                       { label: 'Per month', value: 'month' },
@@ -778,32 +787,39 @@ export default function PostAd() {
                   />
                   <input
                     className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)}
-                    placeholder="Rent amount (ETB)"
+                    placeholder="Amount (ETB)"
                     style={{ marginTop: 8 }}
                   />
                   {errors.price && <p className="field-error">{errors.price}</p>}
                 </div>
-                <div className={`field-group ${errors.deposit ? 'has-error' : ''}`}>
-                  <label className="field-label">Deposit (ETB)</label>
-                  <input
-                    className="field" type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)}
-                    placeholder="Optional — leave blank if none"
-                  />
-                  {errors.deposit && <p className="field-error">{errors.deposit}</p>}
+                <div className="rent-terms-row">
+                  <div className={`field-group ${errors.deposit ? 'has-error' : ''}`}>
+                    <label className="field-label">Deposit (ETB)</label>
+                    <input
+                      className="field" type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)}
+                      placeholder="Optional"
+                    />
+                    {errors.deposit && <p className="field-error">{errors.deposit}</p>}
+                  </div>
+                  <div className="field-group">
+                    <label className="field-label">Minimum term</label>
+                    <input
+                      className="field" value={minTerm} onChange={(e) => setMinTerm(e.target.value)}
+                      placeholder="e.g. 6 months"
+                    />
+                  </div>
                 </div>
-                <div className="field-group">
-                  <label className="field-label">Minimum rental term</label>
-                  <input
-                    className="field" value={minTerm} onChange={(e) => setMinTerm(e.target.value)}
-                    placeholder="Optional — e.g. at least 6 months"
-                  />
-                </div>
+              </div>
+            )}
+
+            {subcategory && (
+              <div className="rent-section">
                 <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                   <label className="field-label">Description<span className="req">*</span></label>
-                  <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Condition, what's included, terms..." />
+                  <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Furnishing, utilities, terms, what's included..." />
                   <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
                   <div className="desc-hint-row">
-                    {DESCRIPTION_HINTS.map((h) => (
+                    {RENT_DESCRIPTION_HINTS.map((h) => (
                       <button type="button" key={h} className="desc-hint-chip" onClick={() => addHintToDescription(h)}>+ {h}</button>
                     ))}
                   </div>
@@ -815,7 +831,7 @@ export default function PostAd() {
                     {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
                   </select>
                 </div>
-              </>
+              </div>
             )}
           </>
         )}

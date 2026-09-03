@@ -850,7 +850,7 @@ function renderCategoriesList() {
     row.className = 'list-row';
     row.innerHTML = `
       <div class="list-row-info">
-        <div><strong>${cat.name}</strong>${cat.popular ? ' · popular' : ''}${cat.type === 'service' ? ' · service' : ''}${cat.type === 'job' ? ' · job' : ''}</div>
+        <div><strong>${cat.name}</strong>${cat.popular ? ' · popular' : ''}${cat.type === 'service' ? ' · service' : ''}${cat.type === 'job' ? ' · job' : ''}${cat.type === 'rent' ? ' · rent' : ''}</div>
         <div class="muted">icon: ${cat.icon || '—'} · order: ${cat.order} · ${cat.subcategories.length} subcategor${cat.subcategories.length === 1 ? 'y' : 'ies'}</div>
       </div>
       <div class="row-actions">
@@ -899,9 +899,10 @@ function renderCategoryEditor(id) {
       <label class="field-label"><input type="checkbox" id="edit-popular-${id}" ${draft.popular ? 'checked' : ''}/> Popular (shown first)</label>
       <label class="field-label">Type</label>
       <select class="field" id="edit-type-${id}">
-        <option value="product" ${draft.type !== 'service' && draft.type !== 'job' ? 'selected' : ''}>Product (photos required)</option>
+        <option value="product" ${draft.type !== 'service' && draft.type !== 'job' && draft.type !== 'rent' ? 'selected' : ''}>Product (photos required)</option>
         <option value="service" ${draft.type === 'service' ? 'selected' : ''}>Service (photos optional)</option>
         <option value="job" ${draft.type === 'job' ? 'selected' : ''}>Job (title + description only, no subcategory)</option>
+        <option value="rent" ${draft.type === 'rent' ? 'selected' : ''}>Rent (photos required, own rent-terms fields)</option>
       </select>
 
       <h4>Subcategories</h4>

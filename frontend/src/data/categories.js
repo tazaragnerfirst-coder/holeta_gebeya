@@ -37,3 +37,12 @@ export const DESCRIPTION_HINTS = [
   'Condition & any defects', 'Reason for selling', 'Accessories included',
   'Purchase date / warranty', 'Reason for the price', 'Usage history',
 ];
+
+// Rent (#hog014) gets its own hint set instead of reusing
+// DESCRIPTION_HINTS — sale-oriented hints (condition, reason for
+// selling) don't fit a rental listing. Based on what Ethiopian rental
+// listings (Jiji, Ethiopia Property Centre) consistently lead with.
+export const RENT_DESCRIPTION_HINTS = [
+  'Furnished or unfurnished', 'Utilities included?', 'Parking / generator / water tank',
+  'Floor / building info', 'Move-in date', 'Lease terms',
+];
