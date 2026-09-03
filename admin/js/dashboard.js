@@ -703,7 +703,15 @@ function renderSupportMessages(msgs) {
     const mine = m.senderId === adminUid;
     const bubble = document.createElement('div');
     bubble.className = `thread-bubble ${mine ? 'mine' : 'theirs'}`;
-    bubble.textContent = m.text || (m.type === 'listing' ? `[Shared listing: ${m.listingTitle || ''}]` : '');
+    const textEl = document.createElement('span');
+    textEl.textContent = m.text || (m.type === 'listing' ? `[Shared listing: ${m.listingTitle || ''}]` : '');
+    bubble.appendChild(textEl);
+    if (m.createdAt && m.createdAt.toDate) {
+      const timeEl = document.createElement('span');
+      timeEl.className = 'thread-bubble-time';
+      timeEl.textContent = m.createdAt.toDate().toLocaleString();
+      bubble.appendChild(timeEl);
+    }
     box.appendChild(bubble);
   });
   box.scrollTop = box.scrollHeight;
