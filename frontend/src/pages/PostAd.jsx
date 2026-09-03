@@ -26,10 +26,16 @@ import { registerPostAdSubmit, unregisterPostAdSubmit } from '../lib/postAdFab';
 // priceType (fixed/negotiable/free/contact) — the #hog004 behavior,
 // scoped to Service only. Job: no subcategory/attributes/price at
 // all — just title + description + optional photo (see #hog009).
+// Rent (#hog014): subcategory/attributes + required photos like
+// Product, but shares Product's category tree instead of having its
+// own (filteredCategories below special-cases this) — and swaps the
+// single price field for a rent-specific block: amount + unit
+// (month/day), plus optional deposit and minimum term.
 const POST_TYPES = [
   { key: 'product', label: 'Product' },
   { key: 'service', label: 'Service' },
   { key: 'job', label: 'Job' },
+  { key: 'rent', label: 'Rent' },
 ];
 
 export default function PostAd() {
@@ -58,6 +64,12 @@ export default function PostAd() {
   const [title, setTitle] = useState('');
   const [price, setPrice] = useState('');
   const [priceType, setPriceType] = useState('fixed');
+  // Rent-only (#hog014): rentUnit is Fixed/Negotiable-style but for
+  // the billing period instead of price flexibility; deposit and
+  // minTerm are both optional.
+  const [rentUnit, setRentUnit] = useState('month');
+  const [deposit, setDeposit] = useState('');
+  const [minTerm, setMinTerm] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('Holeta');
   const [images, setImages] = useState([]);
@@ -89,13 +101,16 @@ export default function PostAd() {
         }
         const a = snap.data();
         setCategoryId(a.category || '');
-        setPostType(a.categoryType === 'job' ? 'job' : (CATEGORIES.find((c) => c.id === a.category)?.type || 'product'));
+        setPostType(a.categoryType === 'job' ? 'job' : (a.categoryType === 'rent' ? 'rent' : (CATEGORIES.find((c) => c.id === a.category)?.type || 'product')));
         setSubcategoryId(a.subcategory || '');
         setAttrs(a.attributes || {});
         setTitle(a.title || '');
         setTitleTouched(true); // don't let the auto-suggest effect overwrite the loaded title
         setPrice(a.price != null ? String(a.price) : '');
         setPriceType(a.priceType || 'fixed');
+        setRentUnit(a.rentUnit || 'month');
+        setDeposit(a.deposit != null ? String(a.deposit) : '');
+        setMinTerm(a.minTerm || '');
         setDescription(a.description || '');
         setLocation(a.location || 'Holeta');
         setImages(a.images || []); // existing images stay as data-URL strings until re-saved
@@ -128,6 +143,9 @@ export default function PostAd() {
       if (draft.title) setTitleTouched(true); // don't let the auto-suggest effect overwrite the restored title
       setPrice(draft.price || '');
       setPriceType(draft.priceType || 'fixed');
+      setRentUnit(draft.rentUnit || 'month');
+      setDeposit(draft.deposit || '');
+      setMinTerm(draft.minTerm || '');
       setDescription(draft.description || '');
       setLocation(draft.location || 'Holeta');
     }
@@ -141,16 +159,21 @@ export default function PostAd() {
   // out a real draft with the form's blank initial state.
   useEffect(() => {
     if (isEdit || !draftReady) return;
-    saveDraft({ postType, categoryId, subcategoryId, attrs, title, price, priceType, description, location });
-  }, [isEdit, draftReady, postType, categoryId, subcategoryId, attrs, title, price, priceType, description, location]);
+    saveDraft({ postType, categoryId, subcategoryId, attrs, title, price, priceType, rentUnit, deposit, minTerm, description, location });
+  }, [isEdit, draftReady, postType, categoryId, subcategoryId, attrs, title, price, priceType, rentUnit, deposit, minTerm, description, location]);
 
   const category = CATEGORIES.find((c) => c.id === categoryId);
   const isProduct = postType === 'product';
   const isService = postType === 'service';
   const isJob = postType === 'job';
+  const isRent = postType === 'rent';
   // Only categories matching the top-of-page type selector show in
-  // the Category picker below it.
-  const filteredCategories = sortByPopular(CATEGORIES).filter((c) => (c.type || 'product') === postType);
+  // the Category picker below it — except Rent, which deliberately
+  // has no category tree of its own and reuses Product's (Taza's
+  // call, #hog014: e.g. "House" should offer both a for-sale and a
+  // for-rent listing without a duplicate category admin has to keep
+  // in sync).
+  const filteredCategories = sortByPopular(CATEGORIES).filter((c) => (c.type || 'product') === (isRent ? 'product' : postType));
   const subcategory = category && subcategoryId ? getSubcategory(CATEGORIES, categoryId, subcategoryId) : null;
   const wordCount = description.trim() ? description.trim().split(/\s+/).length : 0;
 
@@ -233,6 +256,9 @@ export default function PostAd() {
     setTitle('');
     setPrice('');
     setPriceType('fixed');
+    setRentUnit('month');
+    setDeposit('');
+    setMinTerm('');
     setDescription('');
     setImages([]);
     setErrors({});
@@ -270,11 +296,13 @@ export default function PostAd() {
   // it. Dynamic attribute errors are nested under `attrs`.
   function validate() {
     const errs = {};
-    if (isProduct && images.length === 0) errs.photos = 'Add at least 1 photo — listings without photos get far fewer replies.';
+    if ((isProduct || isRent) && images.length === 0) errs.photos = 'Add at least 1 photo — listings without photos get far fewer replies.';
     if (!isJob && !categoryId) errs.categoryId = 'Select a category to continue.';
     if (categoryId && !isJob && !subcategoryId) errs.subcategoryId = 'Select a subcategory to continue.';
     if (!title.trim()) errs.title = 'Title is required — give buyers a short, clear name for the item.';
     if (isProduct && (!price || Number(price) <= 0)) errs.price = 'Enter a valid price greater than 0.';
+    if (isRent && (!price || Number(price) <= 0)) errs.price = 'Enter a valid rent amount greater than 0.';
+    if (isRent && deposit && Number(deposit) < 0) errs.deposit = 'Deposit can\'t be negative.';
     if (isService && priceType === 'fixed' && (!price || Number(price) <= 0)) errs.price = 'Enter a valid price greater than 0.';
     if (isService && priceType === 'negotiable' && price && Number(price) <= 0) errs.price = 'Enter a valid asking price, or leave it blank.';
     if (wordCount > 0 && wordCount < DESCRIPTION_MIN_WORDS) errs.description = `Add a bit more detail — at least ${DESCRIPTION_MIN_WORDS} words helps buyers trust the listing.`;
@@ -330,7 +358,7 @@ export default function PostAd() {
     if (isJob) {
       numericPrice = null;
       priceTypeToSave = 'contact';
-    } else if (isProduct) {
+    } else if (isProduct || isRent) {
       numericPrice = price ? Number(price) : null;
       priceTypeToSave = 'fixed';
     } else {
@@ -345,6 +373,14 @@ export default function PostAd() {
       title,
       price: numericPrice,
       priceType: priceTypeToSave,
+      // Rent-only (#hog014); left off the payload entirely for other
+      // types rather than saved as null/empty, same spirit as price
+      // being skipped for Job.
+      ...(isRent ? {
+        rentUnit,
+        deposit: deposit ? Number(deposit) : null,
+        minTerm: minTerm.trim() || null,
+      } : {}),
       description,
       location,
       category: isJob ? '' : categoryId,
@@ -352,8 +388,10 @@ export default function PostAd() {
       // and Home render job posts differently (full-width row card,
       // no price/condition) without a categories lookup on every card.
       // Job has no category doc at all, so this comes straight from
-      // postType rather than category?.type.
-      categoryType: isJob ? 'job' : (category?.type || postType),
+      // postType rather than category?.type. Rent shares Product's
+      // category tree (category?.type would read 'product'), so it
+      // also needs to come from postType rather than the category doc.
+      categoryType: isJob ? 'job' : (isRent ? 'rent' : (category?.type || postType)),
       subcategory: subcategoryId,
       attributes: attrs,
       condition: attrs.condition || '',
@@ -661,6 +699,108 @@ export default function PostAd() {
                 <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                   <label className="field-label">Description<span className="req">*</span></label>
                   <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
+                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                  <div className="desc-hint-row">
+                    {DESCRIPTION_HINTS.map((h) => (
+                      <button type="button" key={h} className="desc-hint-chip" onClick={() => addHintToDescription(h)}>+ {h}</button>
+                    ))}
+                  </div>
+                  {errors.description && <p className="field-error">{errors.description}</p>}
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Location</label>
+                  <select className="field" value={location} onChange={(e) => setLocation(e.target.value)}>
+                    {['Holeta', 'Addis Ababa', 'Bahir Dar', 'Hawassa', 'Dire Dawa', 'Gondar', 'Mekelle'].map((l) => <option key={l}>{l}</option>)}
+                  </select>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {isRent && (
+          <>
+            <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
+              <label className="field-label">Photos<span className="req">*</span></label>
+              <ImageUploader files={images} onChange={setImages} maxImages={5} />
+              {errors.photos && <p className="field-error">{errors.photos}</p>}
+            </div>
+
+            <div className={`field-group ${errors.categoryId ? 'has-error' : ''}`}>
+              <label className="field-label">Category<span className="req">*</span></label>
+              <ChipSelect
+                options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
+                value={categoryId}
+                onChange={onCategoryChange}
+                placeholder={filteredCategories.length === 0 ? 'No categories of this type yet.' : ''}
+              />
+              {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
+            </div>
+
+            {category && (
+              <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
+                <label className="field-label">Subcategory<span className="req">*</span></label>
+                <ChipSelect
+                  options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
+                  value={subcategoryId}
+                  onChange={onSubcategoryChange}
+                />
+                {errors.subcategoryId && <p className="field-error">{errors.subcategoryId}</p>}
+              </div>
+            )}
+
+            {subcategory && (
+              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
+            )}
+
+            {subcategory && (
+              <>
+                <div className={`field-group ${errors.title ? 'has-error' : ''}`}>
+                  <label className="field-label">Title<span className="req">*</span></label>
+                  <input
+                    className="field"
+                    value={title}
+                    onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                    placeholder="e.g. 2-bedroom house, Holeta"
+                  />
+                  {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
+                  {errors.title && <p className="field-error">{errors.title}</p>}
+                </div>
+                <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
+                  <label className="field-label">Rent<span className="req">*</span></label>
+                  <ChipSelect
+                    options={[
+                      { label: 'Per month', value: 'month' },
+                      { label: 'Per day', value: 'day' },
+                    ]}
+                    value={rentUnit}
+                    onChange={(v) => setRentUnit(v)}
+                  />
+                  <input
+                    className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)}
+                    placeholder="Rent amount (ETB)"
+                    style={{ marginTop: 8 }}
+                  />
+                  {errors.price && <p className="field-error">{errors.price}</p>}
+                </div>
+                <div className={`field-group ${errors.deposit ? 'has-error' : ''}`}>
+                  <label className="field-label">Deposit (ETB)</label>
+                  <input
+                    className="field" type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)}
+                    placeholder="Optional — leave blank if none"
+                  />
+                  {errors.deposit && <p className="field-error">{errors.deposit}</p>}
+                </div>
+                <div className="field-group">
+                  <label className="field-label">Minimum rental term</label>
+                  <input
+                    className="field" value={minTerm} onChange={(e) => setMinTerm(e.target.value)}
+                    placeholder="Optional — e.g. at least 6 months"
+                  />
+                </div>
+                <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
+                  <label className="field-label">Description<span className="req">*</span></label>
+                  <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Condition, what's included, terms..." />
                   <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
                   <div className="desc-hint-row">
                     {DESCRIPTION_HINTS.map((h) => (

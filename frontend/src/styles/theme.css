@@ -269,8 +269,8 @@ textarea.field{min-height:84px;resize:vertical;}
    border, underline only), description is a plain lined writing
    area with generous height. Sets it apart from Product/Service's
    ordinary field styling, per Taza's request. */
-.post-type-select{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px;}
-.post-type-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:none;padding:22px 8px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;text-align:center;}
+.post-type-select{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.post-type-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);box-shadow:none;padding:16px 18px;font-size:14px;font-weight:700;color:var(--ink);cursor:pointer;text-align:left;width:100%;}
 
 .job-note-block{background:var(--surface-sunken);border:1px solid var(--line);border-radius:var(--radius-lg);padding:14px 16px;}
 .job-note-title{border:none;border-bottom:1.5px solid var(--line);border-radius:0;background:transparent;padding:6px 2px;font-size:17px;font-weight:700;}
