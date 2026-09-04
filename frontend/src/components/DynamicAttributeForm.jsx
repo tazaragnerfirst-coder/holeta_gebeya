@@ -14,7 +14,7 @@ import ColorSwatchSelect from './ColorSwatchSelect.jsx';
  * falling back to `fallbackOptions` when the specific parent value
  * isn't in `optionsByParent`.
  */
-export default function DynamicAttributeForm({ attributes, values, onChange, errors = {} }) {
+export default function DynamicAttributeForm({ attributes, values, onChange, errors = {}, colorHexOverrides }) {
   const setField = (key, value) => onChange({ ...values, [key]: value });
   const labelFor = (key) => attributes.find((a) => a.key === key)?.label || key;
 
@@ -28,7 +28,7 @@ export default function DynamicAttributeForm({ attributes, values, onChange, err
               {attr.label}
               {attr.required && <span className="req">*</span>}
             </label>
-            {renderInput(attr, values, setField, labelFor)}
+            {renderInput(attr, values, setField, labelFor, colorHexOverrides)}
             {error && <p className="field-error">{error}</p>}
           </div>
         );
@@ -37,7 +37,7 @@ export default function DynamicAttributeForm({ attributes, values, onChange, err
   );
 }
 
-function renderInput(attr, values, setField, labelFor) {
+function renderInput(attr, values, setField, labelFor, colorHexOverrides) {
   const value = values[attr.key] ?? '';
 
   switch (attr.type) {
@@ -68,6 +68,7 @@ function renderInput(attr, values, setField, labelFor) {
           value={value}
           onChange={(v) => setField(attr.key, v)}
           placeholder={attr.dependsOn && !parentValue ? `Select ${labelFor(attr.dependsOn).toLowerCase()} first` : ''}
+          colorHexOverrides={colorHexOverrides}
         />
       );
     }

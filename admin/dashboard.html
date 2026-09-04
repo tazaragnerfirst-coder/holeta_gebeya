@@ -74,6 +74,7 @@
       <div class="row">
         <button type="button" class="btn-ghost active" id="cat-subtab-categories">Categories</button>
         <button type="button" class="btn-ghost" id="cat-subtab-refdata">Reference Data</button>
+        <button type="button" class="btn-ghost" id="cat-subtab-colors">Colors</button>
       </div>
 
       <div id="cat-import-wrap" class="card" hidden>
@@ -119,6 +120,23 @@
         </div>
         <div id="refdata-list" class="list"></div>
         <div id="refdata-empty" class="empty-hint" hidden>No brands yet for this table.</div>
+      </div>
+
+      <!-- Colors sub-view -->
+      <div id="cat-view-colors" hidden>
+        <p class="muted">The actual color shown for any color name used anywhere (phone model color lists, "color"-type attribute fields, etc.) — anywhere that name is typed, it now renders with the hex set here. Unregistered names fall back to a plain gray swatch.</p>
+        <div id="colors-list" class="list"></div>
+        <div class="card">
+          <h3>Add a color</h3>
+          <div class="row">
+            <input class="field" type="text" id="color-add-name" placeholder="e.g. Titanium Sand" />
+            <input type="color" id="color-add-hex" value="#B9B9B9" />
+          </div>
+          <div id="color-add-error" class="error-banner" hidden></div>
+          <button type="button" class="btn-ghost" id="color-add-btn">+ Add color</button>
+        </div>
+        <div id="colors-save-error" class="error-banner" hidden></div>
+        <button type="button" class="btn-primary" id="colors-save-btn">Save colors</button>
       </div>
     </section>
 

@@ -7,7 +7,7 @@ import { colorHex } from '../data/colors';
  * Only the colors actually available for the selected model/item are
  * shown (passed in via `options`).
  */
-export default function ColorSwatchSelect({ options = [], value, onChange, placeholder = '' }) {
+export default function ColorSwatchSelect({ options = [], value, onChange, placeholder = '', colorHexOverrides }) {
   if (options.length === 0) {
     return <div className="chip-select-empty">{placeholder || 'No options available.'}</div>;
   }
@@ -15,7 +15,7 @@ export default function ColorSwatchSelect({ options = [], value, onChange, place
     <div className="swatch-row">
       {options.map((name) => {
         const active = value === name;
-        const hex = colorHex(name);
+        const hex = colorHex(name, colorHexOverrides);
         const light = /^#f|^#e[5-9a-f]/i.test(hex);
         return (
           <button

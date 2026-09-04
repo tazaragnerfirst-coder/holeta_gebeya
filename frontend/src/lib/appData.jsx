@@ -107,6 +107,11 @@ export function AppDataProvider({ children }) {
   const [profileReady, setProfileReady] = useState(() => (initialUid ? getCached(`profile:${initialUid}`) != null : false));
   const [sellerRating, setSellerRating] = useState(() => (initialUid ? getCached(`sellerRating:${initialUid}`) || { avg: 0, count: 0 } : { avg: 0, count: 0 }));
   const [sellerRatingReady, setSellerRatingReady] = useState(() => (initialUid ? getCached(`sellerRating:${initialUid}`) != null : false));
+  // Admin-editable name->hex overrides (referenceData/colorHex doc,
+  // see #hog017) merged over the built-in COLOR_HEX map in
+  // data/colors.js — see colorHex() there. Small single doc, cheap
+  // to keep live like categories.
+  const [colorHexOverrides, setColorHexOverrides] = useState(() => getCached('colorHexOverrides') || {});
 
   const checkedSession = useRef(false);
 
@@ -118,6 +123,15 @@ export function AppDataProvider({ children }) {
       setCategoriesReady(true);
       setCached('categories', data);
     }, () => setCategoriesReady(true));
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'referenceData', 'colorHex'), (snap) => {
+      const map = snap.exists() ? (snap.data().hexByName || {}) : {};
+      setColorHexOverrides(map);
+      setCached('colorHexOverrides', map);
+    }, () => {});
     return unsub;
   }, []);
 
@@ -375,6 +389,7 @@ export function AppDataProvider({ children }) {
   return (
     <AppDataContext.Provider value={{
       categories, categoriesReady,
+      colorHexOverrides,
       listings, listingsReady,
       searchResults, searchLoading, searchListings,
       hasMoreListings, loadingMoreListings, loadMoreListings,

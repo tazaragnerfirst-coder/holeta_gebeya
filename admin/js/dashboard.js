@@ -803,6 +803,7 @@ let refDataBrands = [];
 let categoryDrafts = {};
 let expandedSubcat = {};
 let brandDrafts = {};
+let colorHexDraft = []; // [{name, hex}], working copy of referenceData/colorHex.hexByName
 
 function slugify(s) {
   return String(s).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || `item-${Date.now()}`;
@@ -812,24 +813,48 @@ function uniqueId(base, existingIds) {
   while (existingIds.includes(id)) { id = `${base}-${n}`; n++; }
   return id;
 }
+// Numeric-aware compare so "A13" sorts before "A21" — plain string
+// compare would put "A13" after "A21" the same way it puts "A" after
+// "A2" (Taza flagged this for the model list, which otherwise showed
+// entries in whatever order they were added rather than sorted).
+function naturalCompare(a, b) {
+  const chunk = (s) => String(s).match(/\d+|\D+/g) || [];
+  const ca = chunk(a), cb = chunk(b);
+  for (let i = 0; i < Math.max(ca.length, cb.length); i++) {
+    const x = ca[i] || '', y = cb[i] || '';
+    const nx = Number(x), ny = Number(y);
+    if (!Number.isNaN(nx) && !Number.isNaN(ny) && x !== '' && y !== '') {
+      if (nx !== ny) return nx - ny;
+    } else if (x !== y) {
+      return x < y ? -1 : 1;
+    }
+  }
+  return 0;
+}
 
 function initCategories() {
   document.getElementById('cat-subtab-categories').addEventListener('click', () => switchCatSubtab('categories'));
   document.getElementById('cat-subtab-refdata').addEventListener('click', () => switchCatSubtab('refdata'));
+  document.getElementById('cat-subtab-colors').addEventListener('click', () => switchCatSubtab('colors'));
   document.getElementById('cat-add-btn').addEventListener('click', addCategory);
   document.getElementById('cat-import-btn').addEventListener('click', importStarterCategories);
   document.getElementById('refdata-add-btn').addEventListener('click', addBrand);
   document.getElementById('refdata-refid').addEventListener('change', loadRefDataBrands);
+  document.getElementById('color-add-btn').addEventListener('click', addColorDraftEntry);
+  document.getElementById('colors-save-btn').addEventListener('click', saveColorHex);
 
   loadCategories();
   loadRefDataBrands();
+  loadColorHex();
 }
 
 function switchCatSubtab(which) {
   document.getElementById('cat-subtab-categories').classList.toggle('active', which === 'categories');
   document.getElementById('cat-subtab-refdata').classList.toggle('active', which === 'refdata');
+  document.getElementById('cat-subtab-colors').classList.toggle('active', which === 'colors');
   document.getElementById('cat-view-categories').hidden = which !== 'categories';
   document.getElementById('cat-view-refdata').hidden = which !== 'refdata';
+  document.getElementById('cat-view-colors').hidden = which !== 'colors';
 }
 
 // --- Categories sub-view ---------------------------------------------
@@ -1338,17 +1363,20 @@ function renderBrandEditor(id) {
   holder.innerHTML = `
     <div class="card">
       <div id="model-list-${id}"></div>
-      <h5>Add model</h5>
+      <h5 id="model-form-title-${id}">Add model</h5>
       <label class="field-label">Model name</label>
       <input class="field" type="text" id="new-model-name-${id}" placeholder="e.g. Galaxy A15" />
       <label class="field-label">Storage options (comma-separated)</label>
       <input class="field" type="text" id="new-model-storage-${id}" placeholder="e.g. 64GB, 128GB" />
       <label class="field-label">RAM options (comma-separated)</label>
       <input class="field" type="text" id="new-model-ram-${id}" placeholder="e.g. 4GB, 6GB" />
-      <label class="field-label">Color options (comma-separated)</label>
+      <label class="field-label">Color options (comma-separated names — set each color's actual hex once in Categories → Colors, applies everywhere automatically)</label>
       <input class="field" type="text" id="new-model-color-${id}" placeholder="e.g. Black, Blue" />
       <div id="new-model-error-${id}" class="error-banner" hidden></div>
-      <button type="button" class="btn-ghost" id="add-model-${id}">+ Add model</button>
+      <div class="row">
+        <button type="button" class="btn-ghost" id="add-model-${id}">+ Add model</button>
+        <button type="button" class="btn-ghost" id="cancel-edit-model-${id}" hidden>Cancel edit</button>
+      </div>
       <div id="refdata-edit-error-${id}" class="error-banner" hidden></div>
       <div class="row">
         <button type="button" class="btn-primary" id="refdata-save-${id}">Save brand</button>
@@ -1358,6 +1386,7 @@ function renderBrandEditor(id) {
   `;
   renderModelList(id);
   document.getElementById(`add-model-${id}`).addEventListener('click', () => addModel(id));
+  document.getElementById(`cancel-edit-model-${id}`).addEventListener('click', () => exitModelEdit(id));
   document.getElementById(`refdata-cancel-${id}`).addEventListener('click', () => { holder.innerHTML = ''; delete brandDrafts[id]; });
   document.getElementById(`refdata-save-${id}`).addEventListener('click', () => saveBrand(id));
 }
@@ -1366,18 +1395,55 @@ function renderModelList(id) {
   const draft = brandDrafts[id];
   const el = document.getElementById(`model-list-${id}`);
   if (draft.models.length === 0) { el.innerHTML = '<p class="muted">No models yet.</p>'; return; }
-  el.innerHTML = draft.models.map((m, midx) => `
+  // Sorted for display only — draft.models itself keeps its stored
+  // order (editingIndex below is an index into draft.models, not
+  // into this sorted copy) so editing/saving stay simple.
+  const sorted = draft.models.map((m, midx) => ({ m, midx })).sort((a, b) => naturalCompare(a.m.model, b.m.model));
+  el.innerHTML = sorted.map(({ m, midx }) => `
     <div class="list-row">
       <div class="list-row-info">
         <div><strong>${m.model}</strong></div>
         <div class="muted">Storage: ${(m.storage || []).join(', ') || '—'} · RAM: ${(m.ram || []).join(', ') || '—'} · Color: ${(m.color || []).join(', ') || '—'}</div>
       </div>
-      <div class="row-actions"><button type="button" class="icon-btn danger" data-midx="${midx}">✕</button></div>
+      <div class="row-actions">
+        <button type="button" class="icon-btn" data-act="edit" data-midx="${midx}">✎</button>
+        <button type="button" class="icon-btn danger" data-act="remove" data-midx="${midx}">✕</button>
+      </div>
     </div>
   `).join('');
-  el.querySelectorAll('button[data-midx]').forEach((btn) => {
-    btn.addEventListener('click', () => { draft.models.splice(Number(btn.dataset.midx), 1); renderModelList(id); });
+  el.querySelectorAll('button[data-act="remove"]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const removedIdx = Number(btn.dataset.midx);
+      draft.models.splice(removedIdx, 1);
+      if (draft.editingIndex === removedIdx) exitModelEdit(id);
+      renderModelList(id);
+    });
   });
+  el.querySelectorAll('button[data-act="edit"]').forEach((btn) => {
+    btn.addEventListener('click', () => enterModelEdit(id, Number(btn.dataset.midx)));
+  });
+}
+
+function enterModelEdit(id, midx) {
+  const draft = brandDrafts[id];
+  draft.editingIndex = midx;
+  const m = draft.models[midx];
+  document.getElementById(`new-model-name-${id}`).value = m.model;
+  document.getElementById(`new-model-storage-${id}`).value = (m.storage || []).join(', ');
+  document.getElementById(`new-model-ram-${id}`).value = (m.ram || []).join(', ');
+  document.getElementById(`new-model-color-${id}`).value = (m.color || []).join(', ');
+  document.getElementById(`model-form-title-${id}`).textContent = `Editing "${m.model}"`;
+  document.getElementById(`add-model-${id}`).textContent = 'Update model';
+  document.getElementById(`cancel-edit-model-${id}`).hidden = false;
+}
+
+function exitModelEdit(id) {
+  const draft = brandDrafts[id];
+  delete draft.editingIndex;
+  ['name', 'storage', 'ram', 'color'].forEach((f) => { document.getElementById(`new-model-${f}-${id}`).value = ''; });
+  document.getElementById(`model-form-title-${id}`).textContent = 'Add model';
+  document.getElementById(`add-model-${id}`).textContent = '+ Add model';
+  document.getElementById(`cancel-edit-model-${id}`).hidden = true;
 }
 
 function addModel(id) {
@@ -1387,13 +1453,18 @@ function addModel(id) {
   const model = document.getElementById(`new-model-name-${id}`).value.trim();
   if (!model) { showFieldError(errorBox, 'Model name is required.'); return; }
   const csv = (elId) => document.getElementById(elId).value.split(',').map((s) => s.trim()).filter(Boolean);
-  draft.models.push({
+  const entry = {
     model,
     storage: csv(`new-model-storage-${id}`),
     ram: csv(`new-model-ram-${id}`),
     color: csv(`new-model-color-${id}`),
-  });
-  ['name', 'storage', 'ram', 'color'].forEach((f) => { document.getElementById(`new-model-${f}-${id}`).value = ''; });
+  };
+  if (draft.editingIndex != null) {
+    draft.models[draft.editingIndex] = entry;
+  } else {
+    draft.models.push(entry);
+  }
+  exitModelEdit(id);
   renderModelList(id);
 }
 
@@ -1452,3 +1523,97 @@ async function addBrand() {
     addBtn.disabled = false;
   }
 }
+
+// --- Colors sub-view --------------------------------------------------
+// Global name -> hex registry (referenceData/colorHex, field
+// hexByName), separate from any category/model data. Any color name
+// typed anywhere (a model's comma-separated color list, a "color"-type
+// attribute's options) is resolved against this map at render time on
+// the frontend (see src/data/colors.js) — so fixing/adding a color
+// here fixes it everywhere that name is already used, no need to
+// re-enter it per model. Seeded once from the app's built-in defaults
+// (src/data/colors.js) if the Firestore doc doesn't exist yet, so
+// Taza sees and can edit the existing set too, not just new names.
+const BUILTIN_COLOR_HEX_SEED = {
+  Black: '#1a1a1a', White: '#f5f5f0', Silver: '#c7c9cb', Gold: '#e6c79c',
+  Blue: '#3b6ea5', Green: '#5a8f69', Purple: '#7d6b9e', Red: '#b23b3b',
+  Yellow: '#e0c34a', Pink: '#e3a9b8', Gray: '#8b8d8f', Grey: '#8b8d8f',
+  'Phantom Black': '#1c1c1e', 'Phantom White': '#f2f2ef', Cream: '#efe6d0',
+  Lavender: '#c9c2e0', 'Pink Gold': '#e6c3b8', 'Awesome Black': '#1c1c1e',
+  'Awesome White': '#f2f2ef', 'Awesome Violet': '#8a7ab5', 'Awesome Lime': '#c9d96a',
+  'Awesome Silver': '#c7c9cb', 'Light Green': '#a9d1a0', 'Dark Red': '#7a2e2e',
+  'Mystic Bronze': '#8a6a4a', 'Mystic Gray': '#8b8d8f', 'Mystic Green': '#5f7d6a',
+  Mint: '#a9d9c8', Graphite: '#4a4a4a', 'Titanium Black': '#3a3a3a',
+  'Titanium Gray': '#7d7d7d', 'Titanium Violet': '#9d8fae', 'Titanium Yellow': '#e0d19a',
+  'Black Titanium': '#3a3a3a', 'White Titanium': '#e8e6df', 'Blue Titanium': '#5a6f85',
+  'Natural Titanium': '#a89f92', Midnight: '#1b1b23', Starlight: '#f0ece1',
+  '(PRODUCT)RED': '#b3151a', 'Space Gray': '#5c5e60',
+};
+
+async function loadColorHex() {
+  const snap = await db.collection('referenceData').doc('colorHex').get();
+  const map = snap.exists ? (snap.data().hexByName || {}) : BUILTIN_COLOR_HEX_SEED;
+  colorHexDraft = Object.entries(map).map(([name, hex]) => ({ name, hex }))
+    .sort((a, b) => naturalCompare(a.name, b.name));
+  renderColorsList();
+}
+
+function renderColorsList() {
+  const el = document.getElementById('colors-list');
+  if (colorHexDraft.length === 0) { el.innerHTML = '<p class="muted">No colors yet.</p>'; return; }
+  el.innerHTML = colorHexDraft.map((c, cidx) => `
+    <div class="list-row">
+      <div class="list-row-info" style="display:flex;align-items:center;gap:10px;">
+        <input type="color" data-cidx="${cidx}" data-field="hex" value="${c.hex}" />
+        <input class="field" type="text" data-cidx="${cidx}" data-field="name" value="${c.name}" style="max-width:220px;" />
+      </div>
+      <div class="row-actions"><button type="button" class="icon-btn danger" data-act="remove" data-cidx="${cidx}">✕</button></div>
+    </div>
+  `).join('');
+  el.querySelectorAll('input[data-field="hex"]').forEach((inp) => {
+    inp.addEventListener('input', () => { colorHexDraft[Number(inp.dataset.cidx)].hex = inp.value; });
+  });
+  el.querySelectorAll('input[data-field="name"]').forEach((inp) => {
+    inp.addEventListener('change', () => { colorHexDraft[Number(inp.dataset.cidx)].name = inp.value.trim(); });
+  });
+  el.querySelectorAll('button[data-act="remove"]').forEach((btn) => {
+    btn.addEventListener('click', () => { colorHexDraft.splice(Number(btn.dataset.cidx), 1); renderColorsList(); });
+  });
+}
+
+function addColorDraftEntry() {
+  const nameInput = document.getElementById('color-add-name');
+  const hexInput = document.getElementById('color-add-hex');
+  const errorBox = document.getElementById('color-add-error');
+  hideFieldError(errorBox);
+  const name = nameInput.value.trim();
+  if (!name) { showFieldError(errorBox, 'Color name is required.'); return; }
+  if (colorHexDraft.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
+    showFieldError(errorBox, `"${name}" is already in the list below — edit it there instead.`);
+    return;
+  }
+  colorHexDraft.push({ name, hex: hexInput.value });
+  colorHexDraft.sort((a, b) => naturalCompare(a.name, b.name));
+  nameInput.value = '';
+  hexInput.value = '#B9B9B9';
+  renderColorsList();
+}
+
+async function saveColorHex() {
+  const errorBox = document.getElementById('colors-save-error');
+  hideFieldError(errorBox);
+  const saveBtn = document.getElementById('colors-save-btn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving…';
+  try {
+    const hexByName = {};
+    colorHexDraft.forEach((c) => { if (c.name) hexByName[c.name] = c.hex; });
+    await db.collection('referenceData').doc('colorHex').set({ hexByName }, { merge: false });
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save colors';
+  }
+}
+

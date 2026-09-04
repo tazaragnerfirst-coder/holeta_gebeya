@@ -47,7 +47,7 @@ export default function PostAd() {
   const { id: editId } = useParams();
   const isEdit = !!editId;
   const requireRegistered = useRequireRegistered();
-  const { categories: CATEGORIES } = useAppData();
+  const { categories: CATEGORIES, colorHexOverrides } = useAppData();
   // Options fetched from referenceData for attributes that point at a
   // refCollection instead of embedding options inline (see #hog001) —
   // keyed by attribute key. Populated lazily: the root attribute's
@@ -585,7 +585,7 @@ export default function PostAd() {
                 src/data/categories.js — add a subcategory there and its
                 form appears here automatically. */}
             {subcategory && (
-              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
+              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
             )}
 
             {subcategory && (
@@ -661,7 +661,7 @@ export default function PostAd() {
             )}
 
             {subcategory && (
-              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
+              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
             )}
 
             {subcategory && (
@@ -754,7 +754,7 @@ export default function PostAd() {
               )}
 
               {subcategory && (
-                <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} />
+                <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
               )}
 
               {subcategory && (

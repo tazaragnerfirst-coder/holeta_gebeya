@@ -2,6 +2,11 @@
 // attribute options. Used to render small color swatches instead of
 // free-text input. Unknown names fall back to a neutral gray dot
 // with the name still shown as a label/tooltip.
+// #hog017: admin can also register/override hex per name live via
+// the Colors admin sub-tab (referenceData/colorHex doc, loaded in
+// appData.jsx as colorHexOverrides) — pass that map as the second
+// arg to colorHex() below; it takes priority over this static table,
+// and covers any new color name added anywhere without a redeploy.
 
 export const COLOR_HEX = {
   Black: '#1a1a1a',
@@ -56,6 +61,7 @@ export const COLOR_HEX = {
   'Space Gray': '#5c5e60',
 };
 
-export function colorHex(name) {
+export function colorHex(name, overrides) {
+  if (overrides && overrides[name]) return overrides[name];
   return COLOR_HEX[name] || '#B9B9B9';
 }
