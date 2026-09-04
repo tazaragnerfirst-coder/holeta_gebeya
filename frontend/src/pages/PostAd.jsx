@@ -7,7 +7,7 @@ import { getMyProfile } from '../lib/profile';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { computeExpiresAt } from '../lib/adStatus';
 import { buildSearchTokens } from '../lib/searchTokens';
-import { getSubcategory, sortByPopular, sortNatural, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS, RENT_DESCRIPTION_HINTS } from '../data/categories';
+import { getSubcategory, sortByPopular, sortNatural, resolveOtherAttrs, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS, RENT_DESCRIPTION_HINTS } from '../data/categories';
 import { getBrandList, getBrandModels } from '../lib/referenceData';
 import { useAppData } from '../lib/appData';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
@@ -284,7 +284,7 @@ export default function PostAd() {
   // themselves, so their edit is never silently overwritten.
   useEffect(() => {
     if (titleTouched) return;
-    const suggested = buildSuggestedTitle(category, subcategory, attrs);
+    const suggested = buildSuggestedTitle(category, subcategory, resolveOtherAttrs(attrs));
     if (suggested) setTitle(suggested);
   }, [category, subcategory, attrs, titleTouched]);
 
@@ -312,8 +312,12 @@ export default function PostAd() {
     const attrErrs = {};
     if (subcategory) {
       for (const attr of subcategory.attributes) {
-        if (attr.required && !attrs[attr.key]) {
+        if (!attr.required) continue;
+        const val = attrs[attr.key];
+        if (!val) {
           attrErrs[attr.key] = `${attr.label} is required — select it above.`;
+        } else if (val === 'Other' && !attrs[`${attr.key}__other`]?.trim()) {
+          attrErrs[attr.key] = `Please specify ${attr.label.toLowerCase()} in the box below "Other".`;
         }
       }
     }
@@ -367,6 +371,7 @@ export default function PostAd() {
       priceTypeToSave = priceType;
     }
 
+    const resolvedAttrs = resolveOtherAttrs(attrs);
     const payload = {
       sellerId: user.uid,
       sellerName: myProfile.name,
@@ -395,10 +400,14 @@ export default function PostAd() {
       // category doc has resolved.
       categoryType: isJob ? 'job' : (isRent ? 'rent' : (category?.type || postType)),
       subcategory: subcategoryId,
-      attributes: attrs,
-      condition: attrs.condition || '',
+      // resolveOtherAttrs (#hog019) swaps a picked "Other" for its
+      // typed specify-box value (and drops the scratch `__other`
+      // companion keys) so nothing saved ever shows a bare, unsearchable
+      // "Other" — the person's actual typed brand/model, etc.
+      attributes: resolvedAttrs,
+      condition: resolvedAttrs.condition || '',
       images: compressedImages,
-      searchTokens: buildSearchTokens(title, attrs),
+      searchTokens: buildSearchTokens(title, resolvedAttrs),
     };
 
     if (isEdit) {

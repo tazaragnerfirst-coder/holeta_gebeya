@@ -291,6 +291,10 @@ textarea.field{min-height:84px;resize:vertical;}
 .rent-terms-card .rent-section-title{color:var(--primary);}
 .rent-terms-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
+/* #hog019: free-text follow-up shown under a select/select-dependent
+   ChipSelect once its "Other" chip is picked. */
+.other-specify-field{margin-top:8px;}
+
 .toggle-row{display:flex;gap:8px;}
 
 .upload-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}

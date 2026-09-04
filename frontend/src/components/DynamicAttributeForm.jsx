@@ -42,19 +42,41 @@ function renderInput(attr, values, setField, labelFor, colorHexOverrides) {
 
   switch (attr.type) {
     case 'select': {
-      return <ChipSelect options={attr.options} value={value} onChange={(v) => setField(attr.key, v)} />;
+      return (
+        <>
+          <ChipSelect options={attr.options} value={value} onChange={(v) => setField(attr.key, v)} />
+          {value === 'Other' && (
+            <input
+              className="field other-specify-field" type="text"
+              value={values[`${attr.key}__other`] ?? ''}
+              placeholder={`Please specify ${attr.label.toLowerCase()}`}
+              onChange={(e) => setField(`${attr.key}__other`, e.target.value)}
+            />
+          )}
+        </>
+      );
     }
     case 'select-dependent': {
       const parentValue = values[attr.dependsOn];
       const options = parentValue ? (attr.optionsByParent[parentValue] || attr.fallbackOptions || []) : [];
       return (
-        <ChipSelect
-          options={options}
-          value={value}
-          onChange={(v) => setField(attr.key, v)}
-          disabled={!parentValue}
-          placeholder={parentValue ? `No ${attr.label.toLowerCase()} options for this ${labelFor(attr.dependsOn).toLowerCase()} yet.` : `Select ${labelFor(attr.dependsOn).toLowerCase()} first`}
-        />
+        <>
+          <ChipSelect
+            options={options}
+            value={value}
+            onChange={(v) => setField(attr.key, v)}
+            disabled={!parentValue}
+            placeholder={parentValue ? `No ${attr.label.toLowerCase()} options for this ${labelFor(attr.dependsOn).toLowerCase()} yet.` : `Select ${labelFor(attr.dependsOn).toLowerCase()} first`}
+          />
+          {value === 'Other' && (
+            <input
+              className="field other-specify-field" type="text"
+              value={values[`${attr.key}__other`] ?? ''}
+              placeholder={`Please specify ${attr.label.toLowerCase()}`}
+              onChange={(e) => setField(`${attr.key}__other`, e.target.value)}
+            />
+          )}
+        </>
       );
     }
     case 'color': {

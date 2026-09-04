@@ -40,13 +40,49 @@ export function naturalCompare(a, b) {
 }
 
 export function sortNatural(items, keyFn = (x) => x) {
-  return [...items].sort((a, b) => naturalCompare(keyFn(a), keyFn(b)));
+  // "Other" is a catch-all, meant to stay last regardless of where it
+  // would otherwise fall alphabetically/numerically (Taza's call —
+  // seeded starter data, e.g. admin/js/categorySeed.js, always put it
+  // last on purpose).
+  const isOther = (v) => String(v).trim().toLowerCase() === 'other';
+  return [...items].sort((a, b) => {
+    const oa = isOther(keyFn(a)), ob = isOther(keyFn(b));
+    if (oa !== ob) return oa ? 1 : -1;
+    return naturalCompare(keyFn(a), keyFn(b));
+  });
+}
+
+// #hog019: a "select"/"select-dependent" field's "Other" option (e.g.
+// Brand/Model on phone-style categories) is a placeholder, not a real
+// value — DynamicAttributeForm shows a "please specify" text input
+// next to it (stored as `${key}__other` alongside the real key) so
+// the person can type what they actually mean instead of leaving a
+// bare, unsearchable "Other". This resolves attrs right before
+// they're used for the title/search/payload: swaps `key`'s value for
+// its typed `__other` companion when present, and drops all `__other`
+// companion keys from the result (they're editing-time scratch state,
+// not something that should end up saved).
+export function resolveOtherAttrs(attrs) {
+  const resolved = {};
+  for (const [key, value] of Object.entries(attrs)) {
+    if (key.endsWith('__other')) continue;
+    const otherKey = `${key}__other`;
+    if (value === 'Other' && attrs[otherKey] && attrs[otherKey].trim()) {
+      resolved[key] = attrs[otherKey].trim();
+    } else {
+      resolved[key] = value;
+    }
+  }
+  return resolved;
 }
 
 // Builds a sensible default title from whatever's been picked so far
 // — brand + model when present (phones/laptops/cars), else item type
 // + brand, else just the subcategory name. The person can always
-// edit it afterwards; this only fills the field automatically.
+// edit it afterwards; this only fills the field automatically. Pass
+// already-resolveOtherAttrs()'d attrs — the `!== 'Other'` checks
+// below are just a defensive fallback for the rare case someone
+// picked "Other" and left the specify-box empty.
 export function buildSuggestedTitle(category, subcategory, attrs) {
   if (!subcategory) return '';
   const parts = [];
