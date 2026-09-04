@@ -838,6 +838,7 @@ function initCategories() {
   document.getElementById('cat-subtab-colors').addEventListener('click', () => switchCatSubtab('colors'));
   document.getElementById('cat-add-btn').addEventListener('click', addCategory);
   document.getElementById('cat-import-btn').addEventListener('click', importStarterCategories);
+  document.getElementById('cat-import-missing-btn').addEventListener('click', importMissingStarterCategories);
   document.getElementById('refdata-add-btn').addEventListener('click', addBrand);
   document.getElementById('refdata-import-btn').addEventListener('click', importMissingStarterBrands);
   document.getElementById('refdata-refid').addEventListener('change', loadRefDataBrands);
@@ -1304,6 +1305,38 @@ async function importStarterCategories() {
     showFieldError(errorBox, describeFirestoreError(err));
     btn.disabled = false;
     btn.textContent = 'Import starter categories';
+  }
+}
+
+// Adds any category from CATEGORY_SEED whose id isn't already in
+// categoriesData — skips (never touches/merges) any category the
+// admin already has, same safety rule as importMissingStarterBrands
+// below. Answers "what about the ones outside phone brands" —
+// CATEGORY_SEED already has full Vehicles/Fashion/Home &
+// Furniture/Other categories (with their own subcategories/fields,
+// e.g. Cars' Make is a plain `select` list, not a refCollection like
+// phones — different categories intentionally use different
+// mechanisms, see the standing "each thing gets its own structure"
+// note in memory), just unreachable the same way the brands were.
+async function importMissingStarterCategories() {
+  const errorBox = document.getElementById('cat-import-missing-error');
+  hideFieldError(errorBox);
+  const existingIds = categoriesData.map((c) => c.id);
+  const missing = CATEGORY_SEED.filter((cat) => !existingIds.includes(cat.id));
+  if (missing.length === 0) { showFieldError(errorBox, 'All starter categories are already in your list below — nothing to import.'); return; }
+  const btn = document.getElementById('cat-import-missing-btn');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  try {
+    const batch = db.batch();
+    missing.forEach((cat) => { batch.set(db.collection('categories').doc(cat.id), cat); });
+    await batch.commit();
+    await loadCategories();
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Import missing starter categories';
   }
 }
 
