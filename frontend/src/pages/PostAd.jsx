@@ -7,7 +7,7 @@ import { getMyProfile } from '../lib/profile';
 import { fileToCompressedBase64 } from '../lib/imageCompress';
 import { computeExpiresAt } from '../lib/adStatus';
 import { buildSearchTokens } from '../lib/searchTokens';
-import { getSubcategory, sortByPopular, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS, RENT_DESCRIPTION_HINTS } from '../data/categories';
+import { getSubcategory, sortByPopular, sortNatural, buildSuggestedTitle, DESCRIPTION_MIN_WORDS, DESCRIPTION_HINTS, RENT_DESCRIPTION_HINTS } from '../data/categories';
 import { getBrandList, getBrandModels } from '../lib/referenceData';
 import { useAppData } from '../lib/appData';
 import DynamicAttributeForm from '../components/DynamicAttributeForm.jsx';
@@ -572,7 +572,7 @@ export default function PostAd() {
               <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
                 <label className="field-label">Subcategory<span className="req">*</span></label>
                 <ChipSelect
-                  options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
+                  options={sortNatural(category.subcategories, (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
                   value={subcategoryId}
                   onChange={onSubcategoryChange}
                 />
@@ -652,7 +652,7 @@ export default function PostAd() {
               <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
                 <label className="field-label">Subcategory<span className="req">*</span></label>
                 <ChipSelect
-                  options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
+                  options={sortNatural(category.subcategories, (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
                   value={subcategoryId}
                   onChange={onSubcategoryChange}
                 />
@@ -745,7 +745,7 @@ export default function PostAd() {
                 <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
                   <label className="field-label">Subcategory<span className="req">*</span></label>
                   <ChipSelect
-                    options={category.subcategories.map((s) => ({ label: s.name, value: s.id }))}
+                    options={sortNatural(category.subcategories, (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
                     value={subcategoryId}
                     onChange={onSubcategoryChange}
                   />

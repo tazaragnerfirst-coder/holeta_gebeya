@@ -1,6 +1,7 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { getCached, setCached } from './pageCache';
+import { sortNatural } from '../data/categories';
 
 // Backs `categories` attributes that point at a `refCollection`
 // instead of embedding their options inline (see #hog001 in memory)
@@ -24,7 +25,7 @@ export async function getBrandList(refId) {
   if (cached) return cached;
   try {
     const snap = await getDoc(doc(db, 'referenceData', refId));
-    const brands = snap.exists() ? (snap.data().brands || []) : [];
+    const brands = snap.exists() ? sortNatural(snap.data().brands || []) : [];
     setCached(cacheKey, brands);
     return brands;
   } catch {
@@ -35,6 +36,9 @@ export async function getBrandList(refId) {
 // Returns { models: [{ model, storage, ram, color }, ...] } for one
 // brand, or an empty list if it fails/doesn't exist — callers treat
 // a missing brand doc the same as "no options yet", not an error.
+// Models and each model's storage/RAM/color lists are all sorted
+// (#hog018) — none of these have an admin-intended order, unlike a
+// `select` attribute's typed options.
 export async function getBrandModels(refId, brandName) {
   const brandId = brandIdFor(brandName);
   const cacheKey = `refData:${refId}:${brandId}`;
@@ -42,7 +46,13 @@ export async function getBrandModels(refId, brandName) {
   if (cached) return cached;
   try {
     const snap = await getDoc(doc(db, 'referenceData', refId, 'brands', brandId));
-    const models = snap.exists() ? (snap.data().models || []) : [];
+    const rawModels = snap.exists() ? (snap.data().models || []) : [];
+    const models = sortNatural(rawModels, (m) => m.model).map((m) => ({
+      ...m,
+      storage: sortNatural(m.storage || []),
+      ram: sortNatural(m.ram || []),
+      color: sortNatural(m.color || []),
+    }));
     setCached(cacheKey, models);
     return models;
   } catch {

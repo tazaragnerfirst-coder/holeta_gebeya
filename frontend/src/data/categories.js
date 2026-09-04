@@ -17,6 +17,32 @@ export function sortByPopular(categories) {
   return [...categories].sort((a, b) => (b.popular ? 1 : 0) - (a.popular ? 1 : 0));
 }
 
+// Numeric-aware string compare, e.g. "A13" sorts before "A21" (plain
+// string compare would put "A13" after "A21", the same way it puts
+// "A" after "A2"). For plain accumulated name lists that have no
+// deliberate order of their own — subcategories, brand/model names,
+// storage/RAM/color option lists (see #hog018) — NOT for a `select`
+// attribute's admin-typed `options` list, where the order can be
+// intentional (e.g. sizes S/M/L/XL, which alphabetizing would break).
+export function naturalCompare(a, b) {
+  const chunk = (s) => String(s).match(/\d+|\D+/g) || [];
+  const ca = chunk(a), cb = chunk(b);
+  for (let i = 0; i < Math.max(ca.length, cb.length); i++) {
+    const x = ca[i] || '', y = cb[i] || '';
+    const nx = Number(x), ny = Number(y);
+    if (!Number.isNaN(nx) && !Number.isNaN(ny) && x !== '' && y !== '') {
+      if (nx !== ny) return nx - ny;
+    } else if (x !== y) {
+      return x < y ? -1 : 1;
+    }
+  }
+  return 0;
+}
+
+export function sortNatural(items, keyFn = (x) => x) {
+  return [...items].sort((a, b) => naturalCompare(keyFn(a), keyFn(b)));
+}
+
 // Builds a sensible default title from whatever's been picked so far
 // — brand + model when present (phones/laptops/cars), else item type
 // + brand, else just the subcategory name. The person can always
