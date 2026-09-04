@@ -839,6 +839,7 @@ function initCategories() {
   document.getElementById('cat-add-btn').addEventListener('click', addCategory);
   document.getElementById('cat-import-btn').addEventListener('click', importStarterCategories);
   document.getElementById('refdata-add-btn').addEventListener('click', addBrand);
+  document.getElementById('refdata-import-btn').addEventListener('click', importMissingStarterBrands);
   document.getElementById('refdata-refid').addEventListener('change', loadRefDataBrands);
   document.getElementById('color-add-btn').addEventListener('click', addColorDraftEntry);
   document.getElementById('colors-save-btn').addEventListener('click', saveColorHex);
@@ -1312,6 +1313,41 @@ async function loadRefDataBrands() {
   const snap = await db.collection('referenceData').doc(refId).get();
   refDataBrands = snap.exists ? (snap.data().brands || []) : [];
   renderRefDataList();
+}
+
+// Fills in whatever the app's built-in starter set (REFERENCE_SEED in
+// categorySeed.js) has that this admin hasn't added themselves yet —
+// e.g. brands/models built in at #hog001 time but never reachable
+// again once "Import starter categories" hides itself (only shows
+// when there are zero categories at all). Only ever ADDS brands not
+// already present; never touches/overwrites an existing brand doc,
+// so any of the admin's own edits to e.g. Samsung are untouched.
+async function importMissingStarterBrands() {
+  const errorBox = document.getElementById('refdata-import-error');
+  hideFieldError(errorBox);
+  const refId = document.getElementById('refdata-refid').value.trim() || 'phoneModels';
+  const seed = REFERENCE_SEED[refId];
+  if (!seed) { showFieldError(errorBox, `No starter data for reference table "${refId}".`); return; }
+  const missing = Object.keys(seed).filter((brand) => !refDataBrands.includes(brand));
+  if (missing.length === 0) { showFieldError(errorBox, 'All starter brands are already in your list below — nothing to import.'); return; }
+  const btn = document.getElementById('refdata-import-btn');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  try {
+    const batch = db.batch();
+    missing.forEach((brand) => {
+      const brandRef = db.collection('referenceData').doc(refId).collection('brands').doc(slugify(brand));
+      batch.set(brandRef, { brand, models: seed[brand] });
+    });
+    batch.set(db.collection('referenceData').doc(refId), { brands: [...refDataBrands, ...missing] }, { merge: true });
+    await batch.commit();
+    await loadRefDataBrands();
+  } catch (err) {
+    showFieldError(errorBox, describeFirestoreError(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Import missing starter brands';
+  }
 }
 
 function renderRefDataList() {
