@@ -279,6 +279,50 @@ export default function PostAd() {
     setErrors((e) => ({ ...e, subcategoryId: undefined }));
   }
 
+  // Error messages used to only clear on the next full validate() —
+  // i.e. only by re-submitting — so a fixed field kept showing its
+  // old error until the person hit Post/Save again. These wrappers
+  // clear a field's own error the moment it's edited, same spirit as
+  // onCategoryChange/onSubcategoryChange above already did for
+  // category/subcategory.
+  function updateTitle(v) {
+    setTitle(v);
+    setTitleTouched(true);
+    if (errors.title) setErrors((e) => ({ ...e, title: undefined }));
+  }
+  function updatePrice(v) {
+    setPrice(v);
+    if (errors.price) setErrors((e) => ({ ...e, price: undefined }));
+  }
+  function updateDeposit(v) {
+    setDeposit(v);
+    if (errors.deposit) setErrors((e) => ({ ...e, deposit: undefined }));
+  }
+  function updateDescription(v) {
+    setDescription(v);
+    if (errors.description) setErrors((e) => ({ ...e, description: undefined }));
+  }
+  function updateImages(v) {
+    setImages(v);
+    if (errors.photos) setErrors((e) => ({ ...e, photos: undefined }));
+  }
+  // attrs is one flat object for every attribute field, so clear only
+  // the keys that actually changed (comparing against the previous
+  // attrs) instead of wiping every attrs error on any keystroke.
+  function updateAttrs(nextAttrs) {
+    setAttrs(nextAttrs);
+    if (errors.attrs) {
+      const changedKeys = Object.keys(nextAttrs).filter((k) => nextAttrs[k] !== attrs[k]);
+      if (changedKeys.some((k) => errors.attrs[k])) {
+        setErrors((e) => {
+          const nextAttrErrs = { ...e.attrs };
+          changedKeys.forEach((k) => { delete nextAttrErrs[k]; });
+          return { ...e, attrs: nextAttrErrs };
+        });
+      }
+    }
+  }
+
   // Keep the title in sync with brand/model/etc as the person fills
   // in the form — but stop the moment they type into the Title field
   // themselves, so their edit is never silently overwritten.
@@ -562,7 +606,7 @@ export default function PostAd() {
           <>
             <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
               <label className="field-label">Photos<span className="req">*</span></label>
-              <ImageUploader files={images} onChange={setImages} maxImages={5} />
+              <ImageUploader files={images} onChange={updateImages} maxImages={5} />
               {errors.photos && <p className="field-error">{errors.photos}</p>}
             </div>
 
@@ -594,7 +638,7 @@ export default function PostAd() {
                 src/data/categories.js — add a subcategory there and its
                 form appears here automatically. */}
             {subcategory && (
-              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
+              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={updateAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
             )}
 
             {subcategory && (
@@ -604,7 +648,7 @@ export default function PostAd() {
                   <input
                     className="field"
                     value={title}
-                    onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                    onChange={(e) => updateTitle(e.target.value)}
                     placeholder="e.g. Samsung Galaxy A54, 128GB"
                   />
                   {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
@@ -612,12 +656,12 @@ export default function PostAd() {
                 </div>
                 <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
                   <label className="field-label">Price (ETB)<span className="req">*</span></label>
-                  <input className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price (ETB)" />
+                  <input className="field" type="number" value={price} onChange={(e) => updatePrice(e.target.value)} placeholder="Price (ETB)" />
                   {errors.price && <p className="field-error">{errors.price}</p>}
                 </div>
                 <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                   <label className="field-label">Description<span className="req">*</span></label>
-                  <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
+                  <textarea className="field" value={description} onChange={(e) => updateDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
                   <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
                   <div className="desc-hint-row">
                     {DESCRIPTION_HINTS.map((h) => (
@@ -641,7 +685,7 @@ export default function PostAd() {
           <>
             <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
               <label className="field-label">Photos</label>
-              <ImageUploader files={images} onChange={setImages} maxImages={5} />
+              <ImageUploader files={images} onChange={updateImages} maxImages={5} />
               {!errors.photos && <p className="helper-text">Optional for services — add photos if they help buyers, e.g. past work.</p>}
               {errors.photos && <p className="field-error">{errors.photos}</p>}
             </div>
@@ -670,7 +714,7 @@ export default function PostAd() {
             )}
 
             {subcategory && (
-              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
+              <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={updateAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
             )}
 
             {subcategory && (
@@ -680,7 +724,7 @@ export default function PostAd() {
                   <input
                     className="field"
                     value={title}
-                    onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                    onChange={(e) => updateTitle(e.target.value)}
                     placeholder="e.g. Samsung Galaxy A54, 128GB"
                   />
                   {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
@@ -700,7 +744,7 @@ export default function PostAd() {
                   />
                   {(priceType === 'fixed' || priceType === 'negotiable') && (
                     <input
-                      className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)}
+                      className="field" type="number" value={price} onChange={(e) => updatePrice(e.target.value)}
                       placeholder={priceType === 'negotiable' ? 'Asking price (ETB) — optional' : 'Price (ETB)'}
                       style={{ marginTop: 8 }}
                     />
@@ -709,7 +753,7 @@ export default function PostAd() {
                 </div>
                 <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                   <label className="field-label">Description<span className="req">*</span></label>
-                  <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
+                  <textarea className="field" value={description} onChange={(e) => updateDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
                   <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
                   <div className="desc-hint-row">
                     {DESCRIPTION_HINTS.map((h) => (
@@ -735,7 +779,7 @@ export default function PostAd() {
               <h3 className="rent-section-title">What's for rent</h3>
               <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
                 <label className="field-label">Photos<span className="req">*</span></label>
-                <ImageUploader files={images} onChange={setImages} maxImages={5} />
+                <ImageUploader files={images} onChange={updateImages} maxImages={5} />
                 {errors.photos && <p className="field-error">{errors.photos}</p>}
               </div>
 
@@ -763,7 +807,7 @@ export default function PostAd() {
               )}
 
               {subcategory && (
-                <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={setAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
+                <DynamicAttributeForm attributes={effectiveAttributes} values={attrs} onChange={updateAttrs} errors={errors.attrs || {}} colorHexOverrides={colorHexOverrides} />
               )}
 
               {subcategory && (
@@ -772,7 +816,7 @@ export default function PostAd() {
                   <input
                     className="field"
                     value={title}
-                    onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                    onChange={(e) => updateTitle(e.target.value)}
                     placeholder="e.g. 2-bedroom house, Holeta"
                   />
                   {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
@@ -795,7 +839,7 @@ export default function PostAd() {
                     onChange={(v) => setRentUnit(v)}
                   />
                   <input
-                    className="field" type="number" value={price} onChange={(e) => setPrice(e.target.value)}
+                    className="field" type="number" value={price} onChange={(e) => updatePrice(e.target.value)}
                     placeholder="Amount (ETB)"
                     style={{ marginTop: 8 }}
                   />
@@ -805,7 +849,7 @@ export default function PostAd() {
                   <div className={`field-group ${errors.deposit ? 'has-error' : ''}`}>
                     <label className="field-label">Deposit (ETB)</label>
                     <input
-                      className="field" type="number" value={deposit} onChange={(e) => setDeposit(e.target.value)}
+                      className="field" type="number" value={deposit} onChange={(e) => updateDeposit(e.target.value)}
                       placeholder="Optional"
                     />
                     {errors.deposit && <p className="field-error">{errors.deposit}</p>}
@@ -825,7 +869,7 @@ export default function PostAd() {
               <div className="rent-section">
                 <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                   <label className="field-label">Description<span className="req">*</span></label>
-                  <textarea className="field" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Furnishing, utilities, terms, what's included..." />
+                  <textarea className="field" value={description} onChange={(e) => updateDescription(e.target.value)} placeholder="Furnishing, utilities, terms, what's included..." />
                   <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
                   <div className="desc-hint-row">
                     {RENT_DESCRIPTION_HINTS.map((h) => (
@@ -849,7 +893,7 @@ export default function PostAd() {
           <>
             <div className={`field-group ${errors.photos ? 'has-error' : ''}`}>
               <label className="field-label">Photo</label>
-              <ImageUploader files={images} onChange={setImages} maxImages={3} compact />
+              <ImageUploader files={images} onChange={updateImages} maxImages={3} compact />
               {!errors.photos && <p className="helper-text">Optional — add a photo if you have one.</p>}
               {errors.photos && <p className="field-error">{errors.photos}</p>}
             </div>
@@ -860,7 +904,7 @@ export default function PostAd() {
                 <input
                   className="field job-note-title"
                   value={title}
-                  onChange={(e) => { setTitle(e.target.value); setTitleTouched(true); }}
+                  onChange={(e) => updateTitle(e.target.value)}
                   placeholder="e.g. Shop attendant needed"
                 />
                 {errors.title && <p className="field-error">{errors.title}</p>}
@@ -870,7 +914,7 @@ export default function PostAd() {
                 <textarea
                   className="field job-note-body"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => updateDescription(e.target.value)}
                   placeholder="Role, responsibilities, requirements, how to apply..."
                 />
                 <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>

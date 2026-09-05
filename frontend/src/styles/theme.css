@@ -291,10 +291,6 @@ textarea.field{min-height:84px;resize:vertical;}
 .rent-terms-card .rent-section-title{color:var(--primary);}
 .rent-terms-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
-/* #hog019: free-text follow-up shown under a select/select-dependent
-   ChipSelect once its "Other" chip is picked. */
-.other-specify-field{margin-top:8px;}
-
 .toggle-row{display:flex;gap:8px;}
 
 .upload-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;}
@@ -595,6 +591,15 @@ button.nav-fab{border:none;padding:0;cursor:pointer;font:inherit;}
 .inline-select-trigger.has-value .inline-select-check{color:var(--primary);}
 .inline-select-trigger.has-value svg:not(.inline-select-check){color:var(--primary);}
 .inline-select-trigger.is-open{border-color:var(--primary);}
+/* #hog022: "Other" turns the trigger's own label into a text input
+   (same slot Other's label would occupy) instead of a separate box
+   elsewhere. .is-other-editing isn't a <button>, so it needs its own
+   flex/cursor rules the plain trigger got from the button element. */
+.inline-select-trigger.is-other-editing{cursor:default;}
+.inline-select-other-input{flex:1;min-width:0;background:transparent;border:none;padding:0;font-size:14px;font-family:var(--font-ui);color:var(--primary);font-weight:700;}
+.inline-select-other-input:focus{outline:none;}
+.inline-select-other-input::placeholder{color:var(--primary);opacity:.6;font-weight:400;}
+.inline-select-reopen{flex:0 0 auto;background:transparent;border:none;padding:0;cursor:pointer;display:flex;}
 .inline-select-list{margin-top:6px;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface);max-height:260px;overflow-y:auto;}
 .inline-select-item{width:100%;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:12px 14px;font-size:14px;font-family:var(--font-ui);text-align:left;background:none;border:none;border-bottom:1px solid var(--line);cursor:pointer;color:var(--ink);}
 .inline-select-item:last-child{border-bottom:none;}
