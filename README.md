@@ -22,11 +22,16 @@ Telegram Mini App marketplace (buy/sell, peer-to-peer, no in-app payment).
   `initData` to the Render server's `/telegramAuth` endpoint, which
   validates the HMAC signature against the bot token (never trusts the
   client), then issues a Firebase custom auth token.
-- **Category-driven post form.** `frontend/src/data/categories.js` defines
-  category → subcategory → attribute schemas (brand, popular models,
-  RAM, storage, screen size, etc. — Jiji-style). `PostAd.jsx` renders the
-  right fields automatically from this file. Add a new subcategory there
-  and its form appears with no other code changes.
+- **Category-driven post form.** Categories → subcategories → attribute
+  schemas (brand, popular models, RAM, storage, screen size, etc. —
+  Jiji-style) live in a `categories` Firestore collection, managed from
+  the admin panel's Category Management tab (add/edit fields with no
+  code changes) — large dependent tables like phone brand→model→
+  storage/RAM/color live in a separate `referenceData` collection so
+  the category doc stays small. `frontend/src/data/categories.js` now
+  only holds helper functions (lookup, natural sort) over that live
+  data, not the schema itself. `PostAd.jsx` renders the right fields
+  automatically from whatever's in Firestore.
 
 ## Setup
 
@@ -117,9 +122,33 @@ wake on the first request — fine for testing; upgrade later if this
 becomes a UX problem in production.
 
 ## Status
-Working scaffold: routing, public browsing, gated auth (via Render),
-dynamic category form, chat, dashboard, profile. Visual polish still
-needs to be ported over from the original HTML prototype into
-`theme.css`. Next steps: image upload (Firebase Storage), boost/VIP
-payment flow, report/moderation, push notifications via the Telegram
-Bot API.
+Core product is built and live: public browsing with no login, gated
+auth via Render, Firestore-backed category/attribute system managed
+from the admin panel, Product/Service/Job/Rent post types (each its
+own form), image upload (compressed base64 stored directly in
+Firestore docs — not Firebase Storage, to stay on the free Spark
+plan), server-side search/filter, chat, dashboard/analytics, seller
+ratings, favorites, draft autosave, and a full admin panel (reports,
+user moderation, listings moderation, platform analytics, support
+inbox) — all auto-deploying via GitHub Actions on push.
+
+**Known gaps before a full-scale launch:**
+- **Firestore/Render are both on free tiers with no billing enabled**
+  — deliberate for cost, but a real ceiling: Firestore's free daily
+  read/write quota and Render's cold-start (~30s on first request
+  after idle) can both become visible problems once real traffic
+  picks up.
+- **Images as base64 in Firestore** — works today, but Firestore's
+  1MB/doc limit caps how many/how large photos a listing can carry,
+  and it makes every read of a listing more expensive than it needs
+  to be. Firebase Storage would fix both, at the cost of needing the
+  Blaze (pay-as-you-go) plan.
+- **Rent category tree ships empty** — needs 'rent'-type categories/
+  subcategories/attributes added via the admin panel before the Rent
+  post form has anything to select.
+- **No spam/rate-limit guard on posting** — the old 2-minute cooldown
+  was intentionally removed and nothing replaced it.
+- **No monetization yet** — boosting + VIP subscriptions are the
+  planned revenue model but aren't implemented.
+- Job Seeker profiles (as opposed to job posts) and finer-grained
+  location (neighborhood, not just city) are scoped but not built.
