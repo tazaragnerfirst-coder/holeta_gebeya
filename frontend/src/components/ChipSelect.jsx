@@ -19,13 +19,6 @@ export default function ChipSelect({ options = [], value, onChange, disabled = f
   const [open, setOpen] = useState(false);
   const otherInputRef = useRef(null);
 
-  if (disabled) {
-    return <div className="chip-select-empty">{placeholder}</div>;
-  }
-  if (options.length === 0) {
-    return <div className="chip-select-empty">{placeholder || 'No options available.'}</div>;
-  }
-
   const norm = options.map((o) => (typeof o === 'string' ? { label: o, value: o } : o));
   const selected = norm.find((o) => o.value === value);
   const isOtherEditing = selected?.value === 'Other' && typeof onOtherChange === 'function';
@@ -35,6 +28,13 @@ export default function ChipSelect({ options = [], value, onChange, disabled = f
     // Only on the transition into Other — not on every otherValue keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOtherEditing]);
+
+  if (disabled) {
+    return <div className="chip-select-empty">{placeholder}</div>;
+  }
+  if (options.length === 0) {
+    return <div className="chip-select-empty">{placeholder || 'No options available.'}</div>;
+  }
 
   return (
     <div className="inline-select">
