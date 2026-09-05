@@ -185,7 +185,7 @@ export default function PostAd() {
   // else passes through unchanged. DynamicAttributeForm itself stays
   // Firestore-unaware.
   const effectiveAttributes = subcategory
-    ? subcategory.attributes.map((attr) => {
+    ? (subcategory.attributes || []).map((attr) => {
         if (!attr.refCollection) return attr;
         const loaded = refOptions[attr.key];
         // Always provide the shape DynamicAttributeForm expects, even
@@ -203,7 +203,7 @@ export default function PostAd() {
   // is picked.
   useEffect(() => {
     if (!subcategory) return;
-    const rootAttr = subcategory.attributes.find((a) => a.refCollection && !a.dependsOn);
+    const rootAttr = (subcategory.attributes || []).find((a) => a.refCollection && !a.dependsOn);
     if (!rootAttr) return;
     let cancelled = false;
     getBrandList(rootAttr.refCollection).then((brands) => {
@@ -220,7 +220,7 @@ export default function PostAd() {
   // attribute's optionsByParent, keyed by model name).
   useEffect(() => {
     if (!subcategory) return;
-    const rootAttr = subcategory.attributes.find((a) => a.refCollection && !a.dependsOn);
+    const rootAttr = (subcategory.attributes || []).find((a) => a.refCollection && !a.dependsOn);
     const brand = rootAttr && attrs[rootAttr.key];
     if (!rootAttr || !brand) return;
     let cancelled = false;
@@ -228,12 +228,12 @@ export default function PostAd() {
       if (cancelled) return;
       setRefOptions((o) => {
         const next = { ...o };
-        for (const attr of subcategory.attributes) {
+        for (const attr of (subcategory.attributes || [])) {
           if (!attr.refCollection || attr.dependsOn !== rootAttr.key) continue;
           // e.g. the `model` attribute: dependsOn brand, one option per model
           next[attr.key] = { optionsByParent: { ...(o[attr.key]?.optionsByParent), [brand]: models.map((m) => m.model) } };
         }
-        for (const attr of subcategory.attributes) {
+        for (const attr of (subcategory.attributes || [])) {
           if (!attr.refCollection || attr.dependsOn !== 'model') continue;
           // e.g. storage/ram/color: dependsOn model, options come from
           // that model's own field of the same name
@@ -625,7 +625,7 @@ export default function PostAd() {
               <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
                 <label className="field-label">Subcategory<span className="req">*</span></label>
                 <ChipSelect
-                  options={sortNatural(category.subcategories, (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
+                  options={sortNatural(category.subcategories || [], (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
                   value={subcategoryId}
                   onChange={onSubcategoryChange}
                 />
@@ -705,7 +705,7 @@ export default function PostAd() {
               <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
                 <label className="field-label">Subcategory<span className="req">*</span></label>
                 <ChipSelect
-                  options={sortNatural(category.subcategories, (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
+                  options={sortNatural(category.subcategories || [], (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
                   value={subcategoryId}
                   onChange={onSubcategoryChange}
                 />
@@ -798,7 +798,7 @@ export default function PostAd() {
                 <div className={`field-group ${errors.subcategoryId ? 'has-error' : ''}`}>
                   <label className="field-label">Subcategory<span className="req">*</span></label>
                   <ChipSelect
-                    options={sortNatural(category.subcategories, (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
+                    options={sortNatural(category.subcategories || [], (s) => s.name).map((s) => ({ label: s.name, value: s.id }))}
                     value={subcategoryId}
                     onChange={onSubcategoryChange}
                   />

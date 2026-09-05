@@ -44,7 +44,7 @@ function renderInput(attr, values, setField, labelFor, colorHexOverrides) {
     case 'select': {
       return (
         <ChipSelect
-          options={attr.options}
+          options={attr.options || []}
           value={value}
           onChange={(v) => setField(attr.key, v)}
           otherValue={values[`${attr.key}__other`]}
@@ -54,7 +54,7 @@ function renderInput(attr, values, setField, labelFor, colorHexOverrides) {
     }
     case 'select-dependent': {
       const parentValue = values[attr.dependsOn];
-      const options = parentValue ? (attr.optionsByParent[parentValue] || attr.fallbackOptions || []) : [];
+      const options = parentValue ? ((attr.optionsByParent || {})[parentValue] || attr.fallbackOptions || []) : [];
       return (
         <ChipSelect
           options={options}
@@ -70,7 +70,7 @@ function renderInput(attr, values, setField, labelFor, colorHexOverrides) {
     case 'color': {
       const parentValue = attr.dependsOn ? values[attr.dependsOn] : null;
       const options = attr.dependsOn
-        ? (parentValue ? (attr.optionsByParent[parentValue] || attr.fallbackOptions || []) : [])
+        ? (parentValue ? ((attr.optionsByParent || {})[parentValue] || attr.fallbackOptions || []) : [])
         : (attr.options || []);
       return (
         <ColorSwatchSelect

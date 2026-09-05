@@ -8,7 +8,7 @@
 export function getSubcategory(categories, categoryId, subcategoryId) {
   const cat = categories.find((c) => c.id === categoryId);
   if (!cat) return null;
-  return cat.subcategories.find((s) => s.id === subcategoryId) || null;
+  return (cat.subcategories || []).find((s) => s.id === subcategoryId) || null;
 }
 
 // Categories flagged `popular: true` are shown first (Jiji-style),
