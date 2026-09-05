@@ -1,7 +1,7 @@
 import { Timestamp } from 'firebase/firestore';
 
 // How long a listing stays active after posting/renewing.
-export const AD_LIFETIME_DAYS = 30;
+export const AD_LIFETIME_DAYS = 300;
 
 export function computeExpiresAt() {
   return Timestamp.fromDate(new Date(Date.now() + AD_LIFETIME_DAYS * 24 * 60 * 60 * 1000));
