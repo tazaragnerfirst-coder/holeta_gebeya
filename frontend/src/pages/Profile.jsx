@@ -9,6 +9,7 @@ import { getAppBannerUrl, getCachedAppBannerUrl } from '../lib/appBanner';
 import Icon from '../components/Icon.jsx';
 import StarRow from '../components/StarRow.jsx';
 import EditProfileSheet from '../components/EditProfileSheet.jsx';
+import { isSubscriptionActive } from '../lib/subscription';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -122,7 +123,14 @@ export default function Profile() {
             {!photo && initial}
           </div>
           <div className="info">
-            <h2>{name}</h2>
+            <h2>
+              {name}
+              {isSubscriptionActive(profile) && (
+                <span className="verified-badge" title="Premium subscriber">
+                  <Icon name="shieldLock" size={15} />
+                </span>
+              )}
+            </h2>
             <div className="stars">
               <StarRow value={rating.avg} size={14} />
               {rating.count > 0 && <span className="rating-count">{rating.avg.toFixed(1)} ({rating.count})</span>}

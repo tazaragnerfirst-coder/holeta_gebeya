@@ -420,6 +420,13 @@ export default function PostAd() {
       sellerId: user.uid,
       sellerName: myProfile.name,
       sellerPhoto: myProfile.photo,
+      // Snapshotted like sellerName/sellerPhoto above (#hog023/#hog048
+      // Verified badge) — kept in sync going forward by the admin
+      // panel's Approve action, which batch-updates a seller's
+      // existing listings the moment their subscription is approved,
+      // so this doesn't just go stale until the next edit.
+      sellerSubscriptionActive: !!myProfile.subscriptionActive,
+      sellerSubscriptionExpiresAt: myProfile.subscriptionExpiresAt || null,
       title,
       price: numericPrice,
       priceType: priceTypeToSave,

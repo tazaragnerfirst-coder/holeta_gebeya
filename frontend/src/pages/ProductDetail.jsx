@@ -21,6 +21,7 @@ import { getCached, setCached } from '../lib/pageCache';
 import { logListingView, logContactClick } from '../lib/analytics';
 import { setFavorite } from '../lib/favorites';
 import { formatListingPrice, conditionTone } from '../lib/format';
+import { isSellerVerified } from '../lib/subscription';
 import { getSellerRating } from '../lib/rating';
 
 function timeAgo(ts) {
@@ -369,7 +370,14 @@ export default function ProductDetail() {
             <div className="seller-avatar">{sellerInitial}</div>
           )}
           <div className="seller-info">
-            <div className="seller-name">{item.sellerName || 'Seller'}</div>
+            <div className="seller-name">
+              {item.sellerName || 'Seller'}
+              {isSellerVerified(item) && (
+                <span className="verified-badge" title="Premium subscriber">
+                  <Icon name="shieldLock" size={13} />
+                </span>
+              )}
+            </div>
             <div className="seller-meta">
               <StarRow value={sellerRating.avg} size={12} />
               <span>{sellerRating.count ? `${sellerRating.avg.toFixed(1)} (${sellerRating.count})` : 'No ratings yet'}</span>

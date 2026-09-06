@@ -393,13 +393,28 @@ function initSubscriptions() {
         const btn = e.target;
         btn.disabled = true;
         const adminUid = auth.currentUser && auth.currentUser.uid;
-        const expiresAt = firebase.firestore.Timestamp.fromDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000));
+        const expiresAtMs = Date.now() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000;
+        const expiresAt = firebase.firestore.Timestamp.fromMillis(expiresAtMs);
         const batch = db.batch();
         batch.update(db.collection('subscriptionPayments').doc(docSnap.id), {
           status: 'approved', reviewedBy: adminUid, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
         batch.update(db.collection('users').doc(p.uid), { subscriptionActive: true, subscriptionExpiresAt: expiresAt });
         await batch.commit();
+        // Refresh the badge on the seller's already-posted listings too
+        // (#hog023/#hog048 Verified badge) — otherwise it'd only show
+        // up once they next edit each listing. Stored as a plain ms
+        // number here (not a Timestamp) to match what PostAd.jsx writes
+        // client-side, since the frontend badge check compares it
+        // directly against Date.now().
+        const sellerListings = await db.collection('listings').where('sellerId', '==', p.uid).get();
+        if (!sellerListings.empty) {
+          const listingsBatch = db.batch();
+          sellerListings.docs.forEach((d) => {
+            listingsBatch.update(d.ref, { sellerSubscriptionActive: true, sellerSubscriptionExpiresAt: expiresAtMs });
+          });
+          await listingsBatch.commit();
+        }
         row.remove();
         const remaining = Number(badge.textContent) - 1;
         badge.textContent = remaining;
