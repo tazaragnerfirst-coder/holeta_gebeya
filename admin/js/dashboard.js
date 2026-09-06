@@ -19,6 +19,7 @@ auth.onAuthStateChanged(async (user) => {
   initAnalytics();
   initSupport();
   initErrors();
+  initSubscriptions();
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
@@ -327,6 +328,88 @@ function initErrors() {
       `;
       row.querySelector('button').addEventListener('click', async (ev) => {
         await db.collection('errorLogs').doc(ev.target.dataset.id).delete();
+        row.remove();
+        const remaining = Number(badge.textContent) - 1;
+        badge.textContent = remaining;
+        if (remaining <= 0) { badge.hidden = true; emptyEl.hidden = false; }
+      });
+      listEl.appendChild(row);
+    });
+  });
+}
+
+// --- Premium subscriptions (subscriptionPayments collection) ---------
+// Manual receipt-review queue, same model as equb_bot: user already
+// sent money off-app and uploaded a screenshot; approving here is
+// the ONLY place subscriptionActive/subscriptionExpiresAt ever get
+// written (see firestore.rules — client can never set those itself).
+const SUBSCRIPTION_PERIOD_DAYS = 30;
+
+function dataUrlToBlobUrl(dataUrl) {
+  const [meta, b64] = dataUrl.split(',');
+  const mime = (meta.match(/data:(.*?);base64/) || [])[1] || 'image/jpeg';
+  const bytes = atob(b64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return URL.createObjectURL(new Blob([arr], { type: mime }));
+}
+
+function initSubscriptions() {
+  db.collection('subscriptionPayments').where('status', '==', 'pending').orderBy('createdAt', 'desc').limit(50).get().then((snap) => {
+    const listEl = document.getElementById('subscriptions-list');
+    const emptyEl = document.getElementById('subscriptions-empty');
+    const badge = document.getElementById('subscriptions-badge');
+
+    if (snap.empty) {
+      emptyEl.hidden = false;
+      return;
+    }
+    badge.textContent = snap.size;
+    badge.hidden = false;
+
+    snap.docs.forEach((docSnap) => {
+      const p = docSnap.data();
+      const when = p.createdAt && p.createdAt.toDate ? p.createdAt.toDate().toLocaleString() : '—';
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `
+        ${p.receiptImage ? `<img src="${p.receiptImage}" alt="" class="thumb" />` : `<div class="thumb thumb-empty"></div>`}
+        <div class="list-row-info">
+          <div><strong>${p.name || 'Unknown user'}</strong></div>
+          <div class="muted">${p.phone || '—'} · ${p.paymentMethod || '—'}</div>
+          <div class="muted">${when}</div>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn-ghost" data-act="viewreceipt">View receipt</button>
+          <button type="button" class="btn-ghost" data-act="approve" data-id="${docSnap.id}" data-uid="${p.uid}">Approve</button>
+          <button type="button" class="btn-ghost danger-text" data-act="reject" data-id="${docSnap.id}">Reject</button>
+        </div>
+      `;
+      row.querySelector('[data-act="viewreceipt"]').addEventListener('click', () => {
+        if (!p.receiptImage) return;
+        window.open(dataUrlToBlobUrl(p.receiptImage), '_blank');
+      });
+      row.querySelector('[data-act="approve"]').addEventListener('click', async (e) => {
+        const btn = e.target;
+        btn.disabled = true;
+        const adminUid = auth.currentUser && auth.currentUser.uid;
+        const expiresAt = firebase.firestore.Timestamp.fromDate(new Date(Date.now() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000));
+        const batch = db.batch();
+        batch.update(db.collection('subscriptionPayments').doc(docSnap.id), {
+          status: 'approved', reviewedBy: adminUid, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
+        batch.update(db.collection('users').doc(p.uid), { subscriptionActive: true, subscriptionExpiresAt: expiresAt });
+        await batch.commit();
+        row.remove();
+        const remaining = Number(badge.textContent) - 1;
+        badge.textContent = remaining;
+        if (remaining <= 0) { badge.hidden = true; emptyEl.hidden = false; }
+      });
+      row.querySelector('[data-act="reject"]').addEventListener('click', async (e) => {
+        const adminUid = auth.currentUser && auth.currentUser.uid;
+        await db.collection('subscriptionPayments').doc(e.target.dataset.id).update({
+          status: 'rejected', reviewedBy: adminUid, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        });
         row.remove();
         const remaining = Number(badge.textContent) - 1;
         badge.textContent = remaining;

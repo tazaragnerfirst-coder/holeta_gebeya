@@ -330,6 +330,7 @@ export function AppDataProvider({ children }) {
         phone: data.phone || '',
         location: data.location || '',
         subscriptionActive: !!data.subscriptionActive,
+        subscriptionExpiresAt: data.subscriptionExpiresAt?.toMillis ? data.subscriptionExpiresAt.toMillis() : null,
       };
       setProfile(p);
       setProfileReady(true);

@@ -25,8 +25,11 @@ export async function getMyProfile(uid) {
       phone: data.phone || '',
       location: data.location || '',
       subscriptionActive: !!data.subscriptionActive,
+      // Firestore Timestamp -> plain ms so callers can compare against
+      // Date.now() without importing Timestamp themselves.
+      subscriptionExpiresAt: data.subscriptionExpiresAt?.toMillis ? data.subscriptionExpiresAt.toMillis() : null,
     };
   } catch {
-    return { name: fallbackName || 'User', photo: fallbackPhoto, phone: '', location: '', subscriptionActive: false };
+    return { name: fallbackName || 'User', photo: fallbackPhoto, phone: '', location: '', subscriptionActive: false, subscriptionExpiresAt: null };
   }
 }

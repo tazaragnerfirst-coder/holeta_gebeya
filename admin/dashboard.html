@@ -13,6 +13,7 @@
     <div class="topbar-right">
       <span id="reports-badge" class="badge" hidden></span>
       <span id="errors-badge" class="badge" hidden></span>
+      <span id="subscriptions-badge" class="badge" hidden></span>
       <button type="button" class="btn-ghost" id="logout-btn">Sign out</button>
     </div>
   </header>
@@ -27,6 +28,7 @@
     <button type="button" class="tab" data-tab="analytics">Analytics</button>
     <button type="button" class="tab" data-tab="support">Support</button>
     <button type="button" class="tab" data-tab="errors">Error Logs</button>
+    <button type="button" class="tab" data-tab="subscriptions">Subscriptions</button>
   </nav>
 
   <main class="content">
@@ -244,6 +246,14 @@
       <p class="muted">Client-side errors caught by the app's Error Boundary — a page/feature broke for a real user. Dismiss once investigated.</p>
       <div id="errors-list" class="list"></div>
       <div id="errors-empty" class="empty-hint" hidden>No errors logged.</div>
+    </section>
+
+    <!-- Premium subscription receipts (subscriptionPayments collection) -->
+    <section id="tab-subscriptions" class="tab-panel">
+      <h2>Subscriptions</h2>
+      <p class="muted">Manual payment review — no automated gateway. Check the receipt against the account before approving; approving sets the user's subscription active for 30 days.</p>
+      <div id="subscriptions-list" class="list"></div>
+      <div id="subscriptions-empty" class="empty-hint" hidden>No pending payments.</div>
     </section>
   </main>
 

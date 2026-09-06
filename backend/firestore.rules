@@ -106,15 +106,30 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // Premium subscription receipts (manual review, same model as
+    // equb_bot — no payment gateway). A user can only ever create
+    // their own doc, and only as 'pending' — approving/rejecting and
+    // writing subscriptionActive back onto their /users doc happens
+    // exclusively from the admin panel (isAdmin()).
+    match /subscriptionPayments/{paymentId} {
+      allow read: if (request.auth != null && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
     // Users can read/write only their own profile doc. The admin
     // panel can also read any user's doc (for the User Management
-    // list) and toggle ONLY the `suspended` field on it — every
+    // list) and toggle ONLY the `suspended`, `subscriptionActive`,
+    // and `subscriptionExpiresAt` fields on it (the latter two set
+    // when a subscriptionPayments doc below gets approved) — every
     // other field (phone, name, telegramId, etc.) stays writable
     // only by the telegramAuth Cloud Function, same as before.
     match /users/{uid} {
       allow read: if (request.auth != null && request.auth.uid == uid) || isAdmin();
       allow update: if isAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['suspended']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['suspended', 'subscriptionActive', 'subscriptionExpiresAt']);
       allow create, delete: if false; // only written by the telegramAuth Cloud Function (Admin SDK)
 
       // A user's saved/favorited listings. Unlike the parent doc,

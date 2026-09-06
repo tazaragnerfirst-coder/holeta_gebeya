@@ -67,6 +67,14 @@
       ]
     },
     {
+      "collectionGroup": "subscriptionPayments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "listingAnalytics",
       "queryScope": "COLLECTION",
       "fields": [
