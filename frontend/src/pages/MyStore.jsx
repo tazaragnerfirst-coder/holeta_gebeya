@@ -4,18 +4,20 @@ import { useAppData } from '../lib/appData';
 import Icon from '../components/Icon.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 
-// UI-only mock for now — no store collection/backend wiring yet.
-// Shape mirrors the Seller Dashboard so it's easy to swap in real
-// per-store data (views/visits/rating) once that's built.
+// Store status, listed-item count, and rating are wired to real data
+// (ads array + existing sellerRating from appData). Store *visits*
+// are still a mock trend — no visit-tracking collection built yet.
 const MOCK_TREND = [3, 5, 4, 7, 9, 8, 12];
 
 export default function MyStore() {
   const requireRegistered = useRequireRegistered();
-  const { registeredUid, ads } = useAppData();
+  const { registeredUid, ads, sellerRating } = useAppData();
 
   useEffect(() => {
     if (!registeredUid) requireRegistered().catch(() => {});
   }, [registeredUid]);
+
+  const isActive = ads.length > 0;
 
   return (
     <div className="page">
@@ -23,8 +25,12 @@ export default function MyStore() {
 
       <div className="plan-card">
         <div className="top"><Icon name="store" size={14} /> Store status</div>
-        <h3>Setting up</h3>
-        <div className="exp"><Icon name="clock" size={13} /> Your store page is being prepared</div>
+        <h3>{isActive ? 'Active' : 'Setting up'}</h3>
+        <div className="exp">
+          {isActive
+            ? <><Icon name="check" size={13} /> Your store is live with {ads.length} listed item{ads.length === 1 ? '' : 's'}</>
+            : <><Icon name="clock" size={13} /> Post your first item to activate your store</>}
+        </div>
       </div>
 
       <div className="section-title">Store condition</div>
@@ -33,7 +39,8 @@ export default function MyStore() {
           <div className="val">{ads.length}</div><div className="lbl">Listed Items</div>
         </div>
         <div className="stat-card">
-          <div className="val">—</div><div className="lbl">Store Rating</div>
+          <div className="val">{sellerRating.count > 0 ? sellerRating.avg.toFixed(1) : '—'}</div>
+          <div className="lbl">{sellerRating.count > 0 ? `Store Rating (${sellerRating.count})` : 'Store Rating'}</div>
         </div>
       </div>
 
@@ -45,7 +52,7 @@ export default function MyStore() {
       </div>
 
       <div className="coming-soon-note">
-        Store setup, visit tracking, and reviews are coming soon — this page shows a preview of what's on the way.
+        Store visit tracking is coming soon — the chart above is a preview of what's on the way.
       </div>
     </div>
   );
