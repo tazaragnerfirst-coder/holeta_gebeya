@@ -19,7 +19,7 @@ const JOB_CHIP_ID = '__job__';
 
 export default function Home() {
   const {
-    categories, listings, listingsReady, hasMoreListings, loadingMoreListings, loadMoreListings,
+    categories, listings, listingsReady, listingsError, hasMoreListings, loadingMoreListings, loadMoreListings,
     searchResults, searchLoading, searchListings,
   } = useAppData();
   const [search, setSearch] = useState('');
@@ -253,10 +253,10 @@ export default function Home() {
               </>
             )}
           </>
-        ) : !isOnline ? (
+        ) : (!isOnline || listingsError) ? (
           <div className="empty-state">
             <div className="empty-state-icon"><Icon name="wifiOff" size={30} /></div>
-            <div className="empty-state-title">You're offline</div>
+            <div className="empty-state-title">{isOnline ? "Couldn't load listings" : "You're offline"}</div>
             <div className="empty-state-sub">Check your connection and try again.</div>
             <button type="button" className="link-btn" style={{ marginTop: 14 }} onClick={() => window.location.reload()}>Refresh</button>
           </div>

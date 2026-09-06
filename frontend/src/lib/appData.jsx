@@ -78,6 +78,13 @@ export function AppDataProvider({ children }) {
 
   const [listings, setListings] = useState(() => getCached('listings') || []);
   const [listingsReady, setListingsReady] = useState(() => getCached('listings') != null);
+  // True only when the live listings listener itself errored (flaky
+  // connection, quota, timeout, etc.) — distinct from a genuinely
+  // empty feed, which is also `listings.length === 0` but not an
+  // error. navigator.onLine can still say "online" while a request
+  // actually fails, so Home.jsx needs this instead of relying on the
+  // offline check alone to tell the two apart.
+  const [listingsError, setListingsError] = useState(false);
   // Server-side search/filter results (#hog002) — over the FULL
   // listings collection, not just whatever pages have been scrolled
   // into above. Home.jsx swaps to rendering these while search/
@@ -172,9 +179,10 @@ export function AppDataProvider({ children }) {
         return merged;
       });
       setListingsReady(true);
+      setListingsError(false);
       lastListingDocRef.current = snap.docs[snap.docs.length - 1] || null;
       setHasMoreListings(snap.docs.length === LISTINGS_PAGE_SIZE);
-    }, () => setListingsReady(true));
+    }, () => { setListingsReady(true); setListingsError(true); });
     return unsub;
   }, []);
 
@@ -390,7 +398,7 @@ export function AppDataProvider({ children }) {
     <AppDataContext.Provider value={{
       categories, categoriesReady,
       colorHexOverrides,
-      listings, listingsReady,
+      listings, listingsReady, listingsError,
       searchResults, searchLoading, searchListings,
       hasMoreListings, loadingMoreListings, loadMoreListings,
       registeredUid, markRegistered, clearRegistered,
