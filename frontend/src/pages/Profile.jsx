@@ -4,7 +4,6 @@ import { getUnsafeUserPreview } from '../lib/telegram';
 import { useAppData } from '../lib/appData';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { auth, BACKEND_URL } from '../lib/firebase';
-import { signOut } from 'firebase/auth';
 import { SUPPORT_UID } from '../lib/constants';
 import { getAppBannerUrl, getCachedAppBannerUrl } from '../lib/appBanner';
 import Icon from '../components/Icon.jsx';
@@ -14,7 +13,7 @@ import EditProfileSheet from '../components/EditProfileSheet.jsx';
 export default function Profile() {
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
-  const { registeredUid, clearRegistered, ads, profile, sellerRating: rating } = useAppData();
+  const { registeredUid, ads, profile, sellerRating: rating } = useAppData();
   const [bannerUrl, setBannerUrl] = useState(() => getCachedAppBannerUrl());
 
   const [editOpen, setEditOpen] = useState(false);
@@ -72,13 +71,6 @@ export default function Profile() {
   async function goSupport() {
     const user = await requireRegistered().catch(() => null);
     if (user) navigate(`/chat/${SUPPORT_UID}_${user.uid}`);
-  }
-
-  async function handleLogout() {
-    const uid = registeredUid;
-    try { await signOut(auth); } catch {}
-    if (uid) clearRegistered(uid);
-    navigate('/');
   }
 
   async function goSubscription() {
@@ -175,14 +167,6 @@ export default function Profile() {
           ))}
         </div>
 
-        {registeredUid && (
-          <div className="menu-list" style={{ marginTop: 12 }}>
-            <div className="menu-item" onClick={handleLogout}>
-              <div className="menu-icon" style={{ color: 'var(--safety)' }}><Icon name="logOut" size={17} /></div>
-              <div className="t" style={{ color: 'var(--safety)' }}>Logout</div>
-            </div>
-          </div>
-        )}
       </div>
 
       <EditProfileSheet

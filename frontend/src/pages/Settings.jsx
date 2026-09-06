@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { signOut } from 'firebase/auth';
 import Icon from '../components/Icon.jsx';
 import Switch from '../components/Switch.jsx';
 import { getVibrant, setVibrant } from '../lib/vibrant';
 import { getTheme, setTheme } from '../lib/theme';
+import { auth } from '../lib/firebase';
+import { useAppData } from '../lib/appData';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light', icon: 'sun' },
@@ -15,6 +19,8 @@ const THEME_OPTIONS = [
 // surfaces a short note instead of a real settings screen. Display
 // is a real, working control (light/dark/system theme).
 export default function Settings() {
+  const navigate = useNavigate();
+  const { registeredUid, clearRegistered } = useAppData();
   const [displayOpen, setDisplayOpen] = useState(false);
   const [languageNoteOpen, setLanguageNoteOpen] = useState(false);
   const [vibrant, setVibrantState] = useState(getVibrant());
@@ -28,6 +34,13 @@ export default function Settings() {
   function chooseTheme(value) {
     setThemeState(value);
     setTheme(value);
+  }
+
+  async function handleLogout() {
+    const uid = registeredUid;
+    try { await signOut(auth); } catch {}
+    if (uid) clearRegistered(uid);
+    navigate('/');
   }
 
   return (
@@ -70,6 +83,18 @@ export default function Settings() {
       )}
 
       {languageNoteOpen && <div className="coming-soon-note">More languages are part of Subscription — coming soon.</div>}
+
+      {registeredUid && (
+        <>
+          <div className="section-title" style={{ marginTop: 18 }}>Other</div>
+          <div className="menu-list">
+            <div className="menu-item" onClick={handleLogout}>
+              <div className="menu-icon" style={{ color: 'var(--safety)' }}><Icon name="logOut" size={17} /></div>
+              <div className="t" style={{ color: 'var(--safety)' }}>Logout</div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
