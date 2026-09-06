@@ -8,6 +8,7 @@ import { BACKEND_URL } from './lib/firebase';
 import { getTelegramWebApp } from './lib/telegram';
 import PostProgressRing from './components/PostProgressRing.jsx';
 import { triggerPostAdSubmit } from './lib/postAdFab';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 // Home loads eagerly (it's the landing screen, needed immediately).
 // Everything else splits into its own chunk and loads on first visit
@@ -74,34 +75,38 @@ export default function App() {
         <div className="app-shell">
           <div className="screen-container">
             <Suspense fallback={<RouteFallback />}>
-              <Routes location={backgroundLocation || location}>
-                <Route path="/" element={<Home />} />
-                <Route path="/product/:id" element={<ProductDetail />} />
-                <Route path="/post" element={<PostAd />} />
-                <Route path="/edit/:id" element={<PostAd />} />
-                <Route path="/chat" element={<ChatList />} />
-                <Route path="/chat/:id" element={<ChatThread />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/dashboard/views" element={<ViewsDetail />} />
-                <Route path="/dashboard/views/:id" element={<ViewAdDetail />} />
-                <Route path="/dashboard/contacts" element={<ContactsDetail />} />
-                <Route path="/dashboard/ads" element={<AdsManage />} />
-                <Route path="/dashboard/expired" element={<ExpiredItems />} />
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/subscription" element={<SubscriptionStatus />} />
-                <Route path="/boost" element={<BoostPromo />} />
-                <Route path="/my-store" element={<MyStore />} />
-                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/holeta-coin" element={<HoletaCoin />} />
-              </Routes>
+              <ErrorBoundary key={(backgroundLocation || location).pathname} label={(backgroundLocation || location).pathname}>
+                <Routes location={backgroundLocation || location}>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/product/:id" element={<ProductDetail />} />
+                  <Route path="/post" element={<PostAd />} />
+                  <Route path="/edit/:id" element={<PostAd />} />
+                  <Route path="/chat" element={<ChatList />} />
+                  <Route path="/chat/:id" element={<ChatThread />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/dashboard/views" element={<ViewsDetail />} />
+                  <Route path="/dashboard/views/:id" element={<ViewAdDetail />} />
+                  <Route path="/dashboard/contacts" element={<ContactsDetail />} />
+                  <Route path="/dashboard/ads" element={<AdsManage />} />
+                  <Route path="/dashboard/expired" element={<ExpiredItems />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="/subscription" element={<SubscriptionStatus />} />
+                  <Route path="/boost" element={<BoostPromo />} />
+                  <Route path="/my-store" element={<MyStore />} />
+                  <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/holeta-coin" element={<HoletaCoin />} />
+                </Routes>
+              </ErrorBoundary>
             </Suspense>
             {backgroundLocation && (
               <Suspense fallback={null}>
-                <Routes>
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                </Routes>
+                <ErrorBoundary key={`sheet-${location.pathname}`} label={location.pathname}>
+                  <Routes>
+                    <Route path="/product/:id" element={<ProductDetail />} />
+                  </Routes>
+                </ErrorBoundary>
               </Suspense>
             )}
           </div>

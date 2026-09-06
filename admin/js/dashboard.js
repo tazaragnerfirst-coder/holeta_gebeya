@@ -18,6 +18,7 @@ auth.onAuthStateChanged(async (user) => {
   initListings();
   initAnalytics();
   initSupport();
+  initErrors();
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
@@ -285,6 +286,47 @@ function initReports() {
       `;
       row.querySelector('button').addEventListener('click', async (e) => {
         await db.collection('reports').doc(e.target.dataset.id).delete();
+        row.remove();
+        const remaining = Number(badge.textContent) - 1;
+        badge.textContent = remaining;
+        if (remaining <= 0) { badge.hidden = true; emptyEl.hidden = false; }
+      });
+      listEl.appendChild(row);
+    });
+  });
+}
+
+// --- Error Logs (#hog024, errorLogs collection) -----------------------
+function initErrors() {
+  db.collection('errorLogs').orderBy('createdAt', 'desc').limit(50).get().then((snap) => {
+    const listEl = document.getElementById('errors-list');
+    const emptyEl = document.getElementById('errors-empty');
+    const badge = document.getElementById('errors-badge');
+
+    if (snap.empty) {
+      emptyEl.hidden = false;
+      return;
+    }
+    badge.textContent = snap.size;
+    badge.hidden = false;
+
+    snap.docs.forEach((docSnap) => {
+      const e = docSnap.data();
+      const when = e.createdAt && e.createdAt.toDate ? e.createdAt.toDate().toLocaleString() : '—';
+      const row = document.createElement('div');
+      row.className = 'list-row';
+      row.innerHTML = `
+        <div class="list-row-info">
+          <div><strong>${e.page || 'Unknown page'}</strong></div>
+          <div class="muted">${e.message || 'No message'}</div>
+          <div class="muted">${when}${e.uid ? ` · user ${e.uid}` : ''}</div>
+        </div>
+        <div class="row-actions">
+          <button type="button" class="btn-ghost" data-id="${docSnap.id}">Dismiss</button>
+        </div>
+      `;
+      row.querySelector('button').addEventListener('click', async (ev) => {
+        await db.collection('errorLogs').doc(ev.target.dataset.id).delete();
         row.remove();
         const remaining = Number(badge.textContent) - 1;
         badge.textContent = remaining;

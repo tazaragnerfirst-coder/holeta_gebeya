@@ -95,6 +95,17 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.reporterId == request.auth.uid;
     }
 
+    // App-wide Error Boundary logs (#hog024): write-only from the
+    // client — errors can happen during plain browsing before any
+    // login, so this stays open to signed-out writers too, same
+    // reasoning as the public `views` counter above. Never readable
+    // back by regular users; only the admin panel can read/dismiss.
+    match /errorLogs/{errorId} {
+      allow read, delete: if isAdmin();
+      allow create: if true;
+      allow update: if false;
+    }
+
     // Users can read/write only their own profile doc. The admin
     // panel can also read any user's doc (for the User Management
     // list) and toggle ONLY the `suspended` field on it — every

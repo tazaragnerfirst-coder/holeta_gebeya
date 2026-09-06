@@ -12,6 +12,7 @@
     <h1>Holeta Gebeya Admin</h1>
     <div class="topbar-right">
       <span id="reports-badge" class="badge" hidden></span>
+      <span id="errors-badge" class="badge" hidden></span>
       <button type="button" class="btn-ghost" id="logout-btn">Sign out</button>
     </div>
   </header>
@@ -25,6 +26,7 @@
     <button type="button" class="tab" data-tab="listings">Listings</button>
     <button type="button" class="tab" data-tab="analytics">Analytics</button>
     <button type="button" class="tab" data-tab="support">Support</button>
+    <button type="button" class="tab" data-tab="errors">Error Logs</button>
   </nav>
 
   <main class="content">
@@ -234,6 +236,14 @@
         </div>
         <div id="support-reply-error" class="error-banner" hidden></div>
       </div>
+    </section>
+
+    <!-- App-wide Error Boundary logs (#hog024, errorLogs collection) -->
+    <section id="tab-errors" class="tab-panel">
+      <h2>Error Logs</h2>
+      <p class="muted">Client-side errors caught by the app's Error Boundary — a page/feature broke for a real user. Dismiss once investigated.</p>
+      <div id="errors-list" class="list"></div>
+      <div id="errors-empty" class="empty-hint" hidden>No errors logged.</div>
     </section>
   </main>
 
