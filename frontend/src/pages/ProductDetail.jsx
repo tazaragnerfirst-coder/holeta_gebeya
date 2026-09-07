@@ -354,7 +354,7 @@ export default function ProductDetail() {
           disabled={favBusy}
           aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
         >
-          <Icon name="bookmark" size={15} {...(isFavorited ? { fill: 'currentColor' } : {})} />
+          <Icon name="bookmark" size={15} {...(isFavorited ? { weight: 'fill' } : {})} />
         </button>
         <div className="pd-title">{item.title}</div>
         <div className="pd-price">{priceDisplay.text}{priceDisplay.currency && <span>ETB</span>}</div>

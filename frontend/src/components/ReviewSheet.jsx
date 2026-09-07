@@ -36,7 +36,7 @@ export default function ReviewSheet({ open, busy, error, initial, onClose, onSub
           <div className="star-input">
             {[1, 2, 3, 4, 5].map((n) => (
               <button type="button" key={n} onClick={() => setRating(n)} aria-label={`${n} stars`}>
-                <Icon name="star" size={30} className={n <= rating ? 'filled' : ''} />
+                <Icon name="star" size={30} weight={n <= rating ? 'fill' : 'regular'} className={n <= rating ? 'filled' : ''} />
               </button>
             ))}
           </div>

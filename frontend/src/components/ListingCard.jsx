@@ -82,7 +82,7 @@ export default function ListingCard({ item, boosted }) {
           disabled={favBusy}
           aria-label={isFavorited ? 'Remove from saved' : 'Save this listing'}
         >
-          <Icon name="bookmark" size={13} {...(isFavorited ? { fill: 'currentColor' } : {})} />
+          <Icon name="bookmark" size={13} {...(isFavorited ? { weight: 'fill' } : {})} />
         </button>
       </div>
       <div className="card-footer">

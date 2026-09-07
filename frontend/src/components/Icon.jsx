@@ -77,7 +77,7 @@ const COMPONENTS = {
   whatsapp: WhatsappLogo,
 };
 
-export default function Icon({ name, size = 20, className = '', style, ...rest }) {
+export default function Icon({ name, size = 20, weight = 'regular', className = '', style, ...rest }) {
   const Component = COMPONENTS[name];
   if (!Component) return null;
   return (
@@ -85,7 +85,7 @@ export default function Icon({ name, size = 20, className = '', style, ...rest }
       className={className}
       style={style}
       size={size}
-      weight="regular"
+      weight={weight}
       color="currentColor"
       {...rest}
     />
