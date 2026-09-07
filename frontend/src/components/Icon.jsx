@@ -7,7 +7,8 @@ import {
   ClockCounterClockwise, SmileySad, Check, ArrowUp, Warning, PencilSimple,
   SignOut, Pause, Play, Crown, Storefront, SealCheck, GearSix, Coins,
   Globe, BookmarkSimple, ShareNetwork, Sun, Moon, Monitor, Paperclip,
-  WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo,
+  WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo, Lock, Palette,
+  ChartBar, ListBullets,
 } from '@phosphor-icons/react';
 
 // Icon set: Phosphor (regular/outline weight) — swapped in from
@@ -19,6 +20,20 @@ import {
 // whatsapp in the same outline weight — so unlike the lucide swap,
 // the brand icons no longer need to be hand-drawn separately; they
 // come from the same family and stay visually consistent.
+//
+// Audit (per Taza, keep each concept its own icon — don't reuse one
+// glyph across unrelated meanings just because it was already
+// imported): shieldLock (SealCheck) is reserved for the seller
+// "Verified" seal only — Privacy Policy got its own `lock` (Lock)
+// instead of borrowing that seal. `gear` (GearSix, was named
+// "sliders2") is the actual Settings entry point; `sliders`
+// (SlidersHorizontal) stays for adjustable-value rows like Display.
+// Vibrant is a color/saturation toggle, not a settings row, so it
+// got its own `palette` (Palette) rather than the Settings gear.
+// `briefcase` (Briefcase) is reserved for the Job post type/category
+// only — the Dashboard nav tab got its own `chartBar` (ChartBar,
+// analytics) and Profile's "My Ads" got `listBullets` (ListBullets,
+// a list of your own listings), instead of both borrowing Job's icon.
 const COMPONENTS = {
   search: MagnifyingGlass,
   mapPin: MapPin,
@@ -62,7 +77,11 @@ const COMPONENTS = {
   crown: Crown,
   store: Storefront,
   shieldLock: SealCheck,
-  sliders2: GearSix,
+  gear: GearSix,
+  lock: Lock,
+  palette: Palette,
+  chartBar: ChartBar,
+  listBullets: ListBullets,
   coin: Coins,
   globe: Globe,
   bookmark: BookmarkSimple,

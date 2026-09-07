@@ -92,7 +92,7 @@ export default function Profile() {
   const quickActions = [
     { icon: 'edit', t: 'Edit Info', onClick: openEdit },
     { icon: 'bookmark', t: 'Favorites', onClick: goFavorites },
-    { icon: 'sliders', t: 'Settings', onClick: () => navigate('/settings') },
+    { icon: 'gear', t: 'Settings', onClick: () => navigate('/settings') },
   ];
 
   const box1 = [
@@ -102,9 +102,9 @@ export default function Profile() {
   ];
 
   const box2 = [
-    { icon: 'briefcase', t: 'My Ads', sub: registeredUid ? `${ads.length} listing${ads.length === 1 ? '' : 's'}` : null, onClick: goMyAds },
+    { icon: 'listBullets', t: 'My Ads', sub: registeredUid ? `${ads.length} listing${ads.length === 1 ? '' : 's'}` : null, onClick: goMyAds },
     { icon: 'store', t: 'My Store', onClick: goMyStore },
-    { icon: 'shieldLock', t: 'Privacy Policy', onClick: () => navigate('/privacy-policy') },
+    { icon: 'lock', t: 'Privacy Policy', onClick: () => navigate('/privacy-policy') },
     { icon: 'helpCircle', t: 'Help & Support', onClick: goSupport },
   ];
 

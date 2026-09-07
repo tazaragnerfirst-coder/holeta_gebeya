@@ -46,7 +46,7 @@ export default function Settings() {
           <div className="chev"><Icon name="chevronLeft" size={16} /></div>
         </div>
         <div className="menu-item" onClick={() => toggleVibrant(!vibrant)} style={{ cursor: 'default' }}>
-          <div className="menu-icon"><Icon name="sliders2" size={17} /></div>
+          <div className="menu-icon"><Icon name="palette" size={17} /></div>
           <div className="t">Vibrant</div>
           <Switch checked={vibrant} onChange={toggleVibrant} />
         </div>

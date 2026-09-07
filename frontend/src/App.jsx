@@ -216,7 +216,7 @@ function BottomNav() {
       {item('/', 'Home', 'home')}
       {item('/chat', 'Chat', 'chat', totalUnread)}
       <div className="nav-space-holder"></div>
-      {item('/dashboard', 'Dashboard', 'briefcase')}
+      {item('/dashboard', 'Dashboard', 'chartBar')}
       {item('/profile', 'Profile', 'user')}
       <div className="nav-fab-wrapper">
         {onPostPage ? (
