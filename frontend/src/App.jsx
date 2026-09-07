@@ -8,6 +8,7 @@ import { BACKEND_URL } from './lib/firebase';
 import { getTelegramWebApp } from './lib/telegram';
 import PostProgressRing from './components/PostProgressRing.jsx';
 import { triggerPostAdSubmit } from './lib/postAdFab';
+import { hasPostAdBack, triggerPostAdBack } from './lib/postAdBack';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 // Home loads eagerly (it's the landing screen, needed immediately).
@@ -172,6 +173,10 @@ function TelegramBackButton() {
     }
 
     function handleBack() {
+      // PostAd gets first say: stepping from its form back to the
+      // type-selection screen is a state change, not a route change,
+      // so it can't rely on the default history-back below.
+      if (hasPostAdBack() && triggerPostAdBack()) return;
       if (window.history.length > 1) navigate(-1);
       else navigate('/');
     }

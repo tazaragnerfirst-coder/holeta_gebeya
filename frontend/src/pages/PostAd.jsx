@@ -17,6 +17,7 @@ import { ErrorBanner } from '../components/Banner.jsx';
 import { runInBackground, isTransientError, withMinDuration } from '../lib/postProgress';
 import { loadDraft, saveDraft, clearDraft } from '../lib/postDraft';
 import { registerPostAdSubmit, unregisterPostAdSubmit } from '../lib/postAdFab';
+import { registerPostAdBack, unregisterPostAdBack } from '../lib/postAdBack';
 
 // Chosen on the type-selection screen shown before the form (#hog013).
 // Each type renders its own separate form block below — not one
@@ -252,7 +253,14 @@ export default function PostAd() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subcategory?.id, attrs.brand]);
 
+  // See the postAdBack registration below: only true when postType
+  // was picked by tapping a card on the type-selection screen this
+  // session, as opposed to being preloaded by Edit mode or a resumed
+  // draft.
+  const chosenViaSelectRef = useRef(false);
+
   function onPostTypeChange(type) {
+    chosenViaSelectRef.current = true;
     setPostType(type);
     setCategoryId('');
     setSubcategoryId('');
@@ -561,6 +569,26 @@ export default function PostAd() {
     return () => unregisterPostAdSubmit();
   }, []);
 
+  // Lets the Telegram BackButton (rendered in App.jsx, outside this
+  // component tree) step from the form back to the type-selection
+  // screen instead of leaving /post entirely — see postAdBack.js.
+  // Only applies when postType was picked by tapping a card on that
+  // screen this session (chosenViaSelectRef, set in
+  // onPostTypeChange); Edit mode and a resumed draft both preload
+  // postType before the screen would ever show, so back should leave
+  // /post as before in those cases.
+  useEffect(() => {
+    registerPostAdBack(() => {
+      if (!isEdit && postType !== null && chosenViaSelectRef.current) {
+        setPostType(null);
+        chosenViaSelectRef.current = false;
+        return true;
+      }
+      return false;
+    });
+    return () => unregisterPostAdBack();
+  }, [isEdit, postType]);
+
 
   if (isEdit && loadingExisting) {
     return (
@@ -581,8 +609,9 @@ export default function PostAd() {
 
   // New-post mode, no type chosen yet: show only the type-selection
   // screen. Picking one moves straight into that type's own form
-  // below (#hog013) — there's no in-app way back to this screen;
-  // the phone's own back button is enough to leave the flow.
+  // below (#hog013). The phone/Telegram back button steps back to
+  // this screen from the form (see postAdBack.js) instead of leaving
+  // /post entirely.
   if (!isEdit && postType === null) {
     return (
       <div className="page">
