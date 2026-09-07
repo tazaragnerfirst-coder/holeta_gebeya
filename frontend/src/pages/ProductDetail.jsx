@@ -378,7 +378,7 @@ export default function ProductDetail() {
               {item.sellerName || 'Seller'}
               {isSellerVerified(item) && (
                 <span className="verified-badge" title="Premium subscriber">
-                  <Icon name="shieldLock" size={13} />
+                  <Icon name="shieldLock" size={13} weight="fill" />
                 </span>
               )}
             </div>

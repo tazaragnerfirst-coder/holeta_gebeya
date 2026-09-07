@@ -127,7 +127,7 @@ export default function Profile() {
               {name}
               {isSubscriptionActive(profile) && (
                 <span className="verified-badge" title="Premium subscriber">
-                  <Icon name="shieldLock" size={15} />
+                  <Icon name="shieldLock" size={15} weight="fill" />
                 </span>
               )}
             </h2>

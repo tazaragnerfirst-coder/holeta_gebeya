@@ -205,6 +205,21 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .seller-meta{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-faint);margin-top:3px;}
 .pd-report-link{background:none;border:none;padding:0;font:inherit;font-size:11.5px;font-weight:700;color:var(--ink-faint);cursor:pointer;display:flex;align-items:center;gap:4px;flex:0 0 auto;}
 
+/* Store page's own header — same "byline, not a card" idea as
+   .seller-card above, just with a slightly larger avatar since it's
+   the page's own identity rather than a link out to it. Deliberately
+   plain (no gradient/padding box, no oversized heading) — this used
+   to borrow .plan-card's Premium-plan gradient treatment and
+   .avatar-lg's 72px sizing, which made a simple name+rating byline
+   look like a promo card and ate width it didn't need. */
+.store-header{display:flex;align-items:center;gap:12px;margin:8px 0 4px;}
+.store-header-avatar{width:52px;height:52px;border-radius:50%;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;flex:0 0 auto;}
+.store-header-info{flex:1;min-width:0;}
+.store-header-name{font-size:15px;font-weight:800;display:flex;align-items:center;gap:4px;}
+.store-header-info .stars{display:flex;align-items:center;gap:2px;margin-top:3px;}
+.store-header-info .rating-count{font-size:11.5px;color:var(--ink-faint);margin-left:5px;font-weight:600;}
+.store-header-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-faint);margin-top:4px;}
+
 .star-row{display:inline-flex;gap:2px;}
 .star-row svg{color:var(--line);}
 .star-row svg.filled{color:var(--accent);fill:var(--accent);}

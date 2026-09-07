@@ -129,24 +129,24 @@ export default function Store() {
     <div className="page">
       <h2 className="page-title">Store</h2>
 
-      <div className="plan-card" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+      <div className="store-header">
         <div
-          className="avatar-lg"
-          style={displayPhoto ? { backgroundImage: `url(${displayPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center', flexShrink: 0 } : { flexShrink: 0 }}
+          className="store-header-avatar"
+          style={displayPhoto ? { backgroundImage: `url(${displayPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
         >
           {!displayPhoto && initial}
         </div>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+        <div className="store-header-info">
+          <div className="store-header-name">
             {displayName}
-            {verified && <Icon name="shieldLock" size={14} />}
-          </h3>
+            {verified && <Icon name="shieldLock" size={14} weight="fill" />}
+          </div>
           <div className="stars">
             <StarRow value={rating.avg} size={13} />
             {rating.count > 0 && <span className="rating-count">{rating.avg.toFixed(1)} ({rating.count})</span>}
           </div>
           {storeProfile?.address && (
-            <div className="exp" style={{ marginTop: 4 }}><Icon name="mapPin" size={12} /> {storeProfile.address}</div>
+            <div className="store-header-meta"><Icon name="mapPin" size={12} /> {storeProfile.address}</div>
           )}
         </div>
         {isOwner && (
