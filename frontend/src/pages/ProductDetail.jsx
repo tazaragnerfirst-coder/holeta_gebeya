@@ -386,17 +386,16 @@ export default function ProductDetail() {
               <StarRow value={sellerRating.avg} size={12} />
               <span>{sellerRating.count ? `${sellerRating.avg.toFixed(1)} (${sellerRating.count})` : 'No ratings yet'}</span>
             </div>
+            {item.sellerId && (
+              <button type="button" className="pd-visit-store-link" onClick={() => navigate(`/store/${item.sellerId}`)}>
+                Visit Store <Icon name="chevronRight" size={11} />
+              </button>
+            )}
           </div>
           <button type="button" className="pd-report-link" onClick={() => setReportSheetOpen(true)}>
             <Icon name="flag" size={12} /> Report
           </button>
         </div>
-
-        {item.sellerId && (
-          <button type="button" className="coming-soon-note" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate(`/store/${item.sellerId}`)}>
-            <Icon name="store" size={13} /> Visit Store <Icon name="chevronRight" size={13} />
-          </button>
-        )}
 
         {hasAttrs && (
           <div className="attr-list">
