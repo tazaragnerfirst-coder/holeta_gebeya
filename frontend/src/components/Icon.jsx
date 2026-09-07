@@ -1,103 +1,83 @@
 import React from 'react';
 import {
-  Search, MapPin, LayoutGrid, ChevronLeft, ChevronRight, ChevronDown,
-  Phone, MessageCircle, Flag, Camera, TrendingUp, Shield, Eye, Star,
-  Heart, HelpCircle, User, Plus, Home, Briefcase, Send, Clock,
-  CheckCircle, Cpu, Shirt, Car, Image, X, SlidersHorizontal, XCircle,
-  History, Frown, Check, ArrowUp, AlertTriangle, Pencil, LogOut, Pause,
-  Play, Crown, Store, ShieldCheck, Settings2, Coins, Globe, Bookmark,
-  Share2, Sun, Moon, Monitor, Paperclip, WifiOff,
-} from 'lucide-react';
+  MagnifyingGlass, MapPin, SquaresFour, CaretLeft, CaretRight, CaretDown,
+  Phone, ChatCircle, Flag, Camera, TrendUp, Shield, Eye, Star, Heart,
+  Question, User, Plus, House, Briefcase, PaperPlaneTilt, Clock,
+  CheckCircle, Cpu, TShirt, Car, Image, X, SlidersHorizontal, XCircle,
+  ClockCounterClockwise, SmileySad, Check, ArrowUp, Warning, PencilSimple,
+  SignOut, Pause, Play, Crown, Storefront, SealCheck, GearSix, Coins,
+  Globe, BookmarkSimple, ShareNetwork, Sun, Moon, Monitor, Paperclip,
+  WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo,
+} from '@phosphor-icons/react';
 
-// Icon set: lucide-react for the general outline set (swapped in from the
-// original hand-drawn single-stroke set — same visual language, actively
-// maintained library). Brand icons (tiktok/instagram/whatsapp) are kept as
-// hand-drawn single-stroke SVG so they match this outline language instead
-// of looking like dropped-in brand logos.
+// Icon set: Phosphor (regular/outline weight) — swapped in from
+// lucide-react per Taza's request after two repeat gaps: the
+// verification badge (shieldLock) read as a generic padlock rather
+// than a "verified" mark, and the coin icon (coin) looked flat/
+// abstract. Phosphor's SealCheck and Coins read correctly for both,
+// and Phosphor also ships real brand marks for tiktok/instagram/
+// whatsapp in the same outline weight — so unlike the lucide swap,
+// the brand icons no longer need to be hand-drawn separately; they
+// come from the same family and stay visually consistent.
 const COMPONENTS = {
-  search: Search,
+  search: MagnifyingGlass,
   mapPin: MapPin,
-  grid: LayoutGrid,
-  chevronLeft: ChevronLeft,
-  chevronRight: ChevronRight,
-  chevronDown: ChevronDown,
+  grid: SquaresFour,
+  chevronLeft: CaretLeft,
+  chevronRight: CaretRight,
+  chevronDown: CaretDown,
   phone: Phone,
-  chat: MessageCircle,
+  chat: ChatCircle,
   flag: Flag,
   camera: Camera,
-  trendingUp: TrendingUp,
+  trendingUp: TrendUp,
   shield: Shield,
   eye: Eye,
   star: Star,
   heart: Heart,
-  helpCircle: HelpCircle,
+  helpCircle: Question,
   user: User,
   plus: Plus,
-  home: Home,
+  home: House,
   briefcase: Briefcase,
-  send: Send,
+  send: PaperPlaneTilt,
   clock: Clock,
   checkCircle: CheckCircle,
   cpu: Cpu,
-  shirt: Shirt,
+  shirt: TShirt,
   car: Car,
   image: Image,
   x: X,
   sliders: SlidersHorizontal,
   xCircle: XCircle,
-  history: History,
-  frown: Frown,
+  history: ClockCounterClockwise,
+  frown: SmileySad,
   check: Check,
   arrowUp: ArrowUp,
-  alertTriangle: AlertTriangle,
-  edit: Pencil,
-  logOut: LogOut,
+  alertTriangle: Warning,
+  edit: PencilSimple,
+  logOut: SignOut,
   pause: Pause,
   play: Play,
   crown: Crown,
-  store: Store,
-  shieldLock: ShieldCheck,
-  sliders2: Settings2,
+  store: Storefront,
+  shieldLock: SealCheck,
+  sliders2: GearSix,
   coin: Coins,
   globe: Globe,
-  bookmark: Bookmark,
-  share: Share2,
+  bookmark: BookmarkSimple,
+  share: ShareNetwork,
   sun: Sun,
   moon: Moon,
   monitor: Monitor,
   paperclip: Paperclip,
-  wifiOff: WifiOff,
-};
-
-// Brand icons — not in lucide (or lucide's version reads as a generic
-// brand-logo style that clashes with the outline language here) — kept as
-// the original hand-drawn single-stroke paths.
-const BRAND_PATHS = {
-  tiktok: '<path d="M15 3v10.5a3.5 3.5 0 11-3-3.46"/><path d="M15 3a5 5 0 005 5"/>',
-  instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r=".6" fill="currentColor" stroke="none"/>',
-  whatsapp: '<path d="M6.5 17.5L4 20l2.6-2.4A8.5 8.5 0 1120 12a8.5 8.5 0 01-13.5 5.5z"/><path d="M8.5 8.8c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2 0 .4-.1.5l-.5.6c-.1.2-.1.3 0 .5.4.8 1.4 1.8 2.2 2.2.2.1.3.1.5 0l.6-.5c.1-.1.3-.2.5-.1l1.7.7c.3.1.4.3.4.5v.5c0 .3 0 .6-.5.8-.6.3-1.4.4-2.4-.1-1.3-.6-2.9-2.2-3.5-3.5-.5-1-.4-1.8-.1-2.4z"/>',
+  wifiOff: WifiSlash,
+  tiktok: TiktokLogo,
+  instagram: InstagramLogo,
+  whatsapp: WhatsappLogo,
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {
-  const brandPath = BRAND_PATHS[name];
-  if (brandPath) {
-    return (
-      <svg
-        className={className}
-        style={style}
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        dangerouslySetInnerHTML={{ __html: brandPath }}
-        {...rest}
-      />
-    );
-  }
   const Component = COMPONENTS[name];
   if (!Component) return null;
   return (
@@ -105,7 +85,8 @@ export default function Icon({ name, size = 20, className = '', style, ...rest }
       className={className}
       style={style}
       size={size}
-      strokeWidth={1.8}
+      weight="regular"
+      color="currentColor"
       {...rest}
     />
   );
