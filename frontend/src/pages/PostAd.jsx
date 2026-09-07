@@ -42,6 +42,10 @@ const POST_TYPES = [
   { key: 'rent', label: 'Rent' },
 ];
 
+// Soft guideline, not enforced — just gives a visible character count
+// on the Title field (#hog043: no character count was shown before).
+const TITLE_SOFT_MAX = 80;
+
 export default function PostAd() {
   const navigate = useNavigate();
   const { id: editId } = useParams();
@@ -660,6 +664,7 @@ export default function PostAd() {
                   />
                   {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
                   {errors.title && <p className="field-error">{errors.title}</p>}
+                  <p className="char-count">{title.length} / {TITLE_SOFT_MAX} characters</p>
                 </div>
                 <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
                   <label className="field-label">Price (ETB)<span className="req">*</span></label>
@@ -669,7 +674,7 @@ export default function PostAd() {
                 <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                   <label className="field-label">Description<span className="req">*</span></label>
                   <textarea className="field" value={description} onChange={(e) => updateDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
-                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum · {description.length} characters</p>
                   <div className="desc-hint-row">
                     {DESCRIPTION_HINTS.map((h) => (
                       <button type="button" key={h} className="desc-hint-chip" onClick={() => addHintToDescription(h)}>+ {h}</button>
@@ -736,6 +741,7 @@ export default function PostAd() {
                   />
                   {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
                   {errors.title && <p className="field-error">{errors.title}</p>}
+                  <p className="char-count">{title.length} / {TITLE_SOFT_MAX} characters</p>
                 </div>
                 <div className={`field-group ${errors.price ? 'has-error' : ''}`}>
                   <label className="field-label">Price<span className="req">*</span></label>
@@ -761,7 +767,7 @@ export default function PostAd() {
                 <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                   <label className="field-label">Description<span className="req">*</span></label>
                   <textarea className="field" value={description} onChange={(e) => updateDescription(e.target.value)} placeholder="Condition, reason for selling, accessories included..." />
-                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum · {description.length} characters</p>
                   <div className="desc-hint-row">
                     {DESCRIPTION_HINTS.map((h) => (
                       <button type="button" key={h} className="desc-hint-chip" onClick={() => addHintToDescription(h)}>+ {h}</button>
@@ -828,6 +834,7 @@ export default function PostAd() {
                   />
                   {!errors.title && <p className="helper-text">Filled in automatically from your selections above — edit it if you'd like.</p>}
                   {errors.title && <p className="field-error">{errors.title}</p>}
+                  <p className="char-count">{title.length} / {TITLE_SOFT_MAX} characters</p>
                 </div>
               )}
             </div>
@@ -877,7 +884,7 @@ export default function PostAd() {
                 <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                   <label className="field-label">Description<span className="req">*</span></label>
                   <textarea className="field" value={description} onChange={(e) => updateDescription(e.target.value)} placeholder="Furnishing, utilities, terms, what's included..." />
-                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                  <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum · {description.length} characters</p>
                   <div className="desc-hint-row">
                     {RENT_DESCRIPTION_HINTS.map((h) => (
                       <button type="button" key={h} className="desc-hint-chip" onClick={() => addHintToDescription(h)}>+ {h}</button>
@@ -915,6 +922,7 @@ export default function PostAd() {
                   placeholder="e.g. Shop attendant needed"
                 />
                 {errors.title && <p className="field-error">{errors.title}</p>}
+                <p className="char-count">{title.length} / {TITLE_SOFT_MAX} characters</p>
               </div>
               <div className={`field-group ${errors.description ? 'has-error' : ''}`}>
                 <label className="field-label">Description<span className="req">*</span></label>
@@ -924,7 +932,7 @@ export default function PostAd() {
                   onChange={(e) => updateDescription(e.target.value)}
                   placeholder="Role, responsibilities, requirements, how to apply..."
                 />
-                <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum</p>
+                <p className={`word-count ${wordCount >= DESCRIPTION_MIN_WORDS ? 'ok' : ''}`}>{wordCount} / {DESCRIPTION_MIN_WORDS} words minimum · {description.length} characters</p>
                 {errors.description && <p className="field-error">{errors.description}</p>}
               </div>
               <div className="field-group">
