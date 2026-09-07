@@ -13,19 +13,23 @@ function docId(sellerId, date) {
   return `${sellerId}_${date}`;
 }
 
-// Always write both fields (one incremented by 1, the other by 0) so
-// the doc's shape is identical whether this is the first event of
-// the day or the hundredth — keeps the security rule simple.
+// Always write all three counter fields (one incremented by 1, the
+// others by 0) so the doc's shape is identical regardless of which
+// event fired — keeps the security rule simple. `storeVisits` added
+// for #hog023/#hog046 (Store page); existing `views`/`contacts` were
+// already here (listing views / contact-clicks, seller-level roll-up).
+const SELLER_ANALYTICS_FIELDS = ['views', 'contacts', 'storeVisits'];
+
 async function bump(sellerId, field) {
   if (!sellerId) return;
   const date = todayStr();
-  const other = field === 'views' ? 'contacts' : 'views';
+  const updates = {};
+  SELLER_ANALYTICS_FIELDS.forEach((f) => { updates[f] = increment(f === field ? 1 : 0); });
   try {
     await setDoc(doc(db, 'sellerAnalytics', docId(sellerId, date)), {
       sellerId,
       date,
-      [field]: increment(1),
-      [other]: increment(0),
+      ...updates,
     }, { merge: true });
   } catch {
     // Best-effort — a missed analytics event should never block the buyer's action.
@@ -59,6 +63,28 @@ export function logListingView(sellerId, listingId) {
 
 export function logContactClick(sellerId, listingId) {
   return Promise.all([bump(sellerId, 'contacts'), bumpListing(sellerId, listingId, 'contacts')]);
+}
+
+// Store page visit (#hog023/#hog046) — seller-level only, no
+// per-listing equivalent (a store isn't tied to one listing).
+export function logStoreVisit(sellerId) {
+  return bump(sellerId, 'storeVisits');
+}
+
+// Turns getSellerAnalytics()'s sparse day-docs (only days with an
+// event have a doc) into a fixed-length array of numbers for the
+// last `days` days, zero-filled for days with no activity — what
+// Sparkline/DailyViewsChart-style components expect.
+export function buildDailySeries(analyticsData, field, days = 7) {
+  const byDate = {};
+  (analyticsData || []).forEach((a) => { byDate[a.date] = a[field] || 0; });
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    out.push(byDate[d.toISOString().slice(0, 10)] || 0);
+  }
+  return out;
 }
 
 // Fetches every daily doc for this seller and filters/sorts

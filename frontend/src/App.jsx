@@ -28,7 +28,7 @@ const Profile = lazy(() => import('./pages/Profile.jsx'));
 const Favorites = lazy(() => import('./pages/Favorites.jsx'));
 const SubscriptionStatus = lazy(() => import('./pages/SubscriptionStatus.jsx'));
 const BoostPromo = lazy(() => import('./pages/BoostPromo.jsx'));
-const MyStore = lazy(() => import('./pages/MyStore.jsx'));
+const Store = lazy(() => import('./pages/Store.jsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const HoletaCoin = lazy(() => import('./pages/HoletaCoin.jsx'));
@@ -93,7 +93,7 @@ export default function App() {
                   <Route path="/favorites" element={<Favorites />} />
                   <Route path="/subscription" element={<SubscriptionStatus />} />
                   <Route path="/boost" element={<BoostPromo />} />
-                  <Route path="/my-store" element={<MyStore />} />
+                  <Route path="/store/:sellerId" element={<Store />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/holeta-coin" element={<HoletaCoin />} />

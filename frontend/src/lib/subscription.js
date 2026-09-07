@@ -2,7 +2,7 @@
 // expiry is set) that expiry hasn't passed yet. Computed client-side
 // from data already on hand — no separate "has it expired" write/cron
 // job needed. Shared by the profile check (SubscriptionStatus.jsx,
-// MyStore.jsx) and the per-listing snapshot check (#hog023/#hog048
+// Store.jsx) and the per-listing snapshot check (#hog023/#hog048
 // Verified badge — ListingCard/ProductDetail).
 export function isActiveByExpiry(activeFlag, expiresAtMs) {
   if (!activeFlag) return false;

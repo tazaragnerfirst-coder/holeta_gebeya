@@ -388,6 +388,12 @@ export default function ProductDetail() {
           </button>
         </div>
 
+        {item.sellerId && (
+          <button type="button" className="coming-soon-note" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => navigate(`/store/${item.sellerId}`)}>
+            <Icon name="store" size={13} /> Visit Store <Icon name="chevronRight" size={13} />
+          </button>
+        )}
+
         {hasAttrs && (
           <div className="attr-list">
             {Object.entries(item.attributes).map(([k, v]) => (

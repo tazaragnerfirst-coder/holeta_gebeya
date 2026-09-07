@@ -85,8 +85,8 @@ export default function Profile() {
   }
 
   async function goMyStore() {
-    await requireRegistered().catch(() => {});
-    navigate('/my-store');
+    const user = await requireRegistered().catch(() => null);
+    if (user) navigate(`/store/${user.uid}`);
   }
 
   const quickActions = [

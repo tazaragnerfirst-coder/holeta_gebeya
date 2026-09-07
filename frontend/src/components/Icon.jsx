@@ -55,6 +55,12 @@ const PATHS = {
   monitor: '<rect x="3" y="4.5" width="18" height="12" rx="1.8"/><path d="M8 19.5h8M12 16.5v3"/>',
   paperclip: '<path d="M7 12.5l6.5-6.5a3.2 3.2 0 014.5 4.5l-8 8a5.4 5.4 0 01-7.6-7.6l7.5-7.4"/>',
   wifiOff: '<path d="M3 3l18 18"/><path d="M5 12.5a12.9 12.9 0 013.6-2.5M19 12.5a12.9 12.9 0 00-3.3-2.3M8.5 16a7.4 7.4 0 017-.1M12 20.5h.01"/>',
+  // Social links on the Store page (#hog023/#hog046) — kept single-
+  // stroke/monochrome like the rest of this set rather than brand
+  // logos, so they don't clash with the outline icon language.
+  tiktok: '<path d="M15 3v10.5a3.5 3.5 0 11-3-3.46"/><path d="M15 3a5 5 0 005 5"/>',
+  instagram: '<rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r=".6" fill="currentColor" stroke="none"/>',
+  whatsapp: '<path d="M6.5 17.5L4 20l2.6-2.4A8.5 8.5 0 1120 12a8.5 8.5 0 01-13.5 5.5z"/><path d="M8.5 8.8c.2-.5.5-.5.8-.5h.5c.2 0 .4 0 .5.4l.7 1.7c.1.2 0 .4-.1.5l-.5.6c-.1.2-.1.3 0 .5.4.8 1.4 1.8 2.2 2.2.2.1.3.1.5 0l.6-.5c.1-.1.3-.2.5-.1l1.7.7c.3.1.4.3.4.5v.5c0 .3 0 .6-.5.8-.6.3-1.4.4-2.4-.1-1.3-.6-2.9-2.2-3.5-3.5-.5-1-.4-1.8-.1-2.4z"/>',
 };
 
 export default function Icon({ name, size = 20, className = '', style, ...rest }) {

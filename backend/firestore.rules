@@ -39,21 +39,24 @@ service cloud.firestore {
     }
 
     // Per-seller daily analytics (dashboard views/contact-click
-    // charts). One doc per seller per day, id `${sellerId}_${date}`.
-    // Private to the seller it belongs to. Anyone (even signed-out
-    // buyers) may log an event — same public, increment-only pattern
-    // as the `views` counter on listings — but only by exactly +1 on
-    // exactly one of the two counters per write.
+    // charts, and #hog023/#hog046 store-page visits). One doc per
+    // seller per day, id `${sellerId}_${date}`. Private to the
+    // seller it belongs to. Anyone (even signed-out buyers) may log
+    // an event — same public, increment-only pattern as the `views`
+    // counter on listings — but only by exactly +1 on exactly one of
+    // the three counters per write.
     match /sellerAnalytics/{docId} {
       allow read: if request.auth != null && request.auth.uid == resource.data.sellerId;
-      allow create: if request.resource.data.keys().hasOnly(['sellerId', 'date', 'views', 'contacts'])
+      allow create: if request.resource.data.keys().hasOnly(['sellerId', 'date', 'views', 'contacts', 'storeVisits'])
         && docId == request.resource.data.sellerId + '_' + request.resource.data.date
-        && ((request.resource.data.views == 1 && request.resource.data.contacts == 0)
-            || (request.resource.data.views == 0 && request.resource.data.contacts == 1));
+        && ((request.resource.data.views == 1 && request.resource.data.contacts == 0 && request.resource.data.storeVisits == 0)
+            || (request.resource.data.views == 0 && request.resource.data.contacts == 1 && request.resource.data.storeVisits == 0)
+            || (request.resource.data.views == 0 && request.resource.data.contacts == 0 && request.resource.data.storeVisits == 1));
       allow update: if request.resource.data.sellerId == resource.data.sellerId
         && request.resource.data.date == resource.data.date
-        && ((request.resource.data.views == resource.data.views + 1 && request.resource.data.contacts == resource.data.contacts)
-            || (request.resource.data.contacts == resource.data.contacts + 1 && request.resource.data.views == resource.data.views));
+        && ((request.resource.data.views == resource.data.views + 1 && request.resource.data.contacts == resource.data.contacts && request.resource.data.storeVisits == resource.data.storeVisits)
+            || (request.resource.data.contacts == resource.data.contacts + 1 && request.resource.data.views == resource.data.views && request.resource.data.storeVisits == resource.data.storeVisits)
+            || (request.resource.data.storeVisits == resource.data.storeVisits + 1 && request.resource.data.views == resource.data.views && request.resource.data.contacts == resource.data.contacts));
       allow delete: if false;
     }
 
@@ -117,6 +120,17 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.status == 'pending';
       allow update, delete: if isAdmin();
+    }
+
+    // Public store page (#hog023/#hog046) — bio/address/social links
+    // only. Deliberately separate from users/{uid} (which holds the
+    // phone number and is admin-only writable) so this can be public
+    // read while phone stays private. The owner writes it directly —
+    // no backend endpoint needed, unlike name/phone/photo.
+    match /storeProfiles/{uid} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['bio', 'address', 'socialLinks', 'updatedAt']);
     }
 
     // Users can read/write only their own profile doc. The admin
