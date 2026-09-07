@@ -4,6 +4,7 @@ import { auth, db, ensureLoggedIn, BACKEND_URL } from './firebase';
 import { getUnsafeUserPreview } from './telegram';
 import { useAppData } from './appData';
 import SignupSheet from '../components/SignupSheet.jsx';
+import ConnectingIndicator from '../components/ConnectingIndicator.jsx';
 
 const AuthGateContext = createContext(null);
 
@@ -21,11 +22,18 @@ export function AuthGateProvider({ children }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [connecting, setConnecting] = useState(false);
   const pendingRef = useRef(null);
   const { registeredUid, markRegistered } = useAppData();
 
   const requireRegistered = useCallback(async () => {
-    const user = await ensureLoggedIn();
+    setConnecting(true);
+    let user;
+    try {
+      user = await ensureLoggedIn();
+    } finally {
+      setConnecting(false);
+    }
     if (registeredUid && registeredUid === user.uid) return user;
 
     const snap = await getDoc(doc(db, 'users', user.uid));
@@ -76,6 +84,7 @@ export function AuthGateProvider({ children }) {
   return (
     <AuthGateContext.Provider value={requireRegistered}>
       {children}
+      <ConnectingIndicator active={connecting} />
       <SignupSheet
         open={open}
         busy={busy}
