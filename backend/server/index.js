@@ -379,5 +379,89 @@ app.post('/getSellerPhone', async (req, res) => {
   }
 });
 
+// Mirrors frontend/src/lib/format.js's formatListingPrice — kept as a
+// small standalone copy here since the frontend module is an ES
+// module and this server is CommonJS; the two aren't shared.
+function formatListingPriceText(item) {
+  const type = item.priceType || 'fixed';
+  if (type === 'free') return 'Free';
+  if (type === 'contact') return 'Contact seller';
+  if (type === 'negotiable') {
+    return item.price != null ? `${Number(item.price).toLocaleString('en-US')} ETB (negotiable)` : 'Negotiable';
+  }
+  return item.price != null ? `${Number(item.price).toLocaleString('en-US')} ETB` : '';
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
+}
+
+// Serves a listing's first photo as a real image URL (decoded from the
+// base64 data URI stored on the listing doc — see fileToCompressedBase64
+// in the frontend). Needed because og:image must be a fetchable URL;
+// link-preview crawlers (WhatsApp/Facebook/Telegram) don't fetch inline
+// base64 (#hog033).
+app.get('/listingImage/:id', async (req, res) => {
+  try {
+    const snap = await db.collection('listings').doc(req.params.id).get();
+    const dataUrl = snap.exists ? (snap.data().photos || [])[0] : null;
+    if (!dataUrl) return res.status(404).end();
+    const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
+    if (!match) return res.status(404).end();
+    res.set('Content-Type', match[1]);
+    res.set('Cache-Control', 'public, max-age=3600');
+    res.send(Buffer.from(match[2], 'base64'));
+  } catch (err) {
+    console.error('listingImage failed:', err);
+    res.status(500).end();
+  }
+});
+
+// Rich link-preview page for a shared listing (#hog033). WhatsApp/
+// Facebook/Telegram's link-preview crawlers read the og: meta tags in
+// this static HTML but don't execute JS or follow the meta-refresh, so
+// they see a proper title/price/photo. A real person's browser follows
+// the redirect straight into the actual Mini App page.
+app.get('/share/:id', async (req, res) => {
+  try {
+    const snap = await db.collection('listings').doc(req.params.id).get();
+    if (!snap.exists) return res.status(404).send('Listing not found.');
+    const item = snap.data();
+
+    const title = escapeHtml(item.title || 'Holeta Gebeya listing');
+    const priceText = formatListingPriceText(item);
+    const description = escapeHtml(
+      [priceText, item.location].filter(Boolean).join(' · ') || 'View this listing on Holeta Gebeya'
+    );
+    const hasPhoto = Array.isArray(item.photos) && item.photos.length > 0;
+    const imageUrl = hasPhoto ? `${req.protocol}://${req.get('host')}/listingImage/${req.params.id}` : '';
+    const appUrl = process.env.MINI_APP_URL ? `${process.env.MINI_APP_URL}/product/${req.params.id}` : '#';
+
+    res.set('Content-Type', 'text/html');
+    res.send(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${title}</title>
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${description}">
+<meta property="og:url" content="${req.protocol}://${req.get('host')}/share/${req.params.id}">
+<meta property="og:type" content="product">
+${imageUrl ? `<meta property="og:image" content="${imageUrl}">\n<meta name="twitter:card" content="summary_large_image">` : ''}
+<meta http-equiv="refresh" content="0; url=${appUrl}">
+<script>window.location.replace(${JSON.stringify(appUrl)});</script>
+</head>
+<body>
+<p>Opening <a href="${appUrl}">${title}</a> on Holeta Gebeya…</p>
+</body>
+</html>`);
+  } catch (err) {
+    console.error('share failed:', err);
+    res.status(500).send('Server error');
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Holeta Gebeya backend listening on ${PORT}`));

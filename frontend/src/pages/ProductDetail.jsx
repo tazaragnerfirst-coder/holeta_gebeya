@@ -285,7 +285,11 @@ export default function ProductDetail() {
 
   const [shareCopied, setShareCopied] = useState(false);
   async function shareListing() {
-    const url = window.location.href;
+    // Points at the backend's /share/:id page (rich OG preview for
+    // WhatsApp/Facebook/Telegram — #hog033) rather than the SPA URL
+    // directly, since the SPA's static index.html can't carry
+    // per-listing title/price/photo for link-preview crawlers.
+    const url = `${BACKEND_URL}/share/${id}`;
     const shareData = { title: item?.title || 'Holeta Gebeya listing', url };
     try {
       if (navigator.share) {
