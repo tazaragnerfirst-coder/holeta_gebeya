@@ -9,6 +9,42 @@ import { getTelegramWebApp } from './lib/telegram';
 import PostProgressRing from './components/PostProgressRing.jsx';
 import { triggerPostAdSubmit } from './lib/postAdFab';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import SplashScreen from './components/SplashScreen.jsx';
+
+// Longest we'll ever hold the splash up for slow/first-load data. On
+// a flaky connection this is hit before categories/listings are
+// ready — the splash then fades away regardless, handing off to
+// Home's own existing offline/error/skeleton states (appData.jsx /
+// Home.jsx) exactly as they already behave today. This is a ceiling,
+// not a target: the splash usually clears sooner, the moment data
+// arrives.
+const SPLASH_MAX_WAIT_MS = 4000;
+// Matches .splash-screen's opacity transition duration in theme.css.
+const SPLASH_FADE_MS = 250;
+
+function SplashGate() {
+  const { categoriesReady, listingsReady } = useAppData();
+  const [visible, setVisible] = useState(true);
+  const [fadingOut, setFadingOut] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setFadingOut(true), SPLASH_MAX_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (categoriesReady && listingsReady) setFadingOut(true);
+  }, [categoriesReady, listingsReady]);
+
+  useEffect(() => {
+    if (!fadingOut) return;
+    const timer = setTimeout(() => setVisible(false), SPLASH_FADE_MS);
+    return () => clearTimeout(timer);
+  }, [fadingOut]);
+
+  if (!visible) return null;
+  return <SplashScreen fadingOut={fadingOut} />;
+}
 
 // Home loads eagerly (it's the landing screen, needed immediately).
 // Everything else splits into its own chunk and loads on first visit
@@ -74,6 +110,7 @@ export default function App() {
     <AppDataProvider>
       <AuthGateProvider>
         <div className="app-shell">
+          <SplashGate />
           <div className="screen-container">
             <Suspense fallback={<RouteFallback />}>
               <ErrorBoundary key={(backgroundLocation || location).pathname} label={(backgroundLocation || location).pathname}>
