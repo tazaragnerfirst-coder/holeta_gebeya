@@ -52,7 +52,7 @@ export default function PostAd() {
   const { id: editId } = useParams();
   const isEdit = !!editId;
   const requireRegistered = useRequireRegistered();
-  const { categories: CATEGORIES, colorHexOverrides } = useAppData();
+  const { categories: CATEGORIES, categoriesReady, colorHexOverrides } = useAppData();
   // Options fetched from referenceData for attributes that point at a
   // refCollection instead of embedding options inline (see #hog001) —
   // keyed by attribute key. Populated lazily: the root attribute's
@@ -656,7 +656,8 @@ export default function PostAd() {
                 options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
                 value={categoryId}
                 onChange={onCategoryChange}
-                placeholder={filteredCategories.length === 0 ? 'No categories of this type yet.' : ''}
+                disabled={!categoriesReady}
+                placeholder={!categoriesReady ? 'Loading categories…' : (filteredCategories.length === 0 ? 'No categories of this type yet.' : '')}
               />
               {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
             </div>
@@ -737,7 +738,8 @@ export default function PostAd() {
                 options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
                 value={categoryId}
                 onChange={onCategoryChange}
-                placeholder={filteredCategories.length === 0 ? 'No categories of this type yet.' : ''}
+                disabled={!categoriesReady}
+                placeholder={!categoriesReady ? 'Loading categories…' : (filteredCategories.length === 0 ? 'No categories of this type yet.' : '')}
               />
               {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
             </div>
@@ -831,7 +833,8 @@ export default function PostAd() {
                   options={filteredCategories.map((c) => ({ label: c.name, value: c.id }))}
                   value={categoryId}
                   onChange={onCategoryChange}
-                  placeholder={filteredCategories.length === 0 ? 'No rental categories yet — add some from the admin panel.' : ''}
+                  disabled={!categoriesReady}
+                  placeholder={!categoriesReady ? 'Loading categories…' : (filteredCategories.length === 0 ? 'No rental categories yet — add some from the admin panel.' : '')}
                 />
                 {errors.categoryId && <p className="field-error">{errors.categoryId}</p>}
               </div>

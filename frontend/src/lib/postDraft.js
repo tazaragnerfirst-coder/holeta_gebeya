@@ -6,11 +6,21 @@
 // re-picked photos on an accidental back-navigation is an acceptable
 // trade-off for keeping this simple.
 const KEY = 'hg_postad_draft';
+// A draft older than this is treated as stale and discarded on load
+// rather than silently resuming a long-abandoned post (which could
+// also carry a postType/category that's no longer valid).
+const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24h
 
 export function loadDraft() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const draft = JSON.parse(raw);
+    if (!draft.savedAt || Date.now() - draft.savedAt > MAX_AGE_MS) {
+      localStorage.removeItem(KEY);
+      return null;
+    }
+    return draft;
   } catch {
     return null;
   }
@@ -18,7 +28,7 @@ export function loadDraft() {
 
 export function saveDraft(data) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(data));
+    localStorage.setItem(KEY, JSON.stringify({ ...data, savedAt: Date.now() }));
   } catch {
     // Storage full or disabled — draft just won't persist this time.
   }
