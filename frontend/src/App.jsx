@@ -8,7 +8,6 @@ import { BACKEND_URL } from './lib/firebase';
 import { getTelegramWebApp } from './lib/telegram';
 import PostProgressRing from './components/PostProgressRing.jsx';
 import { triggerPostAdSubmit } from './lib/postAdFab';
-import { hasPostAdBack, triggerPostAdBack } from './lib/postAdBack';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 // Home loads eagerly (it's the landing screen, needed immediately).
@@ -16,6 +15,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 // — trims the initial bundle for the common case of someone just
 // browsing listings without ever opening Chat/Dashboard/Post.
 const ProductDetail = lazy(() => import('./pages/ProductDetail.jsx'));
+const PostTypeSelect = lazy(() => import('./pages/PostTypeSelect.jsx'));
 const PostAd = lazy(() => import('./pages/PostAd.jsx'));
 const ChatList = lazy(() => import('./pages/ChatList.jsx'));
 const ChatThread = lazy(() => import('./pages/ChatThread.jsx'));
@@ -80,7 +80,8 @@ export default function App() {
                 <Routes location={backgroundLocation || location}>
                   <Route path="/" element={<Home />} />
                   <Route path="/product/:id" element={<ProductDetail />} />
-                  <Route path="/post" element={<PostAd />} />
+                  <Route path="/post" element={<PostTypeSelect />} />
+                  <Route path="/post/:type" element={<PostAd />} />
                   <Route path="/edit/:id" element={<PostAd />} />
                   <Route path="/chat" element={<ChatList />} />
                   <Route path="/chat/:id" element={<ChatThread />} />
@@ -173,10 +174,6 @@ function TelegramBackButton() {
     }
 
     function handleBack() {
-      // PostAd gets first say: stepping from its form back to the
-      // type-selection screen is a state change, not a route change,
-      // so it can't rely on the default history-back below.
-      if (hasPostAdBack() && triggerPostAdBack()) return;
       if (window.history.length > 1) navigate(-1);
       else navigate('/');
     }
@@ -192,10 +189,11 @@ function TelegramBackButton() {
 function BottomNav() {
   const { chats, registeredUid } = useAppData();
   const { pathname } = useLocation();
-  // While already on /post, the fab acts on the open form (same
-  // action as tapping Continue/Save Changes) instead of navigating
-  // to a page the person is already on.
-  const onPostPage = pathname === '/post';
+  // While already on the post form (/post/:type), the fab acts on
+  // the open form (same action as tapping Continue/Save Changes)
+  // instead of navigating to a page the person is already on. The
+  // type-selection screen itself (/post) still gets the plain "+".
+  const onPostPage = pathname.startsWith('/post/');
   // Sum of every conversation's unread count for this user — the
   // same total-unread badge pattern Telegram shows on its chat tab.
   const totalUnread = registeredUid

@@ -17,10 +17,8 @@ import { ErrorBanner } from '../components/Banner.jsx';
 import { runInBackground, isTransientError, withMinDuration } from '../lib/postProgress';
 import { loadDraft, saveDraft, clearDraft } from '../lib/postDraft';
 import { registerPostAdSubmit, unregisterPostAdSubmit } from '../lib/postAdFab';
-import { registerPostAdBack, unregisterPostAdBack } from '../lib/postAdBack';
 
-// Chosen on the type-selection screen shown before the form (#hog013).
-// Each type renders its own separate form block below — not one
+// Each post type renders its own separate form block below — not one
 // shared form with type-gated fields threaded through it.
 // Product: subcategory/attributes, required photos, simple required
 // price. Service: subcategory/attributes, optional photos, flexible
@@ -36,12 +34,11 @@ import { registerPostAdBack, unregisterPostAdBack } from '../lib/postAdBack';
 // block) instead of Product's flat field list — standing principle
 // per Taza: each post type gets its own structure, not shared just
 // because it's convenient.
-const POST_TYPES = [
-  { key: 'product', label: 'Product' },
-  { key: 'service', label: 'Service' },
-  { key: 'job', label: 'Job' },
-  { key: 'rent', label: 'Rent' },
-];
+// The type itself is picked on PostTypeSelect.jsx (route /post,
+// #hog013) — this component only ever renders once a type is known,
+// from either the /post/:type URL param (new post) or the loaded
+// listing (edit mode).
+const VALID_TYPES = ['product', 'service', 'job', 'rent'];
 
 // Soft guideline, not enforced — just gives a visible character count
 // on the Title field (#hog043: no character count was shown before).
@@ -49,7 +46,7 @@ const TITLE_SOFT_MAX = 80;
 
 export default function PostAd() {
   const navigate = useNavigate();
-  const { id: editId } = useParams();
+  const { id: editId, type: typeParam } = useParams();
   const isEdit = !!editId;
   const requireRegistered = useRequireRegistered();
   const { categories: CATEGORIES, categoriesReady, colorHexOverrides } = useAppData();
@@ -60,13 +57,13 @@ export default function PostAd() {
   // the dependent attributes (model/storage/ram/color) fill in once
   // a value for their parent is chosen.
   const [refOptions, setRefOptions] = useState({});
-  // null = not yet chosen. New-post mode opens on a type-selection
-  // screen (see the early return near the bottom) instead of
-  // defaulting to 'product' with a switchable chip row — #hog013.
-  // Edit mode always resolves this from the loaded listing before
-  // the form (gated by loadingExisting) ever renders, so it's never
-  // null there in practice.
-  const [postType, setPostType] = useState(null);
+  // New-post mode: fixed for this mount from the /post/:type URL
+  // param (validated below) — the type is chosen on PostTypeSelect,
+  // one route back, never inside this component. Edit mode resolves
+  // this from the loaded listing before the form (gated by
+  // loadingExisting) ever renders, so it starts null here and gets
+  // set once that load finishes.
+  const [postType, setPostType] = useState(() => (!isEdit ? typeParam : null));
   const [categoryId, setCategoryId] = useState('');
   const [subcategoryId, setSubcategoryId] = useState('');
   const [attrs, setAttrs] = useState({});
@@ -96,6 +93,15 @@ export default function PostAd() {
   // restore below, so the autosave effect can't fire on the initial
   // empty render and overwrite a real draft with blank fields.
   const [draftReady, setDraftReady] = useState(isEdit);
+
+  // Guards against a malformed/typo'd /post/:type URL — bounces back
+  // to the real selection screen instead of quietly rendering a form
+  // with no matching categories.
+  useEffect(() => {
+    if (!isEdit && !VALID_TYPES.includes(typeParam)) {
+      navigate('/post', { replace: true });
+    }
+  }, [isEdit, typeParam, navigate]);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -135,17 +141,16 @@ export default function PostAd() {
   }, [isEdit, editId]);
 
   // One-time restore of an in-progress draft (new-post mode only) —
-  // e.g. after an accidental back-navigation or app close mid-form.
+  // e.g. after an accidental refresh mid-form. Only applied when the
+  // draft's postType matches this mount's /post/:type — a draft
+  // started for Product must never bleed into a freshly-picked
+  // Service form. postType itself is never restored from the draft;
+  // it's fixed by the URL for the lifetime of this mount.
   useEffect(() => {
     if (isEdit) return;
     const draft = loadDraft();
-    if (draft) {
+    if (draft && draft.postType === typeParam) {
       setCategoryId(draft.categoryId || '');
-      // A saved draft always has postType recorded (saveDraft below
-      // has stored it since #hog007) — restoring it means a person
-      // resuming an in-progress post skips the type-selection screen
-      // and lands straight back in their form.
-      setPostType(draft.postType || null);
       setSubcategoryId(draft.subcategoryId || '');
       setAttrs(draft.attrs || {});
       setTitle(draft.title || '');
@@ -253,37 +258,6 @@ export default function PostAd() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subcategory?.id, attrs.brand]);
 
-  // See the postAdBack registration below: only true when postType
-  // was picked by tapping a card on the type-selection screen this
-  // session, as opposed to being preloaded by Edit mode or a resumed
-  // draft.
-  const chosenViaSelectRef = useRef(false);
-
-  function onPostTypeChange(type) {
-    chosenViaSelectRef.current = true;
-    // Pushes a same-URL history entry so the phone's hardware/gesture
-    // back button (which fires a plain 'popstate', unlike Telegram's
-    // own BackButton API) has something to pop back to first, instead
-    // of skipping straight past the form to whatever page came before
-    // /post. See the popstate listener below — it mirrors the
-    // registerPostAdBack handler that already does this for Telegram's
-    // BackButton.
-    window.history.pushState({ hgPostAdFormStep: true }, '', window.location.pathname + window.location.search);
-    setPostType(type);
-    setCategoryId('');
-    setSubcategoryId('');
-    setAttrs({});
-    setTitleTouched(false);
-    setTitle('');
-    setPrice('');
-    setPriceType('fixed');
-    setRentUnit('month');
-    setDeposit('');
-    setMinTerm('');
-    setDescription('');
-    setImages([]);
-    setErrors({});
-  }
   function onCategoryChange(id) {
     setCategoryId(id);
     setSubcategoryId('');
@@ -577,39 +551,6 @@ export default function PostAd() {
     return () => unregisterPostAdSubmit();
   }, []);
 
-  // Lets the Telegram BackButton (rendered in App.jsx, outside this
-  // component tree) step from the form back to the type-selection
-  // screen instead of leaving /post entirely — see postAdBack.js.
-  // Only applies when postType was picked by tapping a card on that
-  // screen this session (chosenViaSelectRef, set in
-  // onPostTypeChange); Edit mode and a resumed draft both preload
-  // postType before the screen would ever show, so back should leave
-  // /post as before in those cases.
-  // The phone's own hardware/gesture back button doesn't go through
-  // Telegram's BackButton API — it's a plain browser 'popstate', which
-  // the registerPostAdBack bridge above never sees. Without this, it
-  // skipped the type-selection step entirely and left /post straight
-  // for whatever page came before it. Sharing one handler for both
-  // keeps the two back paths in sync — the pushState in
-  // onPostTypeChange above gives popstate something to consume first.
-  useEffect(() => {
-    function handleBackStep() {
-      if (!isEdit && postType !== null && chosenViaSelectRef.current) {
-        setPostType(null);
-        chosenViaSelectRef.current = false;
-        return true;
-      }
-      return false;
-    }
-    registerPostAdBack(handleBackStep);
-    window.addEventListener('popstate', handleBackStep);
-    return () => {
-      unregisterPostAdBack();
-      window.removeEventListener('popstate', handleBackStep);
-    };
-  }, [isEdit, postType]);
-
-
   if (isEdit && loadingExisting) {
     return (
       <div className="page">
@@ -627,34 +568,11 @@ export default function PostAd() {
     );
   }
 
-  // New-post mode, no type chosen yet: show only the type-selection
-  // screen. Picking one moves straight into that type's own form
-  // below (#hog013). The phone/Telegram back button steps back to
-  // this screen from the form (see postAdBack.js) instead of leaving
-  // /post entirely.
-  if (!isEdit && postType === null) {
-    return (
-      <div className="page">
-        <h2 className="page-title">Post an Ad</h2>
-        <div className="form-block">
-          <div className="field-group">
-            <label className="field-label">What are you posting?</label>
-            <div className="post-type-select">
-              {POST_TYPES.map((t) => (
-                <button
-                  type="button"
-                  key={t.key}
-                  className="post-type-card"
-                  onClick={() => onPostTypeChange(t.key)}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+  // Malformed /post/:type — the redirect effect above is already
+  // sending the person back to /post; render nothing in the meantime
+  // instead of flashing a form with no matching categories.
+  if (!isEdit && !VALID_TYPES.includes(typeParam)) {
+    return null;
   }
 
   return (
