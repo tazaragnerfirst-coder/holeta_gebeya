@@ -261,6 +261,14 @@ export default function PostAd() {
 
   function onPostTypeChange(type) {
     chosenViaSelectRef.current = true;
+    // Pushes a same-URL history entry so the phone's hardware/gesture
+    // back button (which fires a plain 'popstate', unlike Telegram's
+    // own BackButton API) has something to pop back to first, instead
+    // of skipping straight past the form to whatever page came before
+    // /post. See the popstate listener below — it mirrors the
+    // registerPostAdBack handler that already does this for Telegram's
+    // BackButton.
+    window.history.pushState({ hgPostAdFormStep: true }, '', window.location.pathname + window.location.search);
     setPostType(type);
     setCategoryId('');
     setSubcategoryId('');
@@ -577,16 +585,28 @@ export default function PostAd() {
   // onPostTypeChange); Edit mode and a resumed draft both preload
   // postType before the screen would ever show, so back should leave
   // /post as before in those cases.
+  // The phone's own hardware/gesture back button doesn't go through
+  // Telegram's BackButton API — it's a plain browser 'popstate', which
+  // the registerPostAdBack bridge above never sees. Without this, it
+  // skipped the type-selection step entirely and left /post straight
+  // for whatever page came before it. Sharing one handler for both
+  // keeps the two back paths in sync — the pushState in
+  // onPostTypeChange above gives popstate something to consume first.
   useEffect(() => {
-    registerPostAdBack(() => {
+    function handleBackStep() {
       if (!isEdit && postType !== null && chosenViaSelectRef.current) {
         setPostType(null);
         chosenViaSelectRef.current = false;
         return true;
       }
       return false;
-    });
-    return () => unregisterPostAdBack();
+    }
+    registerPostAdBack(handleBackStep);
+    window.addEventListener('popstate', handleBackStep);
+    return () => {
+      unregisterPostAdBack();
+      window.removeEventListener('popstate', handleBackStep);
+    };
   }, [isEdit, postType]);
 
 
