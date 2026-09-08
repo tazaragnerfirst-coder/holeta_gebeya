@@ -260,9 +260,7 @@ export default function Home() {
             <div className="empty-state-sub">Check your connection and try again.</div>
             <button type="button" className="link-btn" style={{ marginTop: 14 }} onClick={() => window.location.reload()}>Refresh</button>
           </div>
-        ) : (
-          <p className="helper-text">No listings yet — be the first to post one.</p>
-        )
+        ) : null
       )}
 
       {!loading && displayed.length > 0 && (
