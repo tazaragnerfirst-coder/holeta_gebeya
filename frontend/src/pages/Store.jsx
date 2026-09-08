@@ -54,6 +54,12 @@ export default function Store() {
   const [editOpen, setEditOpen] = useState(false);
   const [editBusy, setEditBusy] = useState(false);
   const [editError, setEditError] = useState('');
+  // Which tab is active in the category-tab row below the header
+  // (per Taza's wireframe — one filtered grid at a time, not every
+  // category stacked with its own section like before). 'all' shows
+  // everything; '__job__' is the synthetic Jobs bucket, same id
+  // convention Home.jsx's JOB_CHIP_ID uses for the same purpose.
+  const [selectedTab, setSelectedTab] = useState('all');
 
   useEffect(() => {
     if (!sellerId) return;
@@ -116,11 +122,24 @@ export default function Store() {
 
   // Group active listings by category (in the admin's category
   // order), plus a separate "Jobs" bucket for categoryType:'job'
-  // posts, which carry no category id (see PostAd.jsx).
+  // posts, which carry no category id (see PostAd.jsx). Only
+  // categories that actually have items become a tab — an empty tab
+  // would just be a dead end.
   const jobs = listings.filter((l) => l.categoryType === 'job');
   const byCategory = (categories || [])
     .map((c) => ({ cat: c, items: listings.filter((l) => l.category === c.id) }))
     .filter((g) => g.items.length > 0);
+
+  const tabs = [
+    { id: 'all', label: 'All', icon: 'grid' },
+    ...byCategory.map(({ cat }) => ({ id: cat.id, label: cat.name, icon: cat.icon || 'grid' })),
+    ...(jobs.length > 0 ? [{ id: '__job__', label: 'Jobs', icon: 'briefcase' }] : []),
+  ];
+  const visibleItems = selectedTab === 'all'
+    ? listings
+    : selectedTab === '__job__'
+      ? jobs
+      : listings.filter((l) => l.category === selectedTab);
 
   const socialLinks = storeProfile?.socialLinks || {};
   const hasAnySocial = SOCIAL.some((s) => socialLinks[s.key]);
@@ -157,10 +176,10 @@ export default function Store() {
       {storeProfile?.bio && <p className="helper-text" style={{ marginTop: 10 }}>{storeProfile.bio}</p>}
 
       {hasAnySocial && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+        <div className="store-social-row">
           {SOCIAL.filter((s) => socialLinks[s.key]).map((s) => (
-            <a key={s.key} href={socialHref(s.key, socialLinks[s.key])} target="_blank" rel="noopener noreferrer" className="btn-ghost" style={{ fontSize: 12.5 }}>
-              <Icon name={s.icon} size={13} /> {s.label}
+            <a key={s.key} href={socialHref(s.key, socialLinks[s.key])} target="_blank" rel="noopener noreferrer" className="store-social-link">
+              <Icon name={s.icon} size={16} /> {s.label}
             </a>
           ))}
         </div>
@@ -192,19 +211,24 @@ export default function Store() {
         </p>
       )}
 
-      {jobs.length > 0 && (
-        <>
-          <div className="section-title" style={{ marginTop: 18 }}>Jobs</div>
-          <ListingGrid items={jobs} renderItem={(item) => <ListingCard key={item.id} item={item} />} />
-        </>
+      {listings.length > 0 && tabs.length > 1 && (
+        <div className="chip-row cat-chip-row" style={{ marginTop: 18 }}>
+          {tabs.map((t) => (
+            <button
+              type="button"
+              key={t.id}
+              className={`chip cat-chip ${selectedTab === t.id ? 'active' : ''}`}
+              onClick={() => setSelectedTab(t.id)}
+            >
+              <Icon name={t.icon} size={14} /> {t.label}
+            </button>
+          ))}
+        </div>
       )}
 
-      {byCategory.map(({ cat, items }) => (
-        <React.Fragment key={cat.id}>
-          <div className="section-title" style={{ marginTop: 18 }}>{cat.name}</div>
-          <ListingGrid items={items} renderItem={(item) => <ListingCard key={item.id} item={item} />} />
-        </React.Fragment>
-      ))}
+      {visibleItems.length > 0 && (
+        <ListingGrid items={visibleItems} renderItem={(item) => <ListingCard key={item.id} item={item} />} />
+      )}
 
       <EditStoreSheet
         open={editOpen}
