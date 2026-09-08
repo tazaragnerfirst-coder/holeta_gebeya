@@ -2,6 +2,8 @@
 // Docs: https://core.telegram.org/bots/webapps
 // Load the SDK script in index.html: <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
+import { getVibration } from './vibration';
+
 export function getTelegramWebApp() {
   return typeof window !== 'undefined' ? window.Telegram?.WebApp : null;
 }
@@ -56,6 +58,7 @@ export function getUnsafeUserPreview() {
 }
 
 export function hapticSuccess() {
+  if (!getVibration()) return;
   const tg = getTelegramWebApp();
   if (tg?.HapticFeedback?.notificationOccurred) {
     tg.HapticFeedback.notificationOccurred('success');
@@ -64,6 +67,7 @@ export function hapticSuccess() {
   navigator.vibrate?.(20);
 }
 export function hapticError() {
+  if (!getVibration()) return;
   const tg = getTelegramWebApp();
   if (tg?.HapticFeedback?.notificationOccurred) {
     tg.HapticFeedback.notificationOccurred('error');
@@ -72,5 +76,6 @@ export function hapticError() {
   navigator.vibrate?.([30, 40, 30]);
 }
 export function hapticImpact(style = 'light') {
+  if (!getVibration()) return;
   getTelegramWebApp()?.HapticFeedback?.impactOccurred(style);
 }

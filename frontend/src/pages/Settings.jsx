@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Icon from '../components/Icon.jsx';
 import Switch from '../components/Switch.jsx';
-import { getVibrant, setVibrant } from '../lib/vibrant';
+import { getVibration, setVibration } from '../lib/vibration';
 import { getTheme, setTheme } from '../lib/theme';
 
 const THEME_OPTIONS = [
@@ -17,12 +17,12 @@ const THEME_OPTIONS = [
 export default function Settings() {
   const [displayOpen, setDisplayOpen] = useState(false);
   const [languageNoteOpen, setLanguageNoteOpen] = useState(false);
-  const [vibrant, setVibrantState] = useState(getVibrant());
+  const [vibration, setVibrationState] = useState(getVibration());
   const [theme, setThemeState] = useState(getTheme());
 
-  function toggleVibrant(on) {
-    setVibrantState(on);
-    setVibrant(on);
+  function toggleVibration(on) {
+    setVibrationState(on);
+    setVibration(on);
   }
 
   function chooseTheme(value) {
@@ -45,10 +45,10 @@ export default function Settings() {
           <div className="t">Change Language <span className="premium-tag"><Icon name="crown" size={9} /> Premium</span></div>
           <div className="chev"><Icon name="chevronLeft" size={16} /></div>
         </div>
-        <div className="menu-item" onClick={() => toggleVibrant(!vibrant)} style={{ cursor: 'default' }}>
-          <div className="menu-icon"><Icon name="palette" size={17} /></div>
-          <div className="t">Vibrant</div>
-          <Switch checked={vibrant} onChange={toggleVibrant} />
+        <div className="menu-item" onClick={() => toggleVibration(!vibration)} style={{ cursor: 'default' }}>
+          <div className="menu-icon"><Icon name="vibrate" size={17} /></div>
+          <div className="t">Vibration</div>
+          <Switch checked={vibration} onChange={toggleVibration} />
         </div>
       </div>
 

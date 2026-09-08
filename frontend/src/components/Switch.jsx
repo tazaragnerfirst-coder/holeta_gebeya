@@ -1,7 +1,7 @@
 import React from 'react';
 
 // Minimal controlled on/off switch — used on Settings rows (e.g.
-// Vibrant). Stateless: parent owns `checked` and reacts to onChange.
+// Vibration). Stateless: parent owns `checked` and reacts to onChange.
 export default function Switch({ checked, onChange, disabled = false }) {
   return (
     <button

@@ -7,8 +7,8 @@ import {
   ClockCounterClockwise, SmileySad, Check, ArrowUp, Warning, PencilSimple,
   SignOut, Pause, Play, Crown, Storefront, SealCheck, GearSix, Coins,
   Globe, BookmarkSimple, ShareNetwork, Sun, Moon, Monitor, Paperclip,
-  WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo, Lock, Palette,
-  ChartBar, ListBullets,
+  WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo, Lock,
+  ChartBar, ListBullets, Vibrate,
 } from '@phosphor-icons/react';
 
 // Icon set: Phosphor (regular/outline weight) — swapped in from
@@ -28,8 +28,9 @@ import {
 // instead of borrowing that seal. `gear` (GearSix, was named
 // "sliders2") is the actual Settings entry point; `sliders`
 // (SlidersHorizontal) stays for adjustable-value rows like Display.
-// Vibrant is a color/saturation toggle, not a settings row, so it
-// got its own `palette` (Palette) rather than the Settings gear.
+// Vibration is the haptic-feedback toggle (was mislabeled "Vibrant"
+// and left unwired — see lib/vibration.js) — got its own `vibrate`
+// (Vibrate) rather than the Settings gear.
 // `briefcase` (Briefcase) is reserved for the Job post type/category
 // only — the Dashboard nav tab got its own `chartBar` (ChartBar,
 // analytics) and Profile's "My Ads" got `listBullets` (ListBullets,
@@ -79,7 +80,7 @@ const COMPONENTS = {
   shieldLock: SealCheck,
   gear: GearSix,
   lock: Lock,
-  palette: Palette,
+  vibrate: Vibrate,
   chartBar: ChartBar,
   listBullets: ListBullets,
   coin: Coins,
