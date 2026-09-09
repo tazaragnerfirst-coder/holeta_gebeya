@@ -7,6 +7,10 @@
   --accent:#E5A03B; --accent-dark:#B9791F; --accent-tint:#FBEDD4;
   --safety:#C1502E; --safety-tint:#FBE7E0; --ok:#2F7A4D;
   --radius-lg:16px; --radius-md:14px; --radius-sm:10px;
+  /* Golden-ratio (φ≈1.618) spacing scale — the grid's existing
+     16/10/6px progression already approximated this (16÷φ≈9.9,
+     10÷φ≈6.2); named here so it's reusable instead of re-derived. */
+  --space-xs:6px; --space-sm:10px; --space-md:16px;
   --shadow-card:0 1px 2px rgba(19,34,40,.08), 0 6px 16px -8px rgba(19,34,40,.2);
   --font-ui:'Inter',system-ui,sans-serif;
 }
@@ -32,7 +36,7 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 
 .app-shell{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-app);}
 .screen-container{flex:1;overflow-y:auto;padding-bottom:78px;}
-.page{padding:14px 16px 6px;}
+.page{padding:14px var(--space-md) var(--space-xs);}
 .page.px{padding-left:0;padding-right:0;}
 .px{padding:0 16px;}
 .page-title{font-size:20px;font-weight:800;margin:6px 0 16px;}
@@ -93,9 +97,9 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
    edge margin — the tight grid look Taza wants, without
    hardcoding a pixel width (still relative to .page's own padding,
    so it stays correct if that ever changes). */
-.listing-grid{display:flex;flex-direction:column;gap:6px;margin:0 -10px;}
-.listing-grid-cols{display:flex;gap:6px;align-items:flex-start;}
-.listing-grid-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:6px;}
+.listing-grid{display:flex;flex-direction:column;gap:var(--space-xs);margin:0 calc(-1 * var(--space-sm));}
+.listing-grid-cols{display:flex;gap:var(--space-xs);align-items:flex-start;}
+.listing-grid-col{flex:1 1 0;min-width:0;display:flex;flex-direction:column;gap:var(--space-xs);}
 .listing-grid-full{width:100%;}
 .listing-card{display:block;text-decoration:none;color:inherit;background:transparent;transition:transform .12s ease;}
 .listing-card:active{transform:scale(.97);}
@@ -111,10 +115,10 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .listing-card.card-job{display:flex;gap:9px;align-items:flex-start;background:var(--card-surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:7px;}
 .card-job .thumb{flex:0 0 30%;max-width:110px;}
 .card-job .card-footer{flex:1;min-width:0;padding:1px 2px 0 0;}
-/* Fixed 1:1 square, image cropped to fill edge-to-edge (object-fit:
-   cover) — dense grid card. Title/price/meta sit in
-   a plain block below the photo, not overlaid on it. */
-.thumb{position:relative;background:var(--surface-sunken);overflow:hidden;aspect-ratio:1/1;border-radius:var(--radius-md);}
+/* Golden-ratio (φ≈1.618) crop instead of a plain square — wider
+   than tall, which also trims a little vertical footprint from the
+   dense masonry grid. */
+.thumb{position:relative;background:var(--surface-sunken);overflow:hidden;aspect-ratio:1.618/1;border-radius:var(--radius-md);}
 .thumb-img{display:block;width:100%;height:100%;object-fit:cover;}
 .carousel{height:270px;position:relative;background:var(--surface-sunken);}
 
@@ -216,7 +220,10 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .store-header{display:flex;align-items:center;gap:12px;margin:8px 0 4px;}
 .store-header-avatar{width:52px;height:52px;border-radius:50%;background:var(--primary-tint);color:var(--primary);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;flex:0 0 auto;}
 .store-header-info{flex:1;min-width:0;}
-.store-header-name{font-size:15px;font-weight:800;display:flex;align-items:center;gap:4px;}
+/* Name sized via the golden-ratio (φ≈1.618) applied to the meta
+   text's 11.5px, so name/meta reads as a deliberate hierarchy step
+   rather than an arbitrary size bump. */
+.store-header-name{font-size:18.5px;font-weight:800;display:flex;align-items:center;gap:4px;}
 .store-header-info .stars{display:flex;align-items:center;gap:2px;margin-top:3px;}
 .store-header-info .rating-count{font-size:11.5px;color:var(--ink-faint);margin-left:5px;font-weight:600;}
 .store-header-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-faint);margin-top:4px;}
