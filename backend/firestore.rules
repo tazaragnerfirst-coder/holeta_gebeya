@@ -31,7 +31,12 @@ service cloud.firestore {
       // signed-out browsers) may also bump the public `views` counter
       // by exactly +1 and nothing else — it's a low-stakes public
       // stat, not sensitive data, so it isn't gated behind an account.
-      allow update: if (request.auth != null && resource.data.sellerId == request.auth.uid)
+      // `boostedUntil` is money-gated (Wallet → Boost purchase) and is
+      // never client-settable, even by the listing's own owner — only
+      // isAdmin() or the /spendWallet backend endpoint (Admin SDK,
+      // bypasses these rules) can change it.
+      allow update: if (request.auth != null && resource.data.sellerId == request.auth.uid
+            && request.resource.data.get('boostedUntil', null) == resource.data.get('boostedUntil', null))
         || isAdmin()
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views'])
             && request.resource.data.views == resource.data.views + 1);
@@ -122,6 +127,42 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Wallet: internal spendable balance funding Subscription + Boost
+    // purchases. Never client-writable in either direction — credited
+    // only by the admin panel on a walletTopups approval (isAdmin()),
+    // debited only by the /spendWallet backend endpoint (Admin SDK,
+    // bypasses these rules entirely). This is what stops a client from
+    // granting itself balance or a purchase.
+    match /wallets/{uid} {
+      allow read: if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Wallet top-up requests (manual receipt review, same model as the
+    // old subscriptionPayments/equb_bot approach). A user can only
+    // ever create their own pending request, at least 50 ETB — only
+    // the admin panel approves/rejects (and credits wallets/{uid}
+    // balance on approval).
+    match /walletTopups/{topupId} {
+      allow read: if (request.auth != null && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount >= 50;
+      allow update, delete: if isAdmin();
+    }
+
+    // Wallet transaction ledger (topup credits, subscription/boost
+    // debits) — an immutable audit trail. Only ever created by the
+    // admin panel (topup credit) or the /spendWallet backend endpoint
+    // (Admin SDK, bypasses these rules) — never editable or deletable
+    // once written.
+    match /walletTransactions/{txId} {
+      allow read: if (request.auth != null && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
     // Public store page (#hog023/#hog046) — bio/address/social links
     // only. Deliberately separate from users/{uid} (which holds the
     // phone number and is admin-only writable) so this can be public
@@ -136,8 +177,10 @@ service cloud.firestore {
     // Users can read/write only their own profile doc. The admin
     // panel can also read any user's doc (for the User Management
     // list) and toggle ONLY the `suspended`, `subscriptionActive`,
-    // and `subscriptionExpiresAt` fields on it (the latter two set
-    // when a subscriptionPayments doc below gets approved) — every
+    // and `subscriptionExpiresAt` fields on it. The latter two are
+    // now normally set by the /spendWallet backend endpoint (Admin
+    // SDK, bypasses this rule) when a subscription is wallet-funded —
+    // this isAdmin() path stays as a manual override/fallback. Every
     // other field (phone, name, telegramId, etc.) stays writable
     // only by the telegramAuth Cloud Function, same as before.
     match /users/{uid} {

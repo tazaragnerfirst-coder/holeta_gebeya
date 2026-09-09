@@ -18,3 +18,13 @@ export const PAYMENT_ACCOUNTS = [
   { method: 'CBE', label: 'Commercial Bank of Ethiopia (CBE)', account: '000000' },
   { method: 'Telebirr', label: 'Telebirr', account: '000000' },
 ];
+
+// Wallet: internal spendable balance funding both Subscription and
+// Boost purchases. Topped up the same manual receipt-review way as
+// the old subscription-only flow — see lib/wallet.js and
+// backend/server/index.js's /spendWallet. Keep these mirrored with
+// the matching constants in backend/server/index.js (a plain
+// CommonJS server, can't share this ES module).
+export const MIN_WALLET_TOPUP_ETB = 50;
+export const BOOST_PRICE_ETB = 99;
+export const BOOST_DURATION_DAYS = 7;

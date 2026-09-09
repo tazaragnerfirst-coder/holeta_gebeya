@@ -19,7 +19,7 @@ auth.onAuthStateChanged(async (user) => {
   initAnalytics();
   initSupport();
   initErrors();
-  initSubscriptions();
+  initWalletTopups();
 });
 
 document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
@@ -338,12 +338,14 @@ function initErrors() {
   });
 }
 
-// --- Premium subscriptions (subscriptionPayments collection) ---------
-// Manual receipt-review queue, same model as equb_bot: user already
-// sent money off-app and uploaded a screenshot; approving here is
-// the ONLY place subscriptionActive/subscriptionExpiresAt ever get
-// written (see firestore.rules — client can never set those itself).
-const SUBSCRIPTION_PERIOD_DAYS = 30;
+// --- Wallet top-ups (walletTopups collection) -------------------------
+// Manual receipt-review queue (same model as equb_bot): user already
+// sent money off-app and uploaded a screenshot; approving here is the
+// ONLY place wallets/{uid}.balance is ever credited (see
+// firestore.rules — client can never set it itself). The credited
+// balance then funds Subscription + Boost purchases instantly,
+// client-side, via the /spendWallet backend endpoint — this tab no
+// longer activates a subscription directly.
 
 function dataUrlToBlobUrl(dataUrl) {
   const [meta, b64] = dataUrl.split(',');
@@ -354,11 +356,11 @@ function dataUrlToBlobUrl(dataUrl) {
   return URL.createObjectURL(new Blob([arr], { type: mime }));
 }
 
-function initSubscriptions() {
-  db.collection('subscriptionPayments').where('status', '==', 'pending').orderBy('createdAt', 'desc').limit(50).get().then((snap) => {
-    const listEl = document.getElementById('subscriptions-list');
-    const emptyEl = document.getElementById('subscriptions-empty');
-    const badge = document.getElementById('subscriptions-badge');
+function initWalletTopups() {
+  db.collection('walletTopups').where('status', '==', 'pending').orderBy('createdAt', 'desc').limit(50).get().then((snap) => {
+    const listEl = document.getElementById('wallet-topups-list');
+    const emptyEl = document.getElementById('wallet-topups-empty');
+    const badge = document.getElementById('wallet-topups-badge');
 
     if (snap.empty) {
       emptyEl.hidden = false;
@@ -375,13 +377,13 @@ function initSubscriptions() {
       row.innerHTML = `
         ${p.receiptImage ? `<img src="${p.receiptImage}" alt="" class="thumb" />` : `<div class="thumb thumb-empty"></div>`}
         <div class="list-row-info">
-          <div><strong>${p.name || 'Unknown user'}</strong></div>
+          <div><strong>${p.name || 'Unknown user'}</strong> — ${p.amount || 0} ETB</div>
           <div class="muted">${p.phone || '—'} · ${p.paymentMethod || '—'}</div>
           <div class="muted">${when}</div>
         </div>
         <div class="row-actions">
           <button type="button" class="btn-ghost" data-act="viewreceipt">View receipt</button>
-          <button type="button" class="btn-ghost" data-act="approve" data-id="${docSnap.id}" data-uid="${p.uid}">Approve</button>
+          <button type="button" class="btn-ghost" data-act="approve" data-id="${docSnap.id}" data-uid="${p.uid}" data-amount="${p.amount || 0}">Approve</button>
           <button type="button" class="btn-ghost danger-text" data-act="reject" data-id="${docSnap.id}">Reject</button>
         </div>
       `;
@@ -393,28 +395,29 @@ function initSubscriptions() {
         const btn = e.target;
         btn.disabled = true;
         const adminUid = auth.currentUser && auth.currentUser.uid;
-        const expiresAtMs = Date.now() + SUBSCRIPTION_PERIOD_DAYS * 24 * 60 * 60 * 1000;
-        const expiresAt = firebase.firestore.Timestamp.fromMillis(expiresAtMs);
-        const batch = db.batch();
-        batch.update(db.collection('subscriptionPayments').doc(docSnap.id), {
-          status: 'approved', reviewedBy: adminUid, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        });
-        batch.update(db.collection('users').doc(p.uid), { subscriptionActive: true, subscriptionExpiresAt: expiresAt });
-        await batch.commit();
-        // Refresh the badge on the seller's already-posted listings too
-        // (#hog023/#hog048 Verified badge) — otherwise it'd only show
-        // up once they next edit each listing. Stored as a plain ms
-        // number here (not a Timestamp) to match what PostAd.jsx writes
-        // client-side, since the frontend badge check compares it
-        // directly against Date.now().
-        const sellerListings = await db.collection('listings').where('sellerId', '==', p.uid).get();
-        if (!sellerListings.empty) {
-          const listingsBatch = db.batch();
-          sellerListings.docs.forEach((d) => {
-            listingsBatch.update(d.ref, { sellerSubscriptionActive: true, sellerSubscriptionExpiresAt: expiresAtMs });
+        const amount = Number(btn.dataset.amount) || 0;
+        const uid = btn.dataset.uid;
+
+        // A transaction, not a plain batch: crediting the balance
+        // needs to read the CURRENT balance first (to compute
+        // balanceAfter for the ledger entry) and commit both writes
+        // atomically against that same read.
+        await db.runTransaction(async (tx) => {
+          const walletRef = db.collection('wallets').doc(uid);
+          const walletSnap = await tx.get(walletRef);
+          const currentBalance = walletSnap.exists ? (walletSnap.data().balance || 0) : 0;
+          const newBalance = currentBalance + amount;
+
+          tx.set(walletRef, { balance: newBalance, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+          tx.set(db.collection('walletTransactions').doc(), {
+            uid, type: 'topup', amount, balanceAfter: newBalance,
+            referenceId: docSnap.id, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           });
-          await listingsBatch.commit();
-        }
+          tx.update(db.collection('walletTopups').doc(docSnap.id), {
+            status: 'approved', reviewedBy: adminUid, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          });
+        });
+
         row.remove();
         const remaining = Number(badge.textContent) - 1;
         badge.textContent = remaining;
@@ -422,7 +425,7 @@ function initSubscriptions() {
       });
       row.querySelector('[data-act="reject"]').addEventListener('click', async (e) => {
         const adminUid = auth.currentUser && auth.currentUser.uid;
-        await db.collection('subscriptionPayments').doc(e.target.dataset.id).update({
+        await db.collection('walletTopups').doc(e.target.dataset.id).update({
           status: 'rejected', reviewedBy: adminUid, reviewedAt: firebase.firestore.FieldValue.serverTimestamp(),
         });
         row.remove();

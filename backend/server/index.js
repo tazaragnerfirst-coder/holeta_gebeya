@@ -379,6 +379,95 @@ app.post('/getSellerPhone', async (req, res) => {
   }
 });
 
+// Wallet: internal spendable balance funding Subscription + Boost
+// purchases. Topped up the same manual receipt-review way the old
+// subscription-only flow used (client creates a walletTopups doc, the
+// admin panel credits wallets/{uid}.balance on approval). This is the
+// ONLY place a balance is ever spent — it runs via the Admin SDK
+// (bypasses firestore.rules entirely) so a client can't fake a
+// sufficient balance or grant itself a subscription/boost directly.
+// Mirror these two constants with frontend/src/lib/constants.js if
+// pricing ever changes (plain CommonJS server, can't share that ES
+// module).
+const BOOST_PRICE_ETB = 99;
+const BOOST_DURATION_DAYS = 7;
+const SUBSCRIPTION_PRICE_ETB = 99;
+const SUBSCRIPTION_PERIOD_DAYS = 30;
+
+app.post('/spendWallet', async (req, res) => {
+  try {
+    const { idToken, type, listingId } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    if (type !== 'subscription' && type !== 'boost') return res.status(400).json({ error: 'Invalid purchase type.' });
+    if (type === 'boost' && !listingId) return res.status(400).json({ error: 'listingId is required for a boost.' });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const price = type === 'subscription' ? SUBSCRIPTION_PRICE_ETB : BOOST_PRICE_ETB;
+    const expiresAtMs = Date.now() + (type === 'subscription' ? SUBSCRIPTION_PERIOD_DAYS : BOOST_DURATION_DAYS) * 24 * 60 * 60 * 1000;
+
+    let listingRef = null;
+    if (type === 'boost') {
+      listingRef = db.collection('listings').doc(listingId);
+      const listingSnap = await listingRef.get();
+      if (!listingSnap.exists) return res.status(404).json({ error: 'Ad not found.' });
+      if (listingSnap.data().sellerId !== uid) return res.status(403).json({ error: 'You can only boost your own ad.' });
+    }
+
+    const walletRef = db.collection('wallets').doc(uid);
+    const result = await db.runTransaction(async (tx) => {
+      const walletSnap = await tx.get(walletRef);
+      const balance = walletSnap.exists ? (walletSnap.data().balance || 0) : 0;
+      if (balance < price) return { insufficient: true, balance };
+
+      const newBalance = balance - price;
+      tx.set(walletRef, { balance: newBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('walletTransactions').doc(), {
+        uid,
+        type,
+        amount: -price,
+        balanceAfter: newBalance,
+        referenceId: type === 'boost' ? listingId : null,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      if (type === 'subscription') {
+        tx.set(db.collection('users').doc(uid), {
+          subscriptionActive: true,
+          subscriptionExpiresAt: admin.firestore.Timestamp.fromMillis(expiresAtMs),
+        }, { merge: true });
+      } else {
+        tx.update(listingRef, { boostedUntil: admin.firestore.Timestamp.fromMillis(expiresAtMs) });
+      }
+
+      return { insufficient: false, balance: newBalance };
+    });
+
+    if (result.insufficient) {
+      return res.status(402).json({ error: 'Insufficient wallet balance.', balance: result.balance });
+    }
+
+    // Best-effort, same as the old admin subscription-approve flow
+    // (#hog048): refresh the Verified badge snapshot on the seller's
+    // already-posted listings so it doesn't wait for their next edit.
+    if (type === 'subscription') {
+      const sellerListings = await db.collection('listings').where('sellerId', '==', uid).get();
+      if (!sellerListings.empty) {
+        const batch = db.batch();
+        sellerListings.docs.forEach((d) => {
+          batch.update(d.ref, { sellerSubscriptionActive: true, sellerSubscriptionExpiresAt: expiresAtMs });
+        });
+        await batch.commit();
+      }
+    }
+
+    res.json({ ok: true, balance: result.balance });
+  } catch (err) {
+    console.error('spendWallet failed:', err);
+    res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
 // Mirrors frontend/src/lib/format.js's formatListingPrice — kept as a
 // small standalone copy here since the frontend module is an ES
 // module and this server is CommonJS; the two aren't shared.

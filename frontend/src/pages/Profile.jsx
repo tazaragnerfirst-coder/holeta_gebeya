@@ -89,6 +89,11 @@ export default function Profile() {
     if (user) navigate(`/store/${user.uid}`);
   }
 
+  async function goWallet() {
+    await requireRegistered().catch(() => {});
+    navigate('/wallet');
+  }
+
   const quickActions = [
     { icon: 'edit', t: 'Edit Info', onClick: openEdit },
     { icon: 'bookmark', t: 'Favorites', onClick: goFavorites },
@@ -96,6 +101,12 @@ export default function Profile() {
   ];
 
   const box1 = [
+    {
+      icon: 'wallet',
+      t: 'Wallet',
+      sub: registeredUid ? `${walletBalance.toLocaleString('en-US')} ETB` : null,
+      onClick: goWallet,
+    },
     { icon: 'crown', t: 'Subscription', onClick: goSubscription },
     { icon: 'trendingUp', t: 'Boost', onClick: goBoost },
     { icon: 'coin', t: 'Holeta Coin', sub: 'Soon', onClick: () => navigate('/holeta-coin') },

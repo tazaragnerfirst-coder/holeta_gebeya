@@ -1,13 +1,39 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from './Icon.jsx';
+import { spendWallet } from '../lib/wallet';
+import { BOOST_PRICE_ETB, BOOST_DURATION_DAYS } from '../lib/constants';
 
-// Reused on the Dashboard (aggregate, across all ads) and on the
-// per-ad detail page (that one ad vs the seller's others). Purchase
-// isn't built yet, so the CTA just reveals a short "coming soon"
-// note instead of linking anywhere — see project notes.
-export default function BoostCard({ title = 'Boost your reach', description, compare, ctaLabel = 'Boost an ad' }) {
-  const [showNote, setShowNote] = useState(false);
+// Reused on the Dashboard (aggregate, across all ads), the general
+// Boost promo page, and the per-ad detail page. Only the per-ad case
+// (adId passed, from ViewAdDetail — the one place a specific ad is
+// in scope) can actually complete a wallet-funded purchase; the other
+// two just route to Dashboard's ad list, where "see why & boost"
+// leads into that per-ad page — same reasoning /spendWallet's backend
+// enforces (a boost has to name one specific ad).
+export default function BoostCard({ title = 'Boost your reach', description, compare, ctaLabel = 'Boost an ad', adId, onBoosted }) {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const max = compare && compare.length > 0 ? Math.max(...compare.map((c) => c.value), 0.1) : 0;
+
+  async function handleClick() {
+    if (!adId) { navigate('/dashboard/ads'); return; }
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await spendWallet({ type: 'boost', listingId: adId });
+      onBoosted?.();
+      // The ad's own boostedUntil updates live via appData's ads
+      // listener once the backend write lands — no manual refetch.
+    } catch (err) {
+      if (err.insufficient) navigate('/wallet');
+      else setError(err.message || "Couldn't complete the boost.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="boost-card">
@@ -29,10 +55,12 @@ export default function BoostCard({ title = 'Boost your reach', description, com
         </div>
       )}
 
-      <button type="button" className="boost-cta" onClick={() => setShowNote(true)} disabled={showNote}>
-        <Icon name="star" size={13} /> {ctaLabel}
+      {adId && <p style={{ marginTop: -6, marginBottom: 12 }}>{BOOST_PRICE_ETB} ETB / {BOOST_DURATION_DAYS} days, from your wallet balance.</p>}
+
+      <button type="button" className="boost-cta" onClick={handleClick} disabled={busy}>
+        {busy ? <span className="spinner" /> : <Icon name="star" size={13} />} {ctaLabel}
       </button>
-      {showNote && <div className="boost-note">Boosting is coming soon — we'll let you know when it's ready.</div>}
+      {error && <div className="boost-note">{error}</div>}
     </div>
   );
 }

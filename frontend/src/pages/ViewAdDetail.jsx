@@ -240,6 +240,7 @@ export default function ViewAdDetail() {
             { label: 'Your boosted ads', value: Math.round(otherGroupAvgRate * 10) / 10 },
           ] : null}
           ctaLabel="Boost this ad"
+          adId={id}
         />
       )}
 

@@ -64,6 +64,7 @@ const ExpiredItems = lazy(() => import('./pages/ExpiredItems.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
 const Favorites = lazy(() => import('./pages/Favorites.jsx'));
 const SubscriptionStatus = lazy(() => import('./pages/SubscriptionStatus.jsx'));
+const Wallet = lazy(() => import('./pages/Wallet.jsx'));
 const BoostPromo = lazy(() => import('./pages/BoostPromo.jsx'));
 const Store = lazy(() => import('./pages/Store.jsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
@@ -131,6 +132,7 @@ export default function App() {
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/favorites" element={<Favorites />} />
                   <Route path="/subscription" element={<SubscriptionStatus />} />
+                  <Route path="/wallet" element={<Wallet />} />
                   <Route path="/boost" element={<BoostPromo />} />
                   <Route path="/store/:sellerId" element={<Store />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />

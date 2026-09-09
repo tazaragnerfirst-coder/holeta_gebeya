@@ -6,6 +6,7 @@ import { getCached, setCached } from './pageCache';
 import { subscribeFavorites } from './favorites';
 import { isActiveAd } from './adStatus';
 import { getSellerRating } from './rating';
+import { subscribeWalletBalance } from './wallet';
 
 const AppDataContext = createContext(null);
 
@@ -114,6 +115,8 @@ export function AppDataProvider({ children }) {
   const [profileReady, setProfileReady] = useState(() => (initialUid ? getCached(`profile:${initialUid}`) != null : false));
   const [sellerRating, setSellerRating] = useState(() => (initialUid ? getCached(`sellerRating:${initialUid}`) || { avg: 0, count: 0 } : { avg: 0, count: 0 }));
   const [sellerRatingReady, setSellerRatingReady] = useState(() => (initialUid ? getCached(`sellerRating:${initialUid}`) != null : false));
+  const [walletBalance, setWalletBalance] = useState(() => (initialUid ? getCached(`walletBalance:${initialUid}`) ?? 0 : 0));
+  const [walletBalanceReady, setWalletBalanceReady] = useState(() => (initialUid ? getCached(`walletBalance:${initialUid}`) != null : false));
   // Admin-editable name->hex overrides (referenceData/colorHex doc,
   // see #hog017) merged over the built-in COLOR_HEX map in
   // data/colors.js — see colorHex() there. Small single doc, cheap
@@ -339,6 +342,20 @@ export function AppDataProvider({ children }) {
     return unsub;
   }, [registeredUid]);
 
+  // Wallet balance (funds Subscription + Boost purchases). Live, same
+  // reasoning as the profile doc above — an admin's topup approval or
+  // a /spendWallet purchase should reflect here without a manual
+  // refetch.
+  useEffect(() => {
+    if (!registeredUid) { setWalletBalance(0); setWalletBalanceReady(false); return; }
+    const unsub = subscribeWalletBalance(registeredUid, (balance) => {
+      setWalletBalance(balance);
+      setWalletBalanceReady(true);
+      setCached(`walletBalance:${registeredUid}`, balance);
+    });
+    return unsub;
+  }, [registeredUid]);
+
   // Seller-level aggregate rating. getSellerRating() already caches
   // (and falls back to its own cache on failure) — this just seeds
   // the initial render from that same cache too, and keeps it
@@ -408,6 +425,7 @@ export function AppDataProvider({ children }) {
       favorites, favoritesReady,
       profile, profileReady,
       sellerRating, sellerRatingReady,
+      walletBalance, walletBalanceReady,
     }}>
       {children}
     </AppDataContext.Provider>

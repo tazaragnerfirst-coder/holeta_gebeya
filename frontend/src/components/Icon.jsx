@@ -8,7 +8,7 @@ import {
   SignOut, Pause, Play, Crown, Storefront, SealCheck, GearSix, Coins,
   Globe, BookmarkSimple, ShareNetwork, Sun, Moon, Monitor, Paperclip,
   WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo, Lock,
-  ChartBar, ListBullets, Vibrate,
+  ChartBar, ListBullets, Vibrate, Wallet,
 } from '@phosphor-icons/react';
 
 // Icon set: Phosphor (regular/outline weight) — swapped in from
@@ -35,6 +35,9 @@ import {
 // only — the Dashboard nav tab got its own `chartBar` (ChartBar,
 // analytics) and Profile's "My Ads" got `listBullets` (ListBullets,
 // a list of your own listings), instead of both borrowing Job's icon.
+// `wallet` (Wallet) is the real spendable-balance Wallet feature —
+// kept separate from `coin` (Coins), which stays reserved for the
+// unrelated, not-yet-built "Holeta Coin" feature.
 const COMPONENTS = {
   search: MagnifyingGlass,
   mapPin: MapPin,
@@ -84,6 +87,7 @@ const COMPONENTS = {
   chartBar: ChartBar,
   listBullets: ListBullets,
   coin: Coins,
+  wallet: Wallet,
   globe: Globe,
   bookmark: BookmarkSimple,
   share: ShareNetwork,

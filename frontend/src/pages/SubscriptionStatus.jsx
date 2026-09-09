@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
 import { isSubscriptionActive, formatExpiry } from '../lib/subscription';
-import { submitSubscriptionPayment, getPendingSubscriptionPayment } from '../lib/subscriptionPayment';
-import { SUBSCRIPTION_PRICE_ETB, SUBSCRIPTION_PERIOD_DAYS, PAYMENT_ACCOUNTS } from '../lib/constants';
+import { spendWallet } from '../lib/wallet';
+import { SUBSCRIPTION_PRICE_ETB, SUBSCRIPTION_PERIOD_DAYS } from '../lib/constants';
 import Icon from '../components/Icon.jsx';
-import ChipSelect from '../components/ChipSelect.jsx';
-import ImageUploader from '../components/ImageUploader.jsx';
 
-// Manual receipt-review model (same approach as equb_bot, no payment
-// gateway): user sends money to one of PAYMENT_ACCOUNTS, uploads a
-// screenshot here, an admin approves/rejects it from the admin panel.
-// Price/accounts are placeholders — see lib/constants.js.
+// Wallet-funded, so subscribing is instant — no receipt/admin-review
+// wait anymore (that manual-review step now happens once, up front,
+// on the Wallet top-up itself — see Wallet.jsx). spendWallet() is
+// server-verified (Admin SDK), so the balance check can't be spoofed
+// client-side — see backend/server/index.js's /spendWallet.
 const PERKS = [
   { icon: 'shieldLock', t: 'Verified Premium badge', d: 'Shown on your profile and listings' },
   { icon: 'trendingUp', t: 'Discounted boosts', d: 'Lower price every time you boost an ad' },
@@ -21,37 +21,30 @@ const PERKS = [
 ];
 
 export default function SubscriptionStatus() {
+  const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
-  const { registeredUid, profile } = useAppData();
-  const [pending, setPending] = useState(undefined); // undefined = loading, null = none
-  const [showForm, setShowForm] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [receiptImages, setReceiptImages] = useState([]);
+  const { registeredUid, profile, walletBalance, walletBalanceReady } = useAppData();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!registeredUid) { requireRegistered().catch(() => {}); return; }
-    getPendingSubscriptionPayment(registeredUid).then(setPending).catch(() => setPending(null));
-  }, [registeredUid]);
-
   const active = isSubscriptionActive(profile);
+  const insufficientBalance = walletBalanceReady && walletBalance < SUBSCRIPTION_PRICE_ETB;
 
-  async function handleSubmit() {
-    if (!paymentMethod || receiptImages.length === 0 || submitting) return;
+  async function handleSubscribe() {
+    if (submitting) return;
+    try {
+      await requireRegistered();
+    } catch {
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
-      await submitSubscriptionPayment(registeredUid, {
-        name: profile?.name,
-        phone: profile?.phone,
-        paymentMethod,
-        receiptImage: receiptImages[0],
-      });
-      setPending({ paymentMethod, status: 'pending' });
-      setShowForm(false);
-    } catch {
-      setError("Couldn't submit your payment — check your connection and try again.");
+      await spendWallet({ type: 'subscription' });
+      // profile.subscriptionActive updates live via appData's onSnapshot
+      // once the backend write lands — no manual refetch needed here.
+    } catch (err) {
+      setError(err.insufficient ? `Not enough balance — you need ${SUBSCRIPTION_PRICE_ETB} ETB.` : (err.message || "Couldn't complete the purchase."));
     } finally {
       setSubmitting(false);
     }
@@ -85,54 +78,35 @@ export default function SubscriptionStatus() {
         ))}
       </div>
 
-      {!active && pending === null && !showForm && (
-        <button type="button" className="boost-cta" style={{ background: 'var(--primary)', border: 'none', marginTop: 16, width: '100%', justifyContent: 'center' }} onClick={() => setShowForm(true)}>
-          <Icon name="crown" size={13} /> Upgrade to Premium
-        </button>
-      )}
-
-      {!active && pending && (
-        <div className="coming-soon-note">
-          <Icon name="clock" size={13} /> Your payment is under review — this usually doesn't take long.
-        </div>
-      )}
-
-      {!active && showForm && (
-        <div className="plan-card" style={{ marginTop: 16 }}>
-          <div className="top"><Icon name="coin" size={14} /> Send payment</div>
-          <p className="helper-text" style={{ marginTop: 2 }}>
-            Send {SUBSCRIPTION_PRICE_ETB} ETB to one of the accounts below, then upload a screenshot of the receipt.
-          </p>
-
-          <ChipSelect
-            options={PAYMENT_ACCOUNTS.map((a) => ({ label: a.label, value: a.method }))}
-            value={paymentMethod}
-            onChange={setPaymentMethod}
-            placeholder="Select payment method"
-          />
-
-          {paymentMethod && (
-            <div className="coming-soon-note" style={{ marginTop: 8 }}>
-              Send to: <strong>{PAYMENT_ACCOUNTS.find((a) => a.method === paymentMethod)?.account}</strong> ({paymentMethod})
-            </div>
-          )}
-
-          <div style={{ marginTop: 12 }}>
-            <ImageUploader files={receiptImages} onChange={setReceiptImages} maxImages={1} compact />
+      {!active && (
+        <>
+          <div className="coming-soon-note" style={{ marginTop: 16 }}>
+            <Icon name="wallet" size={13} /> Wallet balance: {walletBalanceReady ? `${walletBalance.toLocaleString('en-US')} ETB` : '···'}
           </div>
 
           {error && <p className="helper-text error-text">{error}</p>}
 
-          <button
-            type="button"
-            className="boost-cta"
-            style={{ background: 'var(--primary)', border: 'none', marginTop: 12, width: '100%', justifyContent: 'center' }}
-            onClick={handleSubmit}
-            disabled={!paymentMethod || receiptImages.length === 0 || submitting}
-          >
-            {submitting ? <span className="spinner" /> : <Icon name="send" size={13} />} Submit for review
-          </button>
-        </div>
+          {insufficientBalance ? (
+            <button
+              type="button"
+              className="boost-cta"
+              style={{ background: 'var(--primary)', border: 'none', marginTop: 12, width: '100%', justifyContent: 'center' }}
+              onClick={() => navigate('/wallet')}
+            >
+              <Icon name="wallet" size={13} /> Top up wallet
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="boost-cta"
+              style={{ background: 'var(--primary)', border: 'none', marginTop: 12, width: '100%', justifyContent: 'center' }}
+              onClick={handleSubscribe}
+              disabled={submitting || !registeredUid}
+            >
+              {submitting ? <span className="spinner" /> : <Icon name="crown" size={13} />} Subscribe — {SUBSCRIPTION_PRICE_ETB} ETB
+            </button>
+          )}
+        </>
       )}
     </div>
   );
