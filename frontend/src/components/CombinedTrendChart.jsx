@@ -40,10 +40,10 @@ export default function CombinedTrendChart({ data, height = 140 }) {
   return (
     <div>
       <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} className="daily-views-chart">
-        <path d={viewsLine.path} fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        <path d={contactsLine.path} fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-        <circle cx={viewsLine.last[0]} cy={viewsLine.last[1]} r="3" fill="var(--primary)" />
-        <circle cx={contactsLine.last[0]} cy={contactsLine.last[1]} r="3" fill="var(--accent)" />
+        <path d={viewsLine.path} pathLength="1" className="chart-line-draw" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={contactsLine.path} pathLength="1" className="chart-line-draw" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx={viewsLine.last[0]} cy={viewsLine.last[1]} r="3" className="chart-dot-pop" fill="var(--primary)" />
+        <circle cx={contactsLine.last[0]} cy={contactsLine.last[1]} r="3" className="chart-dot-pop" fill="var(--accent)" />
         {data.map((d, i) => (
           i % labelEvery === 0 || i === data.length - 1
             ? (

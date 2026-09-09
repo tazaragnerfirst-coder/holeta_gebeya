@@ -42,14 +42,14 @@ export default function DailyRateChart({ data, height = 140 }) {
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h} className="daily-views-chart">
-      <path d={areaPath} fill="var(--primary-tint)" stroke="none" />
-      <path d={linePath} fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <path d={areaPath} className="chart-area-fade" fill="var(--primary-tint)" stroke="none" />
+      <path d={linePath} pathLength="1" className="chart-line-draw" fill="none" stroke="var(--primary)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       <text x={points[points.length - 1][0]} y={Math.max(10, points[points.length - 1][1] - 8)} fontSize="9" fontWeight="700" fill="var(--primary)" textAnchor="middle">
         {lastPct}%
       </text>
       {points.map(([x, y], i) => (
         i === points.length - 1
-          ? <circle key={i} cx={x} cy={y} r="3.2" fill="var(--primary)" />
+          ? <circle key={i} cx={x} cy={y} r="3.2" className="chart-dot-pop" fill="var(--primary)" />
           : null
       ))}
       {points_data.map((d, i) => (
