@@ -612,7 +612,7 @@ export default function PostAd() {
               </div>
             )}
 
-            {/* This is where Jiji-style specs appear: brand → popular
+            {/* This is where structured specs appear: brand → popular
                 models → RAM/storage/screen size/etc, driven entirely by
                 src/data/categories.js — add a subcategory there and its
                 form appears here automatically. */}

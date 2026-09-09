@@ -11,8 +11,8 @@ export function getSubcategory(categories, categoryId, subcategoryId) {
   return (cat.subcategories || []).find((s) => s.id === subcategoryId) || null;
 }
 
-// Categories flagged `popular: true` are shown first (Jiji-style),
-// with the rest following in their existing order.
+// Categories flagged `popular: true` are shown first, with the
+// rest following in their existing order.
 export function sortByPopular(categories) {
   return [...categories].sort((a, b) => (b.popular ? 1 : 0) - (a.popular ? 1 : 0));
 }
@@ -103,7 +103,7 @@ export const DESCRIPTION_HINTS = [
 // Rent (#hog014) gets its own hint set instead of reusing
 // DESCRIPTION_HINTS — sale-oriented hints (condition, reason for
 // selling) don't fit a rental listing. Based on what Ethiopian rental
-// listings (Jiji, Ethiopia Property Centre) consistently lead with.
+// listings commonly lead with.
 export const RENT_DESCRIPTION_HINTS = [
   'Furnished or unfurnished', 'Utilities included?', 'Parking / generator / water tank',
   'Floor / building info', 'Move-in date', 'Lease terms',

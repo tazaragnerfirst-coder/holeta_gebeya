@@ -23,8 +23,8 @@ Telegram Mini App marketplace (buy/sell, peer-to-peer, no in-app payment).
   validates the HMAC signature against the bot token (never trusts the
   client), then issues a Firebase custom auth token.
 - **Category-driven post form.** Categories → subcategories → attribute
-  schemas (brand, popular models, RAM, storage, screen size, etc. —
-  Jiji-style) live in a `categories` Firestore collection, managed from
+  schemas (brand, popular models, RAM, storage, screen size, etc.)
+  live in a `categories` Firestore collection, managed from
   the admin panel's Category Management tab (add/edit fields with no
   code changes) — large dependent tables like phone brand→model→
   storage/RAM/color live in a separate `referenceData` collection so
