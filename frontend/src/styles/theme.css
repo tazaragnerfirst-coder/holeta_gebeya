@@ -115,10 +115,11 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .listing-card.card-job{display:flex;gap:9px;align-items:flex-start;background:var(--card-surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:7px;}
 .card-job .thumb{flex:0 0 30%;max-width:110px;}
 .card-job .card-footer{flex:1;min-width:0;padding:1px 2px 0 0;}
-/* Golden-ratio (φ≈1.618) crop instead of a plain square — wider
-   than tall, which also trims a little vertical footprint from the
-   dense masonry grid. */
-.thumb{position:relative;background:var(--surface-sunken);overflow:hidden;aspect-ratio:1.618/1;border-radius:var(--radius-md);}
+/* Fixed 1:1 square, image cropped to fill edge-to-edge (object-fit:
+   cover) — dense grid card. Title/price/meta sit in
+   a plain block below the photo, not overlaid on it. (Reverted
+   from a golden-ratio 1.618/1 crop, per explicit request.) */
+.thumb{position:relative;background:var(--surface-sunken);overflow:hidden;aspect-ratio:1/1;border-radius:var(--radius-md);}
 .thumb-img{display:block;width:100%;height:100%;object-fit:cover;}
 .carousel{height:270px;position:relative;background:var(--surface-sunken);}
 
