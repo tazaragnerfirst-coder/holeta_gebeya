@@ -14,7 +14,7 @@ import { isSubscriptionActive } from '../lib/subscription';
 export default function Profile() {
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
-  const { registeredUid, ads, profile, sellerRating: rating } = useAppData();
+  const { registeredUid, ads, profile, sellerRating: rating, walletBalance } = useAppData();
   const [bannerUrl, setBannerUrl] = useState(() => getCachedAppBannerUrl());
 
   const [editOpen, setEditOpen] = useState(false);
