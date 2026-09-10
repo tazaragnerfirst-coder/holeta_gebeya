@@ -311,6 +311,7 @@ input[type="file"] { margin-top: 8px; }
   z-index: 1000;
   padding: 16px;
 }
+.icon-picker-overlay[hidden] { display: none; }
 .icon-picker-box {
   background: var(--card-bg);
   border-radius: 14px;
