@@ -295,3 +295,60 @@ input[type="file"] { margin-top: 8px; }
 .thread-bubble.mine .thread-bubble-time { text-align: right; }
 .thread-composer { display: flex; gap: 8px; align-items: flex-end; }
 .thread-composer .field { flex: 1; resize: vertical; }
+
+/* Icon picker (#hog054) */
+.icon-field-row { display: flex; gap: 8px; align-items: center; }
+.icon-field-row .field { flex: 1; }
+.icon-field-row .btn-ghost { white-space: nowrap; }
+
+.icon-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(19, 34, 40, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.icon-picker-box {
+  background: var(--card-bg);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.icon-picker-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.icon-picker-header .field { flex: 1; margin: 0; }
+.icon-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+  padding: 14px;
+  overflow-y: auto;
+}
+.icon-picker-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 10.5px;
+  color: var(--ink);
+}
+.icon-picker-item:hover { border-color: var(--primary); background: var(--bg-app); }
+.icon-picker-item i { font-size: 22px; }
+.icon-picker-item span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }

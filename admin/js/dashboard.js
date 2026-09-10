@@ -980,6 +980,9 @@ function initCategories() {
   document.getElementById('cat-subtab-refdata').addEventListener('click', () => switchCatSubtab('refdata'));
   document.getElementById('cat-subtab-colors').addEventListener('click', () => switchCatSubtab('colors'));
   document.getElementById('cat-add-btn').addEventListener('click', addCategory);
+  document.getElementById('cat-add-icon-pick').addEventListener('click', () => {
+    openIconPicker(document.getElementById('cat-add-icon'));
+  });
   document.getElementById('cat-import-btn').addEventListener('click', importStarterCategories);
   document.getElementById('cat-import-missing-btn').addEventListener('click', importMissingStarterCategories);
   document.getElementById('refdata-add-btn').addEventListener('click', addBrand);
@@ -1063,7 +1066,10 @@ function renderCategoryEditor(id) {
       <label class="field-label">Name</label>
       <input class="field" type="text" id="edit-name-${id}" value="${draft.name}" />
       <label class="field-label">Icon</label>
-      <input class="field" type="text" id="edit-icon-${id}" value="${draft.icon || ''}" />
+      <div class="icon-field-row">
+        <input class="field" type="text" id="edit-icon-${id}" value="${draft.icon || ''}" />
+        <button type="button" class="btn-ghost" id="edit-icon-pick-${id}">Choose icon</button>
+      </div>
       <label class="field-label">Order</label>
       <input class="field" type="number" id="edit-order-${id}" value="${draft.order}" />
       <label class="field-label"><input type="checkbox" id="edit-popular-${id}" ${draft.popular ? 'checked' : ''}/> Popular (shown first)</label>
@@ -1090,6 +1096,9 @@ function renderCategoryEditor(id) {
     </div>
   `;
   renderSubcatList(id);
+  document.getElementById(`edit-icon-pick-${id}`).addEventListener('click', () => {
+    openIconPicker(document.getElementById(`edit-icon-${id}`));
+  });
   document.getElementById(`add-subcat-${id}`).addEventListener('click', () => addSubcategory(id));
   document.getElementById(`edit-cancel-${id}`).addEventListener('click', () => {
     holder.innerHTML = ''; delete categoryDrafts[id]; delete expandedSubcat[id];
