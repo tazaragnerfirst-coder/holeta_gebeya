@@ -7,7 +7,7 @@ import {
 import { db, BACKEND_URL, notifyAdmin } from '../lib/firebase';
 import { useRequireRegistered } from '../lib/authGate.jsx';
 import { useAppData } from '../lib/appData';
-import { getUnsafeUserPreview } from '../lib/telegram';
+import { getUnsafeUserPreview, shareViaTelegram } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
 import { ErrorBanner, SuccessBanner } from '../components/Banner.jsx';
 import ImageCarousel from '../components/ImageCarousel.jsx';
@@ -290,7 +290,14 @@ export default function ProductDetail() {
     // directly, since the SPA's static index.html can't carry
     // per-listing title/price/photo for link-preview crawlers.
     const url = `${BACKEND_URL}/share/${id}`;
-    const shareData = { title: item?.title || 'Holeta Gebeya listing', url };
+    const title = item?.title || 'Holeta Gebeya listing';
+
+    // Prefer Telegram's own native share sheet — navigator.share is
+    // usually unsupported inside Telegram's WebView, so it never gets
+    // a chance to fire there.
+    if (shareViaTelegram(url, title)) return;
+
+    const shareData = { title, url };
     try {
       if (navigator.share) {
         await navigator.share(shareData);

@@ -495,7 +495,8 @@ function escapeHtml(str) {
 app.get('/listingImage/:id', async (req, res) => {
   try {
     const snap = await db.collection('listings').doc(req.params.id).get();
-    const dataUrl = snap.exists ? (snap.data().photos || [])[0] : null;
+    const item = snap.exists ? snap.data() : null;
+    const dataUrl = item ? (item.images || [])[0] || item.photo || null : null;
     if (!dataUrl) return res.status(404).end();
     const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
     if (!match) return res.status(404).end();
@@ -524,7 +525,7 @@ app.get('/share/:id', async (req, res) => {
     const description = escapeHtml(
       [priceText, item.location].filter(Boolean).join(' · ') || 'View this listing on Holeta Gebeya'
     );
-    const hasPhoto = Array.isArray(item.photos) && item.photos.length > 0;
+    const hasPhoto = (Array.isArray(item.images) && item.images.length > 0) || Boolean(item.photo);
     const imageUrl = hasPhoto ? `${req.protocol}://${req.get('host')}/listingImage/${req.params.id}` : '';
     const appUrl = process.env.MINI_APP_URL ? `${process.env.MINI_APP_URL}/product/${req.params.id}` : '#';
 

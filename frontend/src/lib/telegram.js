@@ -79,3 +79,19 @@ export function hapticImpact(style = 'light') {
   if (!getVibration()) return;
   getTelegramWebApp()?.HapticFeedback?.impactOccurred(style);
 }
+
+// Opens Telegram's own native share sheet (chat/forward picker) via the
+// t.me/share deep link. This is the correct way to share a link from
+// inside a Telegram Mini App — the browser Web Share API
+// (navigator.share) is usually unsupported in Telegram's WebView, so it
+// silently falls through to a clipboard-copy fallback instead of ever
+// showing a share sheet.
+export function shareViaTelegram(url, text) {
+  const tg = getTelegramWebApp();
+  const shareLink = `https://t.me/share/url?url=${encodeURIComponent(url)}${text ? `&text=${encodeURIComponent(text)}` : ''}`;
+  if (tg?.openTelegramLink) {
+    tg.openTelegramLink(shareLink);
+    return true;
+  }
+  return false;
+}
