@@ -146,16 +146,7 @@ export default function AdsManage() {
 
   return (
     <div className="page">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h2 className="page-title" style={{ margin: 0 }}>Manage Ads</h2>
-        <Link
-          to="/boost"
-          className="btn-accent"
-          style={{ padding: '8px 14px', borderRadius: 100, fontSize: 12.5, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}
-        >
-          <Icon name="trendingUp" size={14} /> Boost
-        </Link>
-      </div>
+      <h2 className="page-title">Manage Ads</h2>
 
       <div className="chart-card" style={{ marginTop: 6 }}>
         <div className="chart-card-head">

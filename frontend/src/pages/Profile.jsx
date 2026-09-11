@@ -74,6 +74,16 @@ export default function Profile() {
     if (user) navigate(`/chat/${SUPPORT_UID}_${user.uid}`);
   }
 
+  async function goSubscription() {
+    await requireRegistered().catch(() => {});
+    navigate('/subscription');
+  }
+
+  async function goBoost() {
+    await requireRegistered().catch(() => {});
+    navigate('/boost');
+  }
+
   async function goMyStore() {
     const user = await requireRegistered().catch(() => null);
     if (user) navigate(`/store/${user.uid}`);
@@ -97,12 +107,14 @@ export default function Profile() {
       sub: registeredUid ? `${walletBalance.toLocaleString('en-US')} ETB` : null,
       onClick: goWallet,
     },
+    { icon: 'listBullets', t: 'My Ads', sub: registeredUid ? `${ads.length} listing${ads.length === 1 ? '' : 's'}` : null, onClick: goMyAds },
+    { icon: 'store', t: 'My Store', onClick: goMyStore },
     { icon: 'coin', t: 'Holeta Coin', sub: 'Soon', onClick: () => navigate('/holeta-coin') },
   ];
 
   const box2 = [
-    { icon: 'listBullets', t: 'My Ads', sub: registeredUid ? `${ads.length} listing${ads.length === 1 ? '' : 's'}` : null, onClick: goMyAds },
-    { icon: 'store', t: 'My Store', onClick: goMyStore },
+    { icon: 'crown', t: 'Subscription', onClick: goSubscription },
+    { icon: 'trendingUp', t: 'Boost', onClick: goBoost },
     { icon: 'lock', t: 'Privacy Policy', onClick: () => navigate('/privacy-policy') },
     { icon: 'helpCircle', t: 'Help & Support', onClick: goSupport },
   ];
