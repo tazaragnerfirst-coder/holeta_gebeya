@@ -148,6 +148,13 @@ export default function App() {
   const location = useLocation();
   const backgroundLocation = location.state?.backgroundLocation;
 
+  // TEMP DEBUG (#hog064) — remove once the first-tap-doesn't-open
+  // issue is confirmed fixed. Fires on every navigation, so we can
+  // see exactly what the router saw during the failing first tap.
+  useEffect(() => {
+    notifyAdmin({ text: `DEBUG hog064: location → pathname=${location.pathname}, hasState=${Boolean(location.state)}, hasBgLoc=${Boolean(backgroundLocation)}, ${Date.now() - (window.__appOpenTs || Date.now())}ms since app open` });
+  }, [location]);
+
   return (
     <AppDataProvider>
       <AuthGateProvider>
