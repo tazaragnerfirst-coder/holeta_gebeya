@@ -73,7 +73,7 @@ export default function ListingCard({ item, boosted }) {
           </div>
         )}
         {boosted ? (
-          <div className="badge-boost"><Icon name="trendingUp" size={13} /></div>
+          <div className="badge-boost"><Icon name="trendingUp" size={13} /> <span> ጽሁፍ </span>  </div>
         ) : null}
         <button
           type="button"
