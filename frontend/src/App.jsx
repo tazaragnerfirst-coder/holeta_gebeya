@@ -142,7 +142,7 @@ export default function App() {
               </ErrorBoundary>
             </Suspense>
             {backgroundLocation && (
-              <Suspense fallback={null}>
+              <Suspense fallback={<RouteFallback />}>
                 <ErrorBoundary key={`sheet-${location.pathname}`} label={location.pathname}>
                   <Routes>
                     <Route path="/product/:id" element={<ProductDetail />} />

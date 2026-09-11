@@ -168,7 +168,7 @@ export default function Profile() {
                 {m.t}
                 {m.sub && <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--ink-faint)', marginTop: 1 }}>{m.sub}</span>}
               </div>
-              <div className="chev"><Icon name="chevronLeft" size={16} /></div>
+              <div className="chev"><Icon name="chevronRight" size={16} /></div>
             </div>
           ))}
         </div>
@@ -181,7 +181,7 @@ export default function Profile() {
                 {m.t}
                 {m.sub && <span style={{ display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--ink-faint)', marginTop: 1 }}>{m.sub}</span>}
               </div>
-              <div className="chev"><Icon name="chevronLeft" size={16} /></div>
+              <div className="chev"><Icon name="chevronRight" size={16} /></div>
             </div>
           ))}
         </div>

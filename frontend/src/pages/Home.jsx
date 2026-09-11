@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import Icon from '../components/Icon.jsx';
-import SearchHeader from '../components/SearchHeader.jsx';
+import SearchHeader, { ALL_CHIP_ID } from '../components/SearchHeader.jsx';
 import FilterSheet from '../components/FilterSheet.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import ListingCard from '../components/ListingCard.jsx';
@@ -184,7 +184,11 @@ export default function Home() {
   // The Job chip sits alongside real categories but isn't one — job
   // posts have no category of their own (#hog009), so this is the
   // only way to filter to them from Home.
-  const categoryChips = useMemo(() => [{ id: JOB_CHIP_ID, name: 'Job', icon: 'briefcase' }, ...categories], [categories]);
+  const categoryChips = useMemo(() => [
+    { id: ALL_CHIP_ID, name: 'All', icon: 'grid' },
+    { id: JOB_CHIP_ID, name: 'Job', icon: 'briefcase' },
+    ...categories,
+  ], [categories]);
 
   function clearAll() {
     setSearch('');

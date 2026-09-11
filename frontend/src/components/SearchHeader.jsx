@@ -4,6 +4,12 @@ import Icon from './Icon.jsx';
 const RECENT_KEY = 'hg_recent_searches';
 const MAX_RECENT = 6;
 
+// Not a real category — a synthetic first chip (same "All" idea as
+// Store's tab row, #hog055) so there's always an explicit, visible
+// way back to the unfiltered feed instead of having to re-tap the
+// already-active category to toggle it off.
+export const ALL_CHIP_ID = '__all__';
+
 export function getRecentSearches() {
   try {
     return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
@@ -156,16 +162,20 @@ export default function SearchHeader({
 
       {categories.length > 0 && (
         <div className="chip-row cat-chip-row">
-          {categories.map((c) => (
-            <button
-              type="button"
-              key={c.id}
-              className={`chip cat-chip ${activeCategory === c.id ? 'active' : ''}`}
-              onClick={() => onCategoryChange(activeCategory === c.id ? null : c.id)}
-            >
-              <Icon name={c.icon || 'grid'} size={14} /> {c.name}
-            </button>
-          ))}
+          {categories.map((c) => {
+            const isAll = c.id === ALL_CHIP_ID;
+            const active = isAll ? !activeCategory : activeCategory === c.id;
+            return (
+              <button
+                type="button"
+                key={c.id}
+                className={`chip cat-chip ${active ? 'active' : ''}`}
+                onClick={() => onCategoryChange(isAll ? null : (activeCategory === c.id ? null : c.id))}
+              >
+                <Icon name={c.icon || 'grid'} size={14} /> {c.name}
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
