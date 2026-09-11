@@ -88,23 +88,20 @@ export default function App() {
     fetch(`${BACKEND_URL}/health`).catch(() => {});
   }, []);
 
-  // Preload the ProductDetail chunk in the background once the app
-  // is idle, so it's already in the browser's cache by the time
-  // someone taps their first listing card — instead of only
+  // Preload the ProductDetail chunk in the background as soon as
+  // the app mounts, so it's already in the browser's cache by the
+  // time someone taps their first listing card — instead of only
   // starting that download at tap time, which on a slow connection
   // made the very first tap in a session look like it did nothing
   // (nav hid, but the sheet had nothing to show yet — #hog064).
-  // requestIdleCallback (falls back to a short timeout where it's
-  // unsupported) keeps this from competing with Home's own initial
-  // data/image loading.
+  // Fired immediately rather than via requestIdleCallback: the
+  // browser is busiest with Splash/AppData/Home's own render during
+  // exactly this early window, so an idle callback could still be
+  // waiting when the first tap happens. import() is just a network
+  // fetch — it doesn't block rendering, so there's no real cost to
+  // starting it right away.
   useEffect(() => {
-    const preload = () => { import('./pages/ProductDetail.jsx').catch(() => {}); };
-    if (typeof requestIdleCallback === 'function') {
-      const id = requestIdleCallback(preload, { timeout: 3000 });
-      return () => cancelIdleCallback(id);
-    }
-    const t = setTimeout(preload, 1500);
-    return () => clearTimeout(t);
+    import('./pages/ProductDetail.jsx').catch(() => {});
   }, []);
 
   // Product pages open as a sheet stacked on top of wherever the
