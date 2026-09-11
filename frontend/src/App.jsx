@@ -88,6 +88,25 @@ export default function App() {
     fetch(`${BACKEND_URL}/health`).catch(() => {});
   }, []);
 
+  // Preload the ProductDetail chunk in the background once the app
+  // is idle, so it's already in the browser's cache by the time
+  // someone taps their first listing card — instead of only
+  // starting that download at tap time, which on a slow connection
+  // made the very first tap in a session look like it did nothing
+  // (nav hid, but the sheet had nothing to show yet — #hog064).
+  // requestIdleCallback (falls back to a short timeout where it's
+  // unsupported) keeps this from competing with Home's own initial
+  // data/image loading.
+  useEffect(() => {
+    const preload = () => { import('./pages/ProductDetail.jsx').catch(() => {}); };
+    if (typeof requestIdleCallback === 'function') {
+      const id = requestIdleCallback(preload, { timeout: 3000 });
+      return () => cancelIdleCallback(id);
+    }
+    const t = setTimeout(preload, 1500);
+    return () => clearTimeout(t);
+  }, []);
+
   // Product pages open as a sheet stacked on top of wherever the
   // user tapped it from (Home, Search, Favorites, a chat thread...),
   // instead of replacing that screen outright — closing it (pull
