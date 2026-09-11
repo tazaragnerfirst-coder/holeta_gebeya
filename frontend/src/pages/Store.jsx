@@ -205,6 +205,16 @@ export default function Store() {
         </div>
       )}
 
+      {isOwner && (
+        <div className="menu-list" style={{ marginTop: 12 }}>
+          <div className="menu-item" onClick={() => navigate('/subscription')}>
+            <div className="menu-icon"><Icon name="crown" size={17} /></div>
+            <div className="t">Subscription</div>
+            <div className="chev"><Icon name="chevronRight" size={16} /></div>
+          </div>
+        </div>
+      )}
+
       {listingsReady && listings.length === 0 && (
         <p className="helper-text" style={{ marginTop: 16 }}>
           {isOwner ? "You don't have any active listings yet — post one to fill your store." : 'No active listings from this seller right now.'}

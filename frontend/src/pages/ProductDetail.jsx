@@ -338,7 +338,7 @@ export default function ProductDetail() {
         images={item.images || []}
         left={
           isBoosted ? (
-            <div className="badge-boost"><Icon name="trendingUp" size={12} /> Featured</div>
+            <div className="badge-boost"><Icon name="trendingUp" size={13} /></div>
           ) : item.condition ? (
             <div className={`badge-condition tone-${conditionTone(item.condition)}`}>{item.condition}</div>
           ) : null

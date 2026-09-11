@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Icon from '../components/Icon.jsx';
 import SearchHeader, { ALL_CHIP_ID } from '../components/SearchHeader.jsx';
 import FilterSheet from '../components/FilterSheet.jsx';
@@ -23,7 +24,27 @@ export default function Home() {
     searchResults, searchLoading, searchListings,
   } = useAppData();
   const [search, setSearch] = useState('');
-  const [activeCategory, setActiveCategory] = useState(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+  // Category selection lives in router history state (same idea as
+  // ProductDetail's backgroundLocation, see lib/nav.js) rather than
+  // plain component state, specifically so it's back-navigable: Home
+  // is the root screen, so with no history entry of its own, phone/
+  // Telegram hardware back would just close the whole Mini App
+  // instead of clearing the filter — see TelegramBackButton in App.jsx.
+  const activeCategory = location.state?.activeCategory ?? null;
+  function setCategoryFilter(id) {
+    if (id === null) {
+      if (activeCategory !== null && window.history.length > 1) navigate(-1);
+      else navigate('.', { replace: true, state: { ...location.state, activeCategory: null } });
+    } else if (activeCategory === null) {
+      navigate('.', { state: { ...location.state, activeCategory: id } });
+    } else {
+      // switching between two categories directly — replace so each
+      // chip tap doesn't stack its own extra back-step
+      navigate('.', { replace: true, state: { ...location.state, activeCategory: id } });
+    }
+  }
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const headerWrapRef = useRef(null);
@@ -92,8 +113,8 @@ export default function Home() {
     const t = setTimeout(() => {
       searchListings({
         term,
-        categoryId: activeCategory === JOB_CHIP_ID ? null : activeCategory,
-        categoryType: activeCategory === JOB_CHIP_ID ? 'job' : null,
+        categoryId: term ? null : (activeCategory === JOB_CHIP_ID ? null : activeCategory),
+        categoryType: term ? null : (activeCategory === JOB_CHIP_ID ? 'job' : null),
         minPrice: filters.minPrice,
         maxPrice: filters.maxPrice,
         conditions: filters.conditions,
@@ -192,7 +213,7 @@ export default function Home() {
 
   function clearAll() {
     setSearch('');
-    setActiveCategory(null);
+    setCategoryFilter(null);
     setFilters(EMPTY_FILTERS);
   }
 
@@ -207,7 +228,7 @@ export default function Home() {
           popularTags={popularTags}
           categories={categoryChips}
           activeCategory={activeCategory}
-          onCategoryChange={setActiveCategory}
+          onCategoryChange={setCategoryFilter}
           onOpenFilters={openFilters}
           activeFilterCount={activeFilterCount}
           onSearchFocus={() => setFilterSheetOpen(false)}

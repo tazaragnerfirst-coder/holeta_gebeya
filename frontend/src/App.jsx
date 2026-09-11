@@ -200,14 +200,16 @@ function ConditionalBottomNav() {
 // Router's own back navigation — so phone-back behaves exactly like
 // tapping our in-page back arrow, instead of exiting the app.
 function TelegramBackButton() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const navigate = useNavigate();
 
   useEffect(() => {
     const tg = getTelegramWebApp();
     if (!tg?.BackButton) return;
 
-    if (pathname === '/') {
+    const homeCategoryActive = pathname === '/' && Boolean(location.state?.activeCategory);
+    if (pathname === '/' && !homeCategoryActive) {
       tg.BackButton.hide();
       return;
     }
@@ -220,7 +222,7 @@ function TelegramBackButton() {
     tg.BackButton.show();
     tg.BackButton.onClick(handleBack);
     return () => tg.BackButton.offClick(handleBack);
-  }, [pathname, navigate]);
+  }, [pathname, location.state, navigate]);
 
   return null;
 }
