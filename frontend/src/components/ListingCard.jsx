@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Icon from './Icon.jsx';
 import { useAppData } from '../lib/appData';
@@ -33,25 +33,6 @@ export default function ListingCard({ item, boosted }) {
   const requireRegistered = useRequireRegistered();
   const [favBusy, setFavBusy] = useState(false);
   const location = useLocation();
-  // #hog064: the product sheet can take a moment to open (chunk +
-  // render), during which the tap looked like it did nothing — so a
-  // fast tapper would tap again. `navigating` gives instant visual
-  // feedback the moment the card is tapped, and blocks a second tap
-  // on this same card while the first is still in flight (repeat taps
-  // were piling up duplicate navigations, see hog064 debug logs).
-  // Auto-clears after 2.5s as a safety net (generous vs. the ~3s worst
-  // case seen) in case the sheet closes and this card is tapped again
-  // without the component remounting (Home stays mounted in the
-  // background while the sheet is open).
-  const [navigating, setNavigating] = useState(false);
-  const navigatingTimeoutRef = useRef(null);
-  useEffect(() => () => clearTimeout(navigatingTimeoutRef.current), []);
-
-  function handleCardClick(e) {
-    if (navigating) { e.preventDefault(); return; }
-    setNavigating(true);
-    navigatingTimeoutRef.current = setTimeout(() => setNavigating(false), 2500);
-  }
 
   const photos = item.images && item.images.length ? item.images : (item.photo ? [item.photo] : []);
   const photo = photos[0];
@@ -78,21 +59,8 @@ export default function ListingCard({ item, boosted }) {
   }
 
   return (
-    <Link
-      to={`/product/${item.id}`}
-      state={productLinkState(location)}
-      className={`listing-card ${isJob ? 'card-job' : ''} ${navigating ? 'is-navigating' : ''}`}
-      onClick={handleCardClick}
-    >
+    <Link to={`/product/${item.id}`} state={productLinkState(location)} className={`listing-card ${isJob ? 'card-job' : ''}`}>
       <div className="thumb">
-        {navigating ? (
-          <div className="card-tap-spinner" role="status" aria-live="polite">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <circle cx="12" cy="12" r="9" fill="none" strokeWidth="3" className="ci-track" />
-              <circle cx="12" cy="12" r="9" fill="none" strokeWidth="3" className="ci-arc" />
-            </svg>
-          </div>
-        ) : null}
         {photo ? (
           <img className="thumb-img" src={photo} alt={item.title} loading="lazy" />
         ) : isJob ? (

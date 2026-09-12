@@ -602,12 +602,6 @@ textarea.field{min-height:84px;resize:vertical;}
 .ci-track{stroke:var(--line);}
 .ci-arc{stroke:var(--primary);stroke-linecap:round;stroke-dasharray:56.5;stroke-dashoffset:20;transform-origin:center;animation:ppr-spin .9s linear infinite;}
 
-/* #hog064: instant tap feedback on ListingCard while the product sheet is opening */
-.listing-card.is-navigating .thumb{opacity:.55;}
-.card-tap-spinner{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;z-index:2;background:rgba(0,0,0,.12);border-radius:inherit;}
-.card-tap-spinner .ci-arc{stroke:#fff;}
-.card-tap-spinner .ci-track{stroke:rgba(255,255,255,.4);}
-
 .bottom-nav{display:flex;align-items:center;width:100%;height:72px;background:var(--surface);border-top:1px solid var(--line);padding:0 0 env(safe-area-inset-bottom,0px);position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:50;}
 .nav-icon-wrap{position:relative;display:flex;}
 .nav-badge{position:absolute;top:-4px;right:-8px;min-width:16px;height:16px;padding:0 4px;border-radius:9px;background:var(--primary);color:#fff;font-size:9.5px;font-weight:800;display:flex;align-items:center;justify-content:center;}
