@@ -57,7 +57,25 @@ function SplashGate() {
 // Everything else splits into its own chunk and loads on first visit
 // — trims the initial bundle for the common case of someone just
 // browsing listings without ever opening Chat/Dashboard/Post.
-const ProductDetail = lazy(() => import('./pages/ProductDetail.jsx'));
+
+// TEMP DEBUG (#hog064) — remove once the first-tap-doesn't-open
+// issue is confirmed fixed. This wraps the SAME factory function
+// React.lazy() itself calls to actually render <ProductDetail/> —
+// distinct from the plain import() the preload effect below uses.
+// Logs when this factory is invoked (and how many times — should
+// only ever be 1 if lazy() is caching correctly) and how long IT
+// takes to resolve, so we can tell whether it's being re-invoked or
+// genuinely resolving slower than the preload's own import() did.
+let __productDetailFactoryCalls = 0;
+const ProductDetail = lazy(() => {
+  const callNum = ++__productDetailFactoryCalls;
+  const t0 = Date.now();
+  notifyAdmin({ text: `DEBUG hog064: lazy factory CALLED (#${callNum}) — ${Date.now() - (window.__appOpenTs || Date.now())}ms since app open` });
+  return import('./pages/ProductDetail.jsx').then((mod) => {
+    notifyAdmin({ text: `DEBUG hog064: lazy factory RESOLVED (#${callNum}) — ${Date.now() - t0}ms to resolve, ${Date.now() - window.__appOpenTs}ms since app open` });
+    return mod;
+  });
+});
 const PostTypeSelect = lazy(() => import('./pages/PostTypeSelect.jsx'));
 const PostAd = lazy(() => import('./pages/PostAd.jsx'));
 const ChatList = lazy(() => import('./pages/ChatList.jsx'));
