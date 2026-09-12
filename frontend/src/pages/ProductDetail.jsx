@@ -69,12 +69,6 @@ export default function ProductDetail() {
   const [reportError, setReportError] = useState('');
   const [reportDone, setReportDone] = useState(false);
 
-  // TEMP DEBUG (#hog064) — remove once the first-tap-doesn't-open
-  // issue is confirmed fixed.
-  useEffect(() => {
-    notifyAdmin({ text: `DEBUG hog064: ProductDetail mounted — ${Date.now() - (window.__appOpenTs || Date.now())}ms since app open, id=${id}` });
-  }, []);
-
   useEffect(() => {
     // Re-seed from cache for the NEW id — without this, navigating
     // from one product straight to another would keep showing the

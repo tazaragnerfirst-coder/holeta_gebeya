@@ -4,19 +4,12 @@ import Home from './pages/Home.jsx';
 import Icon from './components/Icon.jsx';
 import { AuthGateProvider } from './lib/authGate.jsx';
 import { AppDataProvider, useAppData } from './lib/appData.jsx';
-import { BACKEND_URL, notifyAdmin } from './lib/firebase';
+import { BACKEND_URL } from './lib/firebase';
 import { getTelegramWebApp } from './lib/telegram';
 import PostProgressRing from './components/PostProgressRing.jsx';
 import { triggerPostAdSubmit } from './lib/postAdFab';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SplashScreen from './components/SplashScreen.jsx';
-
-// TEMP DEBUG (#hog064) — remove once the first-tap-doesn't-open
-// issue is confirmed fixed. Records when this JS module first ran
-// (~app open) so later debug pings can report elapsed time since
-// then; window (not a module const) so ProductDetail.jsx can read
-// it too without an import-coupling just for debug logging.
-window.__appOpenTs = Date.now();
 
 // Longest we'll ever hold the splash up for slow/first-load data. On
 // a flaky connection this is hit before categories/listings are
@@ -58,24 +51,7 @@ function SplashGate() {
 // — trims the initial bundle for the common case of someone just
 // browsing listings without ever opening Chat/Dashboard/Post.
 
-// TEMP DEBUG (#hog064) — remove once the first-tap-doesn't-open
-// issue is confirmed fixed. This wraps the SAME factory function
-// React.lazy() itself calls to actually render <ProductDetail/> —
-// distinct from the plain import() the preload effect below uses.
-// Logs when this factory is invoked (and how many times — should
-// only ever be 1 if lazy() is caching correctly) and how long IT
-// takes to resolve, so we can tell whether it's being re-invoked or
-// genuinely resolving slower than the preload's own import() did.
-let __productDetailFactoryCalls = 0;
-const ProductDetail = lazy(() => {
-  const callNum = ++__productDetailFactoryCalls;
-  const t0 = Date.now();
-  notifyAdmin({ text: `DEBUG hog064: lazy factory CALLED (#${callNum}) — ${Date.now() - (window.__appOpenTs || Date.now())}ms since app open` });
-  return import('./pages/ProductDetail.jsx').then((mod) => {
-    notifyAdmin({ text: `DEBUG hog064: lazy factory RESOLVED (#${callNum}) — ${Date.now() - t0}ms to resolve, ${Date.now() - window.__appOpenTs}ms since app open` });
-    return mod;
-  });
-});
+const ProductDetail = lazy(() => import('./pages/ProductDetail.jsx'));
 const PostTypeSelect = lazy(() => import('./pages/PostTypeSelect.jsx'));
 const PostAd = lazy(() => import('./pages/PostAd.jsx'));
 const ChatList = lazy(() => import('./pages/ChatList.jsx'));
@@ -104,17 +80,6 @@ function RouteFallback() {
   );
 }
 
-// TEMP DEBUG (#hog064) — remove once the first-tap-doesn't-open
-// issue is confirmed fixed. Same as RouteFallback but pings once on
-// mount, so we know whether the product sheet's chunk was actually
-// still loading at tap time (this fallback showing at all) or not.
-function ProductSheetFallbackDebug() {
-  useEffect(() => {
-    notifyAdmin({ text: `DEBUG hog064: sheet fallback SHOWN (chunk not ready yet) — ${Date.now() - (window.__appOpenTs || Date.now())}ms since app open` });
-  }, []);
-  return <RouteFallback />;
-}
-
 export default function App() {
   // Fire-and-forget: wake the Render backend as soon as the Mini App
   // opens, during plain browsing — so by the time someone taps Post
@@ -137,14 +102,7 @@ export default function App() {
   // fetch — it doesn't block rendering, so there's no real cost to
   // starting it right away.
   useEffect(() => {
-    const t0 = Date.now();
-    import('./pages/ProductDetail.jsx')
-      .then(() => {
-        notifyAdmin({ text: `DEBUG hog064: chunk ready — ${Date.now() - t0}ms to fetch, ${Date.now() - window.__appOpenTs}ms since app open` });
-      })
-      .catch((err) => {
-        notifyAdmin({ text: `DEBUG hog064: chunk preload FAILED — ${err?.message || err}` });
-      });
+    import('./pages/ProductDetail.jsx').catch(() => {});
   }, []);
 
   // Product pages open as a sheet stacked on top of wherever the
@@ -165,13 +123,6 @@ export default function App() {
   // to layer it over.
   const location = useLocation();
   const backgroundLocation = location.state?.backgroundLocation;
-
-  // TEMP DEBUG (#hog064) — remove once the first-tap-doesn't-open
-  // issue is confirmed fixed. Fires on every navigation, so we can
-  // see exactly what the router saw during the failing first tap.
-  useEffect(() => {
-    notifyAdmin({ text: `DEBUG hog064: location → pathname=${location.pathname}, hasState=${Boolean(location.state)}, hasBgLoc=${Boolean(backgroundLocation)}, ${Date.now() - (window.__appOpenTs || Date.now())}ms since app open` });
-  }, [location]);
 
   return (
     <AppDataProvider>
@@ -208,7 +159,7 @@ export default function App() {
               </ErrorBoundary>
             </Suspense>
             {backgroundLocation && (
-              <Suspense fallback={<ProductSheetFallbackDebug />}>
+              <Suspense fallback={<RouteFallback />}>
                 <ErrorBoundary key={`sheet-${location.pathname}`} label={location.pathname}>
                   <Routes>
                     <Route path="/product/:id" element={<ProductDetail />} />
