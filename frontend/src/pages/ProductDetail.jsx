@@ -11,6 +11,7 @@ import { getUnsafeUserPreview, shareViaTelegram } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
 import { ErrorBanner, SuccessBanner } from '../components/Banner.jsx';
 import ImageCarousel from '../components/ImageCarousel.jsx';
+import RippleWave from '../components/RippleWave.jsx';
 import ListingCard from '../components/ListingCard.jsx';
 import StarRow from '../components/StarRow.jsx';
 import ReviewSheet from '../components/ReviewSheet.jsx';
@@ -48,6 +49,7 @@ export default function ProductDetail() {
   const [chatError, setChatError] = useState('');
   const [startingChat, setStartingChat] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
+  const [ripple, setRipple] = useState(null);
 
   const [descExpanded, setDescExpanded] = useState(false);
   const DESC_LIMIT = 180;
@@ -186,14 +188,17 @@ export default function ProductDetail() {
     }
   }
 
-  async function toggleFavorite() {
+  async function toggleFavorite(e) {
     if (favBusy) return;
+    const willFavorite = !isFavorited;
+    if (willFavorite) setRipple({ x: e.clientX, y: e.clientY });
     setFavBusy(true);
     try {
       const user = await requireRegistered();
       await setFavorite(user.uid, item, isFavorited);
     } catch (err) {
       setChatError(err.message || "Couldn't update favorites. Please try again.");
+      if (willFavorite) setRipple(null);
     } finally {
       setFavBusy(false);
     }
@@ -363,6 +368,7 @@ export default function ProductDetail() {
         >
           <Icon name="bookmark" size={15} {...(isFavorited ? { weight: 'fill' } : {})} />
         </button>
+        {ripple && <RippleWave x={ripple.x} y={ripple.y} onDone={() => setRipple(null)} />}
         <div className="pd-title">{item.title}</div>
         <div className="pd-price">{priceDisplay.text}{priceDisplay.currency && <span>ETB</span>}</div>
         <div className="pd-meta-row">

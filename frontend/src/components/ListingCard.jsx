@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Icon from './Icon.jsx';
+import RippleWave from './RippleWave.jsx';
 import { useAppData } from '../lib/appData';
 import { useRequireRegistered } from '../lib/authGate';
 import { setFavorite } from '../lib/favorites';
@@ -32,6 +33,7 @@ export default function ListingCard({ item, boosted }) {
   const { registeredUid, favorites } = useAppData();
   const requireRegistered = useRequireRegistered();
   const [favBusy, setFavBusy] = useState(false);
+  const [ripple, setRipple] = useState(null);
   const location = useLocation();
 
   const photos = item.images && item.images.length ? item.images : (item.photo ? [item.photo] : []);
@@ -45,6 +47,8 @@ export default function ListingCard({ item, boosted }) {
     e.preventDefault();
     e.stopPropagation();
     if (favBusy) return;
+    const willFavorite = !isFavorited;
+    if (willFavorite) setRipple({ x: e.clientX, y: e.clientY });
     setFavBusy(true);
     try {
       const user = await requireRegistered();
@@ -53,6 +57,7 @@ export default function ListingCard({ item, boosted }) {
       // Saving is a light-weight, retryable action from a card — if it
       // fails (offline, cancelled signup), the heart just stays as-is
       // rather than interrupting browsing with an error banner here.
+      if (willFavorite) setRipple(null);
     } finally {
       setFavBusy(false);
     }
@@ -84,6 +89,7 @@ export default function ListingCard({ item, boosted }) {
         >
           <Icon name="bookmark" size={13} {...(isFavorited ? { weight: 'fill' } : {})} />
         </button>
+        {ripple && <RippleWave x={ripple.x} y={ripple.y} onDone={() => setRipple(null)} />}
       </div>
       <div className="card-footer">
         {item.category && <div className="card-eyebrow">{item.category}</div>}
