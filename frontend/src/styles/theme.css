@@ -192,17 +192,6 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .pd-save-btn{position:absolute;top:14px;right:14px;width:32px;height:32px;border-radius:50%;background:var(--surface-sunken);border:none;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);cursor:pointer;transition:transform .12s ease,background .12s ease,color .12s ease;}
 .pd-save-btn:active{transform:scale(.85);}
 .pd-save-btn.is-fav{background:var(--accent-dark);color:#fff;}
-/* Full-screen golden wave from the Save tap point — mirrors Telegram's
-   star-reaction ripple. Fixed + pointer-events:none so it never blocks
-   input; removed from the DOM via onAnimationEnd once it finishes. */
-.ripple-wave{position:fixed;top:0;left:0;width:0;height:0;pointer-events:none;z-index:9999;}
-.ripple-ring{position:absolute;top:0;left:0;width:0;height:0;margin:0;border-radius:50%;border:2.5px solid rgba(170,205,230,.65);box-shadow:0 0 6px rgba(170,205,230,.35);transform:translate(-50%,-50%);opacity:0;animation:ripple-wave-expand 1.05s cubic-bezier(.25,.7,.35,1) forwards;}
-.ripple-ring:nth-child(2){animation-delay:.16s;}
-.ripple-ring:nth-child(3){animation-delay:.32s;}
-@keyframes ripple-wave-expand{
-  0%{width:0;height:0;opacity:.7;border-width:3px;}
-  100%{width:340px;height:340px;opacity:0;border-width:.5px;}
-}
 /* Share sits right next to Save, same circular-icon style, one slot
    to its left. */
 .pd-share-btn{position:absolute;top:14px;right:54px;width:32px;height:32px;border-radius:50%;background:var(--surface-sunken);border:none;display:flex;align-items:center;justify-content:center;color:var(--ink-faint);cursor:pointer;transition:transform .12s ease,background .12s ease,color .12s ease;}
