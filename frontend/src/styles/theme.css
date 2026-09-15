@@ -124,11 +124,10 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .carousel{height:270px;position:relative;background:var(--surface-sunken);}
 
 /* --- Product detail: image carousel + lightbox --- */
-/* Product page opens as a full-screen sheet stacked on top of
-   whatever screen it was opened from (see App.jsx's backgroundLocation
-   routing) — that screen stays mounted underneath, unchanged, and
-   backing out of it (in-page back arrow or Telegram's BackButton)
-   reveals it again exactly as it was. */
+/* Product page is a standalone full-screen route (same as any other
+   page) — this fixed/full-viewport treatment plus the slide-in just
+   gives it a sheet-like feel on entry; router history handles going
+   back, same as everywhere else. */
 .pd-page{position:fixed;top:0;bottom:0;left:0;right:0;margin:0 auto;width:100%;max-width:480px;z-index:60;background:var(--bg-app);padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:pd-sheet-in .24s ease-out;}
 @keyframes pd-sheet-in{from{transform:translateY(100%);}to{transform:translateY(0);}}
 .carousel-wrap{position:relative;}

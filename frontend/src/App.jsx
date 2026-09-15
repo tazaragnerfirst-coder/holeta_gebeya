@@ -105,24 +105,11 @@ export default function App() {
     import('./pages/ProductDetail.jsx').catch(() => {});
   }, []);
 
-  // Product pages open as a sheet stacked on top of wherever the
-  // user tapped it from (Home, Search, Favorites, a chat thread...),
-  // instead of replacing that screen outright — closing it (pull
-  // down, back button) should reveal that same screen underneath,
-  // still exactly as it was.
-  //
-  // The trick: any in-app Link to /product/:id attaches
-  // `state: { backgroundLocation: location }` (see openProduct() in
-  // lib/nav.js). When that's present, the MAIN <Routes> keeps
-  // rendering that background location (so e.g. Home stays mounted
-  // underneath) while a SECOND, later-mounted <Routes> renders just
-  // the /product/:id route on top of it as a full-screen panel.
-  // A direct/shared link with no backgroundLocation (no prior
-  // in-app screen to show underneath) just falls through to the
-  // ordinary full-page route in the main <Routes> — there's nothing
-  // to layer it over.
+  // Product pages are a standalone route, same as every other page —
+  // navigating to /product/:id replaces the current screen in the
+  // main <Routes> and back/BackButton pop it via normal router
+  // history, exactly like /store/:sellerId or /dashboard/ads.
   const location = useLocation();
-  const backgroundLocation = location.state?.backgroundLocation;
 
   return (
     <AppDataProvider>
@@ -131,8 +118,8 @@ export default function App() {
           <SplashGate />
           <div className="screen-container">
             <Suspense fallback={<RouteFallback />}>
-              <ErrorBoundary key={(backgroundLocation || location).pathname} label={(backgroundLocation || location).pathname}>
-                <Routes location={backgroundLocation || location}>
+              <ErrorBoundary key={location.pathname} label={location.pathname}>
+                <Routes location={location}>
                   <Route path="/" element={<Home />} />
                   <Route path="/product/:id" element={<ProductDetail />} />
                   <Route path="/post" element={<PostTypeSelect />} />
@@ -158,15 +145,6 @@ export default function App() {
                 </Routes>
               </ErrorBoundary>
             </Suspense>
-            {backgroundLocation && (
-              <Suspense fallback={<RouteFallback />}>
-                <ErrorBoundary key={`sheet-${location.pathname}`} label={location.pathname}>
-                  <Routes>
-                    <Route path="/product/:id" element={<ProductDetail />} />
-                  </Routes>
-                </ErrorBoundary>
-              </Suspense>
-            )}
           </div>
           <TelegramBackButton />
           <PostProgressRing />

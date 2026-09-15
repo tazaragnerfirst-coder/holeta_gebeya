@@ -34,6 +34,11 @@ export default function ListingCard({ item, boosted }) {
   const { registeredUid, favorites } = useAppData();
   const requireRegistered = useRequireRegistered();
   const [favBusy, setFavBusy] = useState(false);
+  // null = no override, trust `favorites` (live data). Set right when
+  // tapped so the icon flips instantly instead of waiting for the
+  // setFavorite() write + onSnapshot round-trip; cleared once live data
+  // confirms it (see effect below) or reverted on a failed write.
+  const [optimisticFavorited, setOptimisticFavorited] = useState(null);
   const location = useLocation();
 
   const photos = item.images && item.images.length ? item.images : (item.photo ? [item.photo] : []);
@@ -41,7 +46,8 @@ export default function ListingCard({ item, boosted }) {
   const posted = timeAgo(item.createdAt);
   const isJob = item.categoryType === 'job';
   const priceDisplay = formatListingPrice(item);
-  const isFavorited = registeredUid ? favorites.some((f) => f.listingId === item.id) : false;
+  const realFavorited = registeredUid ? favorites.some((f) => f.listingId === item.id) : false;
+  const isFavorited = optimisticFavorited !== null ? optimisticFavorited : realFavorited;
 
   // Seeds ProductDetail's pageCache with this item's full doc data (the
   // feed query already fetches full listings, no field-select) the moment
@@ -53,11 +59,21 @@ export default function ListingCard({ item, boosted }) {
     setCached(`product:${item.id}`, item);
   }, [item.id]);
 
+  // Drops the optimistic override once live data confirms it, so a
+  // later real update (e.g. unfavorited from another device) can take
+  // over normally instead of being stuck behind a stale override.
+  useEffect(() => {
+    if (optimisticFavorited !== null && realFavorited === optimisticFavorited) {
+      setOptimisticFavorited(null);
+    }
+  }, [realFavorited]);
+
   async function toggleFavorite(e) {
     e.preventDefault();
     e.stopPropagation();
     if (favBusy) return;
     const willFavorite = !isFavorited;
+    setOptimisticFavorited(willFavorite);
     if (willFavorite) hapticImpact('light');
     setFavBusy(true);
     try {
@@ -65,8 +81,10 @@ export default function ListingCard({ item, boosted }) {
       await setFavorite(user.uid, item, isFavorited);
     } catch {
       // Saving is a light-weight, retryable action from a card — if it
-      // fails (offline, cancelled signup), the heart just stays as-is
-      // rather than interrupting browsing with an error banner here.
+      // fails (offline, cancelled signup), just revert the optimistic
+      // flip back to the real state rather than interrupting browsing
+      // with an error banner here.
+      setOptimisticFavorited(null);
     } finally {
       setFavBusy(false);
     }

@@ -9,6 +9,7 @@ import { isActiveAd, isPausedAd, isExpired, daysSincePosted } from '../lib/adSta
 import { getListingAnalyticsBulk, getSellerAnalytics } from '../lib/analytics';
 import { getCached, setCached } from '../lib/pageCache';
 import { formatListingPrice } from '../lib/format';
+import { showConfirm, showAlert } from '../lib/telegram';
 import Icon from '../components/Icon.jsx';
 import Sparkline from '../components/Sparkline.jsx';
 import CombinedTrendChart from '../components/CombinedTrendChart.jsx';
@@ -66,11 +67,29 @@ export default function AdsManage() {
   const timedOut = useLoadTimeout(adsReady, 45000);
   const [deletingId, setDeletingId] = useState(null);
   const [togglingId, setTogglingId] = useState(null);
+  // ad id -> optimistic status override, so Pause/Resume flips the
+  // label and status-pill the instant it's tapped instead of waiting
+  // on the write + AppDataProvider's onSnapshot round-trip. Cleared
+  // once live data confirms it, or on a failed write.
+  const [optimisticStatus, setOptimisticStatus] = useState({});
 
   useEffect(() => {
     if (registeredUid) return;
     requireRegistered().catch((err) => console.error(err));
   }, [registeredUid]);
+
+  useEffect(() => {
+    setOptimisticStatus((prev) => {
+      const next = {};
+      let changed = false;
+      for (const [id, status] of Object.entries(prev)) {
+        const live = ads.find((a) => a.id === id);
+        if (live && live.status === status) { changed = true; continue; }
+        next[id] = status;
+      }
+      return changed ? next : prev;
+    });
+  }, [ads]);
 
   // Active + paused, but not yet expired — expired ads have their
   // own page (Expired) and don't need push/edit/delete here.
@@ -119,13 +138,14 @@ export default function AdsManage() {
   useEffect(loadAnalytics, [registeredUid, range.days]);
 
   async function handleDelete(id) {
-    if (!window.confirm('ይህን ማስታወቂያ መሰረዝ ይፈልጋሉ?')) return;
+    const ok = await showConfirm('Delete this ad? This can\'t be undone.');
+    if (!ok) return;
     setDeletingId(id);
     try {
       await deleteDoc(doc(db, 'listings', id));
     } catch (err) {
       console.error(err);
-      window.alert('መሰረዝ አልተሳካም። እንደገና ይሞክሩ።');
+      showAlert("Couldn't delete this ad. Try again.");
     } finally {
       setDeletingId(null);
     }
@@ -133,12 +153,14 @@ export default function AdsManage() {
 
   async function handleToggleStatus(ad) {
     const next = isPausedAd(ad) ? 'active' : 'paused';
+    setOptimisticStatus((prev) => ({ ...prev, [ad.id]: next }));
     setTogglingId(ad.id);
     try {
       await updateDoc(doc(db, 'listings', ad.id), { status: next });
     } catch (err) {
       console.error(err);
-      window.alert("Couldn't update this ad. Try again.");
+      setOptimisticStatus((prev) => { const { [ad.id]: _drop, ...rest } = prev; return rest; });
+      showAlert("Couldn't update this ad. Try again.");
     } finally {
       setTogglingId(null);
     }
@@ -196,8 +218,9 @@ export default function AdsManage() {
         const days = perAd[a.id] || [];
         const last7 = days.slice(-7).map((d) => d.views || 0);
         const contactsTotal = days.reduce((s, d) => s + (d.contacts || 0), 0);
-        const paused = isPausedAd(a);
-        const flag = isActiveAd(a) ? getPerfFlag(a, days) : null;
+        const effectiveAd = optimisticStatus[a.id] ? { ...a, status: optimisticStatus[a.id] } : a;
+        const paused = isPausedAd(effectiveAd);
+        const flag = isActiveAd(effectiveAd) ? getPerfFlag(a, days) : null;
         const priceDisplay = formatListingPrice(a);
         return (
           <div className="ad-manage-card" key={a.id}>

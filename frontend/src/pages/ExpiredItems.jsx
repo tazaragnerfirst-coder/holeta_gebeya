@@ -8,6 +8,7 @@ import { isExpired, computeExpiresAt } from '../lib/adStatus';
 import { productLinkState } from '../lib/nav';
 import Icon from '../components/Icon.jsx';
 import { formatListingPrice } from '../lib/format';
+import { showAlert } from '../lib/telegram';
 
 // Opened from the "Expired" card on the Dashboard. An ad lands here
 // once its 30-day expiresAt has passed (set at posting time) or its
@@ -27,7 +28,7 @@ export default function ExpiredItems() {
       await updateDoc(doc(db, 'listings', id), { status: 'active', expiresAt: computeExpiresAt() });
     } catch (err) {
       console.error(err);
-      window.alert('Renew failed. Please try again.');
+      showAlert('Renew failed. Please try again.');
     } finally {
       setRenewingId(null);
     }

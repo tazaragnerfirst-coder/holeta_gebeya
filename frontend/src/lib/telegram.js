@@ -86,6 +86,27 @@ export function hapticImpact(style = 'light') {
 // (navigator.share) is usually unsupported in Telegram's WebView, so it
 // silently falls through to a clipboard-copy fallback instead of ever
 // showing a share sheet.
+// Telegram's own native confirm/alert popups — styled like the rest of
+// the client (not a generic browser dialog) and consistent across
+// Telegram's iOS/Android/Desktop apps. Falls back to window.confirm/
+// window.alert outside Telegram (e.g. testing in a plain browser).
+export function showConfirm(message) {
+  const tg = getTelegramWebApp();
+  if (tg?.showConfirm) {
+    return new Promise((resolve) => tg.showConfirm(message, (ok) => resolve(ok)));
+  }
+  return Promise.resolve(window.confirm(message));
+}
+
+export function showAlert(message) {
+  const tg = getTelegramWebApp();
+  if (tg?.showAlert) {
+    return new Promise((resolve) => tg.showAlert(message, () => resolve()));
+  }
+  window.alert(message);
+  return Promise.resolve();
+}
+
 export function shareViaTelegram(url, text) {
   const tg = getTelegramWebApp();
   const shareLink = `https://t.me/share/url?url=${encodeURIComponent(url)}${text ? `&text=${encodeURIComponent(text)}` : ''}`;

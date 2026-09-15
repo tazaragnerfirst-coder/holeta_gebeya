@@ -48,6 +48,11 @@ export default function ProductDetail() {
   const [chatError, setChatError] = useState('');
   const [startingChat, setStartingChat] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
+  // null = no override, trust `favorites` (live data). Set right when
+  // tapped so the icon flips instantly instead of waiting for the
+  // setFavorite() write + onSnapshot round-trip; cleared once live data
+  // confirms it (see effect below) or reverted on a failed write.
+  const [optimisticFavorited, setOptimisticFavorited] = useState(null);
 
   const [descExpanded, setDescExpanded] = useState(false);
   const DESC_LIMIT = 180;
@@ -186,15 +191,26 @@ export default function ProductDetail() {
     }
   }
 
+  // Drops the optimistic override once live data confirms it, so a
+  // later real update (e.g. unfavorited from another device) can take
+  // over normally instead of being stuck behind a stale override.
+  useEffect(() => {
+    if (optimisticFavorited !== null && realFavorited === optimisticFavorited) {
+      setOptimisticFavorited(null);
+    }
+  }, [realFavorited]);
+
   async function toggleFavorite(e) {
     if (favBusy) return;
     const willFavorite = !isFavorited;
+    setOptimisticFavorited(willFavorite);
     if (willFavorite) hapticImpact('light');
     setFavBusy(true);
     try {
       const user = await requireRegistered();
       await setFavorite(user.uid, item, isFavorited);
     } catch (err) {
+      setOptimisticFavorited(null);
       setChatError(err.message || "Couldn't update favorites. Please try again.");
     } finally {
       setFavBusy(false);
@@ -328,7 +344,8 @@ export default function ProductDetail() {
   }
   if (!item) return <ProductDetailSkeleton />;
 
-  const isFavorited = registeredUid ? favorites.some((f) => f.listingId === id) : false;
+  const realFavorited = registeredUid ? favorites.some((f) => f.listingId === id) : false;
+  const isFavorited = optimisticFavorited !== null ? optimisticFavorited : realFavorited;
   const hasAttrs = item.attributes && Object.values(item.attributes).some((v) => v !== '' && v !== undefined);
   const sellerInitial = (item.sellerName || 'S')[0].toUpperCase();
   const isBoosted = item.boostedUntil?.toDate?.() > new Date();

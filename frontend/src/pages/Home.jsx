@@ -26,8 +26,7 @@ export default function Home() {
   const [search, setSearch] = useState('');
   const location = useLocation();
   const navigate = useNavigate();
-  // Category selection lives in router history state (same idea as
-  // ProductDetail's backgroundLocation, see lib/nav.js) rather than
+  // Category selection lives in router history state rather than
   // plain component state, specifically so it's back-navigable: Home
   // is the root screen, so with no history entry of its own, phone/
   // Telegram hardware back would just close the whole Mini App
