@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Icon from './Icon.jsx';
 import { useAppData } from '../lib/appData';
@@ -7,6 +7,7 @@ import { setFavorite } from '../lib/favorites';
 import { formatListingPrice } from '../lib/format';
 import { productLinkState } from '../lib/nav';
 import { hapticImpact } from '../lib/telegram';
+import { setCached } from '../lib/pageCache';
 
 const SWATCHES = ['#8FA998', '#C9A15A', '#A9876B', '#8A9BAE', '#B0836D', '#7E9E8C', '#B79A6B', '#93A0AE'];
 function colorFor(id) {
@@ -41,6 +42,16 @@ export default function ListingCard({ item, boosted }) {
   const isJob = item.categoryType === 'job';
   const priceDisplay = formatListingPrice(item);
   const isFavorited = registeredUid ? favorites.some((f) => f.listingId === item.id) : false;
+
+  // Seeds ProductDetail's pageCache with this item's full doc data (the
+  // feed query already fetches full listings, no field-select) the moment
+  // its card is on screen — not on tap. So by the time the card is tapped,
+  // ProductDetail's initial useState read already finds a warm cache and
+  // paints instantly, no skeleton wait; its own onSnapshot still refreshes
+  // in the background as before.
+  useEffect(() => {
+    setCached(`product:${item.id}`, item);
+  }, [item.id]);
 
   async function toggleFavorite(e) {
     e.preventDefault();
