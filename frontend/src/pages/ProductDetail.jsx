@@ -53,6 +53,12 @@ export default function ProductDetail() {
   // setFavorite() write + onSnapshot round-trip; cleared once live data
   // confirms it (see effect below) or reverted on a failed write.
   const [optimisticFavorited, setOptimisticFavorited] = useState(null);
+  // Only depends on context data (not `item`), so compute it up here,
+  // before the early returns below — the effect further down and
+  // toggleFavorite() both need it on every render, including while
+  // `item` is still loading.
+  const realFavorited = registeredUid ? favorites.some((f) => f.listingId === id) : false;
+  const isFavorited = optimisticFavorited !== null ? optimisticFavorited : realFavorited;
 
   const [descExpanded, setDescExpanded] = useState(false);
   const DESC_LIMIT = 180;
@@ -344,8 +350,6 @@ export default function ProductDetail() {
   }
   if (!item) return <ProductDetailSkeleton />;
 
-  const realFavorited = registeredUid ? favorites.some((f) => f.listingId === id) : false;
-  const isFavorited = optimisticFavorited !== null ? optimisticFavorited : realFavorited;
   const hasAttrs = item.attributes && Object.values(item.attributes).some((v) => v !== '' && v !== undefined);
   const sellerInitial = (item.sellerName || 'S')[0].toUpperCase();
   const isBoosted = item.boostedUntil?.toDate?.() > new Date();
