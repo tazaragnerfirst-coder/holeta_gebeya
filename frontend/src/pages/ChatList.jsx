@@ -92,12 +92,7 @@ export default function ChatList() {
         const unread = unreadCount(c, uid);
         return (
           <Link to={`/chat/${c.id}`} className={`chat-list-item${unread ? ' is-unread' : ''}`} key={c.id}>
-            {c.listingPhoto ? (
-              <div
-                className="chat-thumb"
-                style={{ backgroundImage: `url(${c.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-              />
-            ) : otherPhoto ? (
+            {otherPhoto ? (
               <div
                 className="chat-thumb avatar-circle"
                 style={{ backgroundImage: `url(${otherPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' }}

@@ -387,11 +387,7 @@ export default function ChatThread() {
         )}
         <div className="info">
           <div className="n">{otherName}</div>
-          {!chatInfo?.isSupport && chatInfo?.listingTitle && <div className="t">{chatInfo.listingTitle}</div>}
         </div>
-        {chatInfo?.listingId && (
-          <Link to={`/product/${chatInfo.listingId}`} state={productLinkState(location)} className="p" style={{ textDecoration: 'none' }}>View</Link>
-        )}
       </div>
 
       {topics.length > 1 && (
