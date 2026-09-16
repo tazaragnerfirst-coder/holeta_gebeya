@@ -54,6 +54,102 @@ app.use(express.json());
 
 app.get('/health', (req, res) => res.send('ok'));
 
+// Holeta Coin (#hog070) — internal, algorithmic-rate currency. No
+// blockchain: it's a Firestore balance whose ETB rate moves with
+// actual buy/sell pressure (an exponential-moving demand score, decayed
+// a little on every trade so old activity fades out) instead of being
+// fixed by an admin or a token supply cap. Mirror these constants with
+// frontend/src/lib/constants.js if they ever change (plain CommonJS
+// server, can't share that ES module).
+const COIN_BASE_RATE_ETB = 1;       // rate when demand is neutral
+const COIN_RATE_MIN = 0.5;
+const COIN_RATE_MAX = 3;
+const COIN_RATE_DECAY = 0.98;       // demand score decay applied before each trade's own delta
+const COIN_RATE_SENSITIVITY = 500;  // demand-score units needed to move the rate by 1x base
+const COIN_REFERRAL_REWARD = 10;    // Coin credited to the referrer per successful invite — placeholder, Taza hasn't set a final amount
+const MIN_COIN_BUY_ETB = 10;
+const MIN_COIN_SELL_AMOUNT = 1;
+
+function clampRate(rate) {
+  return Math.min(COIN_RATE_MAX, Math.max(COIN_RATE_MIN, rate));
+}
+
+// tradeDelta: +coinsBought for a buy, -coinsSold for a sell. Only buy/
+// sell move the rate — transfers (internal) and spends (burned into a
+// purchase, not sold back) deliberately don't, to keep the model simple.
+function nextMarketState(market, tradeDelta, supplyDelta) {
+  const demandScore = (market?.demandScore || 0) * COIN_RATE_DECAY + tradeDelta;
+  const totalSupply = Math.max(0, (market?.totalSupply || 0) + supplyDelta);
+  const rate = clampRate(COIN_BASE_RATE_ETB * (1 + demandScore / COIN_RATE_SENSITIVITY));
+  return { demandScore, totalSupply, rate };
+}
+
+function currentCoinRate(market) {
+  return market?.rate || COIN_BASE_RATE_ETB;
+}
+
+// HGC-XXXXXXXX — doubles as both the "send Coin to" address and the
+// referral code baked into invite links. Excludes visually-ambiguous
+// characters (0/O, 1/I).
+function generateCoinAddressCandidate() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s = '';
+  for (let i = 0; i < 8; i++) s += chars[crypto.randomInt(chars.length)];
+  return `HGC-${s}`;
+}
+
+async function generateUniqueCoinAddress() {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateCoinAddressCandidate();
+    const clash = await db.collection('users').where('coinAddress', '==', candidate).limit(1).get();
+    if (clash.empty) return candidate;
+  }
+  // Astronomically unlikely to ever hit 5 collisions — fall back to a
+  // longer address rather than fail signup.
+  return `HGC-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+}
+
+// Credits the referrer's Coin balance once a new user registers via
+// their invite link. referrals/{newUserUid} existing is what stops a
+// double-credit (e.g. a duplicate /telegramAuth call) — one credit per
+// new user, ever.
+async function creditReferralIfEligible(referralCode, newUserUid) {
+  const referrerSnap = await db.collection('users').where('coinAddress', '==', referralCode).limit(1).get();
+  if (referrerSnap.empty) return;
+  const referrerUid = referrerSnap.docs[0].id;
+  if (referrerUid === newUserUid) return; // no self-referral
+
+  const referralRef = db.collection('referrals').doc(newUserUid);
+  const coinRef = db.collection('coins').doc(referrerUid);
+  const marketRef = db.collection('coinMarket').doc('global');
+
+  await db.runTransaction(async (tx) => {
+    const [referralSnap, coinSnap] = await Promise.all([tx.get(referralRef), tx.get(coinRef)]);
+    if (referralSnap.exists) return; // already credited
+
+    const balance = coinSnap.exists ? (coinSnap.data().balance || 0) : 0;
+    const newBalance = balance + COIN_REFERRAL_REWARD;
+
+    tx.set(coinRef, { balance: newBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    tx.set(db.collection('coinTransactions').doc(), {
+      uid: referrerUid,
+      type: 'earn_referral',
+      amount: COIN_REFERRAL_REWARD,
+      balanceAfter: newBalance,
+      referenceId: newUserUid,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    tx.set(referralRef, {
+      referrerUid,
+      newUserUid,
+      awarded: COIN_REFERRAL_REWARD,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    // Minted supply, no rate effect (per design: only buy/sell move the rate).
+    tx.set(marketRef, { totalSupply: admin.firestore.FieldValue.increment(COIN_REFERRAL_REWARD) }, { merge: true });
+  });
+}
+
 // Called only when the user takes an action that needs an account
 // (post an ad, message a seller) — never on plain browsing.
 app.post('/telegramAuth', async (req, res) => {
@@ -64,7 +160,11 @@ app.post('/telegramAuth', async (req, res) => {
     if (!tgUser) return res.status(401).json({ error: 'Invalid or expired Telegram session.' });
 
     const uid = `tg_${tgUser.id}`;
-    await db.collection('users').doc(uid).set({
+    const userRef = db.collection('users').doc(uid);
+    const existingSnap = await userRef.get();
+    const isNewUser = !existingSnap.exists;
+
+    const update = {
       telegramId: tgUser.id,
       firstName: tgUser.first_name || '',
       lastName: tgUser.last_name || '',
@@ -76,7 +176,23 @@ app.post('/telegramAuth', async (req, res) => {
       // seller's avatar on a listing, or a chat participant's avatar.
       photoUrl: tgUser.photo_url || '',
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    }, { merge: true });
+    };
+    // Holeta Coin address (#hog070) — generated once, kept forever.
+    if (isNewUser || !existingSnap.data().coinAddress) {
+      update.coinAddress = await generateUniqueCoinAddress();
+    }
+
+    await userRef.set(update, { merge: true });
+
+    // Referral crediting (#hog070) — only on true first registration,
+    // via the invite link's start_param (which is the referrer's own
+    // coinAddress — see frontend lib/telegram.js's getStartParam()).
+    const referralCode = (req.body.startParam || '').trim();
+    if (isNewUser && referralCode) {
+      creditReferralIfEligible(referralCode, uid).catch((err) => {
+        console.error('Referral credit failed (non-fatal):', err);
+      });
+    }
 
     const token = await admin.auth().createCustomToken(uid);
     res.json({ token });
@@ -465,6 +581,244 @@ app.post('/spendWallet', async (req, res) => {
   } catch (err) {
     console.error('spendWallet failed:', err);
     res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
+// Holeta Coin (#hog070) — buy/sell against the existing Wallet ETB
+// balance (no separate payment step; the ETB already passed admin
+// review at Wallet top-up time). All four endpoints run via the Admin
+// SDK so balances/rate can't be spoofed client-side — same reasoning
+// as /spendWallet above.
+
+app.post('/buyCoin', async (req, res) => {
+  try {
+    const { idToken, etbAmount } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    const amount = Number(etbAmount);
+    if (!(amount >= MIN_COIN_BUY_ETB)) return res.status(400).json({ error: `Minimum buy is ${MIN_COIN_BUY_ETB} ETB.` });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const walletRef = db.collection('wallets').doc(uid);
+    const coinRef = db.collection('coins').doc(uid);
+    const marketRef = db.collection('coinMarket').doc('global');
+
+    const result = await db.runTransaction(async (tx) => {
+      const [walletSnap, coinSnap, marketSnap] = await Promise.all([tx.get(walletRef), tx.get(coinRef), tx.get(marketRef)]);
+      const walletBalance = walletSnap.exists ? (walletSnap.data().balance || 0) : 0;
+      if (walletBalance < amount) return { insufficient: true, walletBalance };
+
+      const market = marketSnap.exists ? marketSnap.data() : null;
+      const rate = currentCoinRate(market);
+      const coinsBought = amount / rate;
+      const newWalletBalance = walletBalance - amount;
+      const newCoinBalance = (coinSnap.exists ? (coinSnap.data().balance || 0) : 0) + coinsBought;
+      const next = nextMarketState(market, coinsBought, coinsBought);
+
+      tx.set(walletRef, { balance: newWalletBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('walletTransactions').doc(), {
+        uid, type: 'coin_buy', amount: -amount, balanceAfter: newWalletBalance, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(coinRef, { balance: newCoinBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('coinTransactions').doc(), {
+        uid, type: 'buy', amount: coinsBought, rate, balanceAfter: newCoinBalance, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(marketRef, { ...next, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('coinRateHistory').doc(), { rate: next.rate, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+
+      return { insufficient: false, walletBalance: newWalletBalance, coinBalance: newCoinBalance, rate: next.rate };
+    });
+
+    if (result.insufficient) return res.status(402).json({ error: 'Insufficient wallet balance.', balance: result.walletBalance });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('buyCoin failed:', err);
+    res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
+app.post('/sellCoin', async (req, res) => {
+  try {
+    const { idToken, coinAmount } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    const amount = Number(coinAmount);
+    if (!(amount >= MIN_COIN_SELL_AMOUNT)) return res.status(400).json({ error: `Minimum sell is ${MIN_COIN_SELL_AMOUNT} Coin.` });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const walletRef = db.collection('wallets').doc(uid);
+    const coinRef = db.collection('coins').doc(uid);
+    const marketRef = db.collection('coinMarket').doc('global');
+
+    const result = await db.runTransaction(async (tx) => {
+      const [walletSnap, coinSnap, marketSnap] = await Promise.all([tx.get(walletRef), tx.get(coinRef), tx.get(marketRef)]);
+      const coinBalance = coinSnap.exists ? (coinSnap.data().balance || 0) : 0;
+      if (coinBalance < amount) return { insufficient: true, coinBalance };
+
+      const market = marketSnap.exists ? marketSnap.data() : null;
+      const rate = currentCoinRate(market);
+      const etbReceived = amount * rate;
+      const newCoinBalance = coinBalance - amount;
+      const newWalletBalance = (walletSnap.exists ? (walletSnap.data().balance || 0) : 0) + etbReceived;
+      const next = nextMarketState(market, -amount, -amount);
+
+      tx.set(coinRef, { balance: newCoinBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('coinTransactions').doc(), {
+        uid, type: 'sell', amount: -amount, rate, balanceAfter: newCoinBalance, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(walletRef, { balance: newWalletBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('walletTransactions').doc(), {
+        uid, type: 'coin_sell', amount: etbReceived, balanceAfter: newWalletBalance, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(marketRef, { ...next, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('coinRateHistory').doc(), { rate: next.rate, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+
+      return { insufficient: false, coinBalance: newCoinBalance, walletBalance: newWalletBalance, rate: next.rate };
+    });
+
+    if (result.insufficient) return res.status(402).json({ error: 'Insufficient Coin balance.', balance: result.coinBalance });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('sellCoin failed:', err);
+    res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
+app.post('/transferCoin', async (req, res) => {
+  try {
+    const { idToken, recipientAddress, amount } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    const sendAmount = Number(amount);
+    if (!(sendAmount > 0)) return res.status(400).json({ error: 'Enter a valid amount.' });
+    if (!recipientAddress || !String(recipientAddress).trim()) return res.status(400).json({ error: 'Enter a recipient address.' });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const senderUid = decoded.uid;
+
+    const recipientSnap = await db.collection('users').where('coinAddress', '==', String(recipientAddress).trim().toUpperCase()).limit(1).get();
+    if (recipientSnap.empty) return res.status(404).json({ error: 'No account found with that Coin address.' });
+    const recipientUid = recipientSnap.docs[0].id;
+    if (recipientUid === senderUid) return res.status(400).json({ error: "You can't send Coin to yourself." });
+
+    const senderCoinRef = db.collection('coins').doc(senderUid);
+    const recipientCoinRef = db.collection('coins').doc(recipientUid);
+
+    const result = await db.runTransaction(async (tx) => {
+      const [senderSnap, recipientCoinSnap] = await Promise.all([tx.get(senderCoinRef), tx.get(recipientCoinRef)]);
+      const senderBalance = senderSnap.exists ? (senderSnap.data().balance || 0) : 0;
+      if (senderBalance < sendAmount) return { insufficient: true, senderBalance };
+
+      const newSenderBalance = senderBalance - sendAmount;
+      const newRecipientBalance = (recipientCoinSnap.exists ? (recipientCoinSnap.data().balance || 0) : 0) + sendAmount;
+
+      tx.set(senderCoinRef, { balance: newSenderBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('coinTransactions').doc(), {
+        uid: senderUid, type: 'transfer_out', amount: -sendAmount, balanceAfter: newSenderBalance, referenceId: recipientUid, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(recipientCoinRef, { balance: newRecipientBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('coinTransactions').doc(), {
+        uid: recipientUid, type: 'transfer_in', amount: sendAmount, balanceAfter: newRecipientBalance, referenceId: senderUid, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      return { insufficient: false, senderBalance: newSenderBalance };
+    });
+
+    if (result.insufficient) return res.status(402).json({ error: 'Insufficient Coin balance.', balance: result.senderBalance });
+    res.json({ ok: true, balance: result.senderBalance });
+  } catch (err) {
+    console.error('transferCoin failed:', err);
+    res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
+// Coin-funded Subscription/Boost — same purchases /spendWallet offers,
+// paid from the Coin balance instead. Spent Coin is burned (removed
+// from totalSupply) rather than sold back, so — per the rate design
+// above — it deliberately does not move the rate itself.
+app.post('/spendCoin', async (req, res) => {
+  try {
+    const { idToken, type, listingId } = req.body || {};
+    if (!idToken) return res.status(401).json({ error: 'Missing session token — please try again.' });
+    if (type !== 'subscription' && type !== 'boost') return res.status(400).json({ error: 'Invalid purchase type.' });
+    if (type === 'boost' && !listingId) return res.status(400).json({ error: 'listingId is required for a boost.' });
+
+    const decoded = await admin.auth().verifyIdToken(idToken);
+    const uid = decoded.uid;
+    const priceEtb = type === 'subscription' ? SUBSCRIPTION_PRICE_ETB : BOOST_PRICE_ETB;
+    const expiresAtMs = Date.now() + (type === 'subscription' ? SUBSCRIPTION_PERIOD_DAYS : BOOST_DURATION_DAYS) * 24 * 60 * 60 * 1000;
+
+    let listingRef = null;
+    if (type === 'boost') {
+      listingRef = db.collection('listings').doc(listingId);
+      const listingSnap = await listingRef.get();
+      if (!listingSnap.exists) return res.status(404).json({ error: 'Ad not found.' });
+      if (listingSnap.data().sellerId !== uid) return res.status(403).json({ error: 'You can only boost your own ad.' });
+    }
+
+    const coinRef = db.collection('coins').doc(uid);
+    const marketRef = db.collection('coinMarket').doc('global');
+
+    const result = await db.runTransaction(async (tx) => {
+      const [coinSnap, marketSnap] = await Promise.all([tx.get(coinRef), tx.get(marketRef)]);
+      const market = marketSnap.exists ? marketSnap.data() : null;
+      const rate = currentCoinRate(market);
+      const priceInCoin = priceEtb / rate;
+      const coinBalance = coinSnap.exists ? (coinSnap.data().balance || 0) : 0;
+      if (coinBalance < priceInCoin) return { insufficient: true, coinBalance, priceInCoin };
+
+      const newCoinBalance = coinBalance - priceInCoin;
+      tx.set(coinRef, { balance: newCoinBalance, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      tx.set(db.collection('coinTransactions').doc(), {
+        uid, type: 'spend', amount: -priceInCoin, rate, balanceAfter: newCoinBalance, referenceId: type === 'boost' ? listingId : null, createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      tx.set(marketRef, { totalSupply: admin.firestore.FieldValue.increment(-priceInCoin) }, { merge: true });
+
+      if (type === 'subscription') {
+        tx.set(db.collection('users').doc(uid), {
+          subscriptionActive: true,
+          subscriptionExpiresAt: admin.firestore.Timestamp.fromMillis(expiresAtMs),
+        }, { merge: true });
+      } else {
+        tx.update(listingRef, { boostedUntil: admin.firestore.Timestamp.fromMillis(expiresAtMs) });
+      }
+
+      return { insufficient: false, coinBalance: newCoinBalance };
+    });
+
+    if (result.insufficient) {
+      return res.status(402).json({ error: `Insufficient Coin balance (need ~${result.priceInCoin.toFixed(2)}).`, balance: result.coinBalance });
+    }
+
+    if (type === 'subscription') {
+      const sellerListings = await db.collection('listings').where('sellerId', '==', uid).get();
+      if (!sellerListings.empty) {
+        const batch = db.batch();
+        sellerListings.docs.forEach((d) => {
+          batch.update(d.ref, { sellerSubscriptionActive: true, sellerSubscriptionExpiresAt: expiresAtMs });
+        });
+        await batch.commit();
+      }
+    }
+
+    res.json({ ok: true, balance: result.coinBalance });
+  } catch (err) {
+    console.error('spendCoin failed:', err);
+    res.status(401).json({ error: 'Could not verify your session. Please reopen the app and try again.' });
+  }
+});
+
+// Lets the Send-Coin form show who a typed address belongs to before
+// the sender confirms — first name only, same exposure level as the
+// public Store page (never phone/uid). No auth required (read-only,
+// non-sensitive, same spirit as the public listing search).
+app.get('/resolveCoinAddress/:address', async (req, res) => {
+  try {
+    const snap = await db.collection('users').where('coinAddress', '==', String(req.params.address).trim().toUpperCase()).limit(1).get();
+    if (snap.empty) return res.status(404).json({ error: 'Not found.' });
+    res.json({ firstName: snap.docs[0].data().firstName || 'User' });
+  } catch (err) {
+    console.error('resolveCoinAddress failed:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

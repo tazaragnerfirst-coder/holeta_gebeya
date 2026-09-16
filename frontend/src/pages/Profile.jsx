@@ -14,7 +14,7 @@ import { isSubscriptionActive } from '../lib/subscription';
 export default function Profile() {
   const navigate = useNavigate();
   const requireRegistered = useRequireRegistered();
-  const { registeredUid, ads, profile, sellerRating: rating, walletBalance } = useAppData();
+  const { registeredUid, ads, profile, sellerRating: rating, walletBalance, coinBalance } = useAppData();
   const [bannerUrl, setBannerUrl] = useState(() => getCachedAppBannerUrl());
 
   const [editOpen, setEditOpen] = useState(false);
@@ -109,7 +109,7 @@ export default function Profile() {
     },
     { icon: 'listBullets', t: 'My Ads', sub: registeredUid ? `${ads.length} listing${ads.length === 1 ? '' : 's'}` : null, onClick: goMyAds },
     { icon: 'store', t: 'My Store', onClick: goMyStore },
-    { icon: 'coin', t: 'Holeta Coin', sub: 'Soon', onClick: () => navigate('/holeta-coin') },
+    { icon: 'coin', t: 'Holeta Coin', sub: registeredUid ? `${coinBalance.toLocaleString('en-US', { maximumFractionDigits: 2 })} Coin` : null, onClick: () => navigate('/holeta-coin') },
   ];
 
   const box2 = [

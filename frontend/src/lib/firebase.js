@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
-import { getInitData, getUnsafeUserPreview } from './telegram';
+import { getInitData, getUnsafeUserPreview, getStartParam } from './telegram';
 
 // Fill these in from Firebase Console → Project Settings → General.
 // Safe to keep in the client bundle (these are public identifiers,
@@ -86,7 +86,7 @@ export function ensureLoggedIn() {
     .then(() => fetch(`${BACKEND_URL}/telegramAuth`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData: getInitData() }),
+      body: JSON.stringify({ initData: getInitData(), startParam: getStartParam() }),
     }))
     .then((r) => {
       if (!r.ok) return r.json().then((e) => { throw new Error(e.error || `Login failed (${r.status})`); });

@@ -163,6 +163,49 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Holeta Coin (#hog070) — balance never client-writable in either
+    // direction, same reasoning as /wallets above: credited/debited
+    // only by the buyCoin/sellCoin/transferCoin/spendCoin backend
+    // endpoints (Admin SDK, bypasses these rules) and by referral
+    // crediting in /telegramAuth.
+    match /coins/{uid} {
+      allow read: if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Coin transaction ledger — immutable audit trail, same pattern as
+    // walletTransactions. Only ever created by the backend endpoints
+    // above (Admin SDK).
+    match /coinTransactions/{txId} {
+      allow read: if (request.auth != null && resource.data.uid == request.auth.uid) || isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // Global Coin↔ETB rate + supply/demand state — public read (the
+    // rate ticker/chart shows for every user, signed in or not), only
+    // ever written by the backend endpoints (Admin SDK).
+    match /coinMarket/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Rate history points (one per trade) feeding the Coin trade
+    // chart — same public-read reasoning as coinMarket above.
+    match /coinRateHistory/{id} {
+      allow read: if true;
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    // One doc per new user, keyed by their own uid — stops a referral
+    // reward from ever being credited twice. Only the backend
+    // (Admin SDK, inside /telegramAuth) ever writes this.
+    match /referrals/{newUserUid} {
+      allow read: if (request.auth != null && (request.auth.uid == newUserUid || resource.data.referrerUid == request.auth.uid)) || isAdmin();
+      allow write: if isAdmin();
+    }
+
     // Public store page (#hog023/#hog046) — bio/address/social links
     // only. Deliberately separate from users/{uid} (which holds the
     // phone number and is admin-only writable) so this can be public

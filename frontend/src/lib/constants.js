@@ -28,3 +28,15 @@ export const PAYMENT_ACCOUNTS = [
 export const MIN_WALLET_TOPUP_ETB = 50;
 export const BOOST_PRICE_ETB = 99;
 export const BOOST_DURATION_DAYS = 7;
+
+// Holeta Coin (#hog070): internal, algorithmic-rate currency, bought/
+// sold against the Wallet ETB balance above (no separate payment
+// step). Mirror these with the matching constants in
+// backend/server/index.js (plain CommonJS server, can't share this
+// ES module) if they ever change.
+export const COIN_BASE_RATE_ETB = 1;
+export const COIN_RATE_MIN = 0.5;
+export const COIN_RATE_MAX = 3;
+export const COIN_REFERRAL_REWARD = 10; // placeholder — Taza hasn't set a final amount
+export const MIN_COIN_BUY_ETB = 10;
+export const MIN_COIN_SELL_AMOUNT = 1;

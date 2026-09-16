@@ -57,6 +57,17 @@ export function getUnsafeUserPreview() {
   return tg?.initDataUnsafe?.user || null;
 }
 
+// The `startapp=` value from an invite link (e.g.
+// https://t.me/bot/app?startapp=HGC-XXXXXXXX). Used as the Holeta
+// Coin referral code (#hog070) — the referrer's own coinAddress. Read
+// straight off initDataUnsafe (not HMAC-signed), which is fine here:
+// referral crediting itself is verified server-side against a real
+// coinAddress, so a tampered value just fails to match anyone.
+export function getStartParam() {
+  const tg = getTelegramWebApp();
+  return tg?.initDataUnsafe?.start_param || '';
+}
+
 export function hapticSuccess() {
   if (!getVibration()) return;
   const tg = getTelegramWebApp();

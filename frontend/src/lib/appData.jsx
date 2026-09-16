@@ -7,6 +7,7 @@ import { subscribeFavorites } from './favorites';
 import { isActiveAd } from './adStatus';
 import { getSellerRating } from './rating';
 import { subscribeWalletBalance } from './wallet';
+import { subscribeCoinBalance, subscribeCoinMarket } from './coin';
 
 const AppDataContext = createContext(null);
 
@@ -117,6 +118,10 @@ export function AppDataProvider({ children }) {
   const [sellerRatingReady, setSellerRatingReady] = useState(() => (initialUid ? getCached(`sellerRating:${initialUid}`) != null : false));
   const [walletBalance, setWalletBalance] = useState(() => (initialUid ? getCached(`walletBalance:${initialUid}`) ?? 0 : 0));
   const [walletBalanceReady, setWalletBalanceReady] = useState(() => (initialUid ? getCached(`walletBalance:${initialUid}`) != null : false));
+  const [coinBalance, setCoinBalance] = useState(() => (initialUid ? getCached(`coinBalance:${initialUid}`) ?? 0 : 0));
+  const [coinBalanceReady, setCoinBalanceReady] = useState(() => (initialUid ? getCached(`coinBalance:${initialUid}`) != null : false));
+  const [coinMarket, setCoinMarket] = useState(() => getCached('coinMarket') || null);
+  const [coinMarketReady, setCoinMarketReady] = useState(() => getCached('coinMarket') != null);
   // Admin-editable name->hex overrides (referenceData/colorHex doc,
   // see #hog017) merged over the built-in COLOR_HEX map in
   // data/colors.js — see colorHex() there. Small single doc, cheap
@@ -334,6 +339,7 @@ export function AppDataProvider({ children }) {
         location: data.location || '',
         subscriptionActive: !!data.subscriptionActive,
         subscriptionExpiresAt: data.subscriptionExpiresAt?.toMillis ? data.subscriptionExpiresAt.toMillis() : null,
+        coinAddress: data.coinAddress || '',
       };
       setProfile(p);
       setProfileReady(true);
@@ -355,6 +361,28 @@ export function AppDataProvider({ children }) {
     });
     return unsub;
   }, [registeredUid]);
+
+  // Holeta Coin balance (#hog070). Same live reasoning as Wallet above.
+  useEffect(() => {
+    if (!registeredUid) { setCoinBalance(0); setCoinBalanceReady(false); return; }
+    const unsub = subscribeCoinBalance(registeredUid, (balance) => {
+      setCoinBalance(balance);
+      setCoinBalanceReady(true);
+      setCached(`coinBalance:${registeredUid}`, balance);
+    });
+    return unsub;
+  }, [registeredUid]);
+
+  // Global Coin↔ETB rate — not scoped to a user, so it loads (and
+  // stays live) regardless of registration state.
+  useEffect(() => {
+    const unsub = subscribeCoinMarket((market) => {
+      setCoinMarket(market);
+      setCoinMarketReady(true);
+      setCached('coinMarket', market);
+    });
+    return unsub;
+  }, []);
 
   // Seller-level aggregate rating. getSellerRating() already caches
   // (and falls back to its own cache on failure) — this just seeds
@@ -426,6 +454,8 @@ export function AppDataProvider({ children }) {
       profile, profileReady,
       sellerRating, sellerRatingReady,
       walletBalance, walletBalanceReady,
+      coinBalance, coinBalanceReady,
+      coinMarket, coinMarketReady,
     }}>
       {children}
     </AppDataContext.Provider>

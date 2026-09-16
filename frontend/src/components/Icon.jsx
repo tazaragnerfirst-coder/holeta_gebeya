@@ -8,7 +8,7 @@ import {
   SignOut, Pause, Play, Crown, Storefront, SealCheck, GearSix, Coins,
   Globe, BookmarkSimple, ShareNetwork, Sun, Moon, Monitor, Paperclip,
   WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo, Lock,
-  ChartBar, ListBullets, Vibrate, Wallet,
+  ChartBar, ListBullets, Vibrate, Wallet, ArrowDown, CopySimple, ArrowsLeftRight,
   // Marketplace category-icon set (#hog054) — broad but curated, not
   // exhaustive: picked to cover Holeta Gebeya's common category
   // concepts (electronics, vehicles, fashion, home, food, pets,
@@ -61,8 +61,8 @@ import {
 // analytics) and Profile's "My Ads" got `listBullets` (ListBullets,
 // a list of your own listings), instead of both borrowing Job's icon.
 // `wallet` (Wallet) is the real spendable-balance Wallet feature —
-// kept separate from `coin` (Coins), which stays reserved for the
-// unrelated, not-yet-built "Holeta Coin" feature.
+// kept separate from `coin` (Coins), reserved for the Holeta Coin
+// feature (#hog070).
 const COMPONENTS = {
   search: MagnifyingGlass,
   mapPin: MapPin,
@@ -113,6 +113,9 @@ const COMPONENTS = {
   listBullets: ListBullets,
   coin: Coins,
   wallet: Wallet,
+  arrowDown: ArrowDown,
+  copy: CopySimple,
+  swap: ArrowsLeftRight,
   globe: Globe,
   bookmark: BookmarkSimple,
   share: ShareNetwork,
