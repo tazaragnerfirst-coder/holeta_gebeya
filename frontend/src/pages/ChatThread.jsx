@@ -219,6 +219,31 @@ export default function ChatThread() {
     }).catch(() => {});
   }, [messages.length, id]);
 
+  // Self-heal a stale name/photo on this chat doc — buyerName/sellerName
+  // are a snapshot taken when the thread was created (or last sent
+  // from), so a later profile-name/photo change wouldn't otherwise
+  // show up here or in the chat list. Each side only ever writes its
+  // own fields, so this never touches what the other participant sees
+  // of themselves.
+  useEffect(() => {
+    if (!chatInfo?.createdAt || !auth.currentUser) return;
+    const uid = auth.currentUser.uid;
+    const iAmBuyer = chatInfo.buyerId === uid;
+    const iAmSeller = !iAmBuyer && chatInfo.sellerId === uid;
+    if (!iAmBuyer && !iAmSeller) return;
+    const nameField = iAmBuyer ? 'buyerName' : 'sellerName';
+    const photoField = iAmBuyer ? 'buyerPhoto' : 'sellerPhoto';
+    getMyProfile(uid).then((profile) => {
+      const patch = {};
+      if (profile.name && profile.name !== chatInfo[nameField]) patch[nameField] = profile.name;
+      if ((profile.photo || '') !== (chatInfo[photoField] || '')) patch[photoField] = profile.photo || '';
+      if (Object.keys(patch).length) {
+        updateDoc(doc(db, 'chats', id), patch).catch(() => {});
+      }
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, chatInfo?.createdAt, chatInfo?.buyerId, chatInfo?.sellerId, chatInfo?.buyerName, chatInfo?.sellerName, chatInfo?.buyerPhoto, chatInfo?.sellerPhoto]);
+
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -353,19 +378,6 @@ export default function ChatThread() {
   // clutter the composer.
   const showQuickReplies = messages.filter((m) => m.type !== 'listing').length < 2;
 
-  // Every distinct item raised in this conversation, in a pinned
-  // strip that never scrolls out of view — so which products have
-  // come up stays visible no matter how long the conversation gets,
-  // instead of only living in a listing card buried in the scrollback.
-  const topics = [];
-  const seenTopics = new Set();
-  for (const m of messages) {
-    if (m.type === 'listing' && !seenTopics.has(m.listingId)) {
-      seenTopics.add(m.listingId);
-      topics.push(m);
-    }
-  }
-
   const pendingPriceDisplay = pendingListing
     ? formatListingPrice({ price: pendingListing.listingPrice, priceType: pendingListing.listingPriceType })
     : null;
@@ -389,20 +401,6 @@ export default function ChatThread() {
           <div className="n">{otherName}</div>
         </div>
       </div>
-
-      {topics.length > 1 && (
-        <div className="chat-topics-strip">
-          {topics.map((t) => (
-            <Link to={`/product/${t.listingId}`} state={productLinkState(location)} className="chat-topic-chip" key={t.listingId}>
-              <span
-                className="chat-topic-thumb"
-                style={t.listingPhoto ? { backgroundImage: `url(${t.listingPhoto})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-              />
-              <span>{t.listingTitle}</span>
-            </Link>
-          ))}
-        </div>
-      )}
 
       <div className="thread-scroll">
         {!chatInfo?.isSupport && (
