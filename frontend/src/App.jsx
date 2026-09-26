@@ -5,7 +5,7 @@ import Icon from './components/Icon.jsx';
 import { AuthGateProvider } from './lib/authGate.jsx';
 import { AppDataProvider, useAppData } from './lib/appData.jsx';
 import { BACKEND_URL } from './lib/firebase';
-import { getTelegramWebApp } from './lib/telegram';
+import { getTelegramWebApp, hapticImpact } from './lib/telegram';
 import PostProgressRing from './components/PostProgressRing.jsx';
 import { triggerPostAdSubmit } from './lib/postAdFab';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
@@ -237,30 +237,39 @@ function BottomNav() {
     : 0;
 
   const item = (to, label, icon, badge) => (
-    <NavLink to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end={to === '/'}>
+    <NavLink
+      to={to}
+      className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+      end={to === '/'}
+      onClick={() => hapticImpact('light')}
+    >
       <span className="nav-icon-wrap">
-        <Icon name={icon} size={24} />
-        {badge > 0 && <span className="nav-badge">{badge > 99 ? '99+' : badge}</span>}
+        <Icon name={icon} size={19} />
+        {badge > 0 && <span className="nav-dot"></span>}
       </span>
-      <span>{label}</span>
+      <span className="nav-label">{label}</span>
     </NavLink>
   );
   return (
-    <nav className="bottom-nav">
-      {item('/', 'Home', 'home')}
-      {item('/chat', 'Chat', 'chat', totalUnread)}
-      <div className="nav-space-holder"></div>
-      {item('/dashboard', 'Dashboard', 'chartBar')}
-      {item('/profile', 'Profile', 'user')}
-      <div className="nav-fab-wrapper">
-        {onPostPage ? (
-          <button type="button" className="nav-fab" onClick={() => triggerPostAdSubmit()}>
-            <Icon name="arrowUp" size={24} />
-          </button>
-        ) : (
-          <NavLink to="/post" className="nav-fab"><Icon name="plus" size={24} /></NavLink>
-        )}
-      </div>
-    </nav>
+    <div className="bottom-nav-wrap">
+      <nav className="bottom-nav">
+        {item('/', 'Home', 'home')}
+        {item('/chat', 'Chat', 'chat', totalUnread)}
+        <div className="nav-space-holder"></div>
+        {item('/dashboard', 'Dashboard', 'chartBar')}
+        {item('/profile', 'Profile', 'user')}
+        <div className="nav-fab-wrapper">
+          {onPostPage ? (
+            <button type="button" className="nav-fab" onClick={() => { hapticImpact('light'); triggerPostAdSubmit(); }}>
+              <Icon key="up" name="arrowUp" size={22} className="nav-fab-icon" />
+            </button>
+          ) : (
+            <NavLink to="/post" className="nav-fab" onClick={() => hapticImpact('light')}>
+              <Icon key="plus" name="plus" size={22} className="nav-fab-icon" />
+            </NavLink>
+          )}
+        </div>
+      </nav>
+    </div>
   );
 }
