@@ -244,7 +244,7 @@ function BottomNav() {
       onClick={() => hapticImpact('light')}
     >
       <span className="nav-icon-wrap">
-        <Icon name={icon} size={19} />
+        <Icon name={icon} size={21} />
         {badge > 0 && <span className="nav-dot"></span>}
       </span>
       <span className="nav-label">{label}</span>
