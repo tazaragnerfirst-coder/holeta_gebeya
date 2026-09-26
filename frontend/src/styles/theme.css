@@ -2,10 +2,11 @@
 
 :root{
   --bg-app:#FFFFFF; --surface:#F4F5F7; --surface-sunken:#F5F5F7; --card-surface:#F5F5F7;
-  --ink:#1F1F1F; --ink-soft:#5F6368; --ink-faint:#80868B; --line:#E0E0E0;
+  --ink:#1F1F1F; --ink-soft:#5F6368; --ink-faint:#6E737A; --line:#E0E0E0;
   --primary:#1E4B3F; --primary-dark:#12332A; --primary-tint:#E4EEE9;
   --accent:#E5A03B; --accent-dark:#B9791F; --accent-tint:#FBEDD4;
-  --safety:#C1502E; --safety-tint:#FBE7E0; --ok:#2F7A4D;
+  --safety:#C1502E; --safety-tint:#FBE7E0; --ok:#2F7A4D; --ok-tint:#E1F1E5;
+  --muted:#8C6A3F; --muted-tint:#F1E9E1;
   --radius-lg:16px; --radius-md:14px; --radius-sm:10px;
   /* Golden-ratio (φ≈1.618) spacing scale — the grid's existing
      16/10/6px progression already approximated this (16÷φ≈9.9,
@@ -25,7 +26,8 @@
   --ink:#E8EAED; --ink-soft:#BDC1C6; --ink-faint:#9AA0A6; --line:#2C2D30;
   --primary:#4FA184; --primary-dark:#12332A; --primary-tint:#1C2E27;
   --accent:#E5A03B; --accent-dark:#E8AE56; --accent-tint:#3A2E16;
-  --safety:#E5805F; --safety-tint:#3A2419; --ok:#4FA184;
+  --safety:#E5805F; --safety-tint:#3A2419; --ok:#6FCB98; --ok-tint:#16281F;
+  --muted:#D8B888; --muted-tint:#2C2418;
   --shadow-card:0 1px 2px rgba(0,0,0,.5), 0 6px 16px -8px rgba(0,0,0,.7);
 }
 *{box-sizing:border-box;}
@@ -276,8 +278,8 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .btn-accent{background:var(--accent);color:#4A2E05;}
 
 .helper-text{font-size:12.5px;color:var(--ink-faint);}
-.error-text{color:#9B2C1F;}
-.error-text a{color:#9B2C1F;text-decoration:underline;font-weight:600;}
+.error-text{color:var(--safety);}
+.error-text a{color:var(--safety);text-decoration:underline;font-weight:600;}
 
 /* Load-failed / empty states: neutral by default, amber (not red)
    when something actually failed — reads as "try again" rather than
@@ -387,7 +389,7 @@ textarea.field{min-height:84px;resize:vertical;}
 .send-btn{background:var(--primary);color:#fff;border:none;border-radius:50%;width:42px;height:42px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;cursor:pointer;}
 .send-btn:disabled{opacity:.45;cursor:default;}
 
-.error-banner{display:flex;gap:8px;align-items:center;background:#FDECEA;color:#9B2C1F;border:1px solid #F3C4BC;border-radius:var(--radius-md);padding:10px 12px;font-size:12px;font-weight:500;margin:8px 0;}
+.error-banner{display:flex;gap:8px;align-items:center;background:var(--safety-tint);color:var(--safety);border-radius:var(--radius-md);padding:10px 12px;font-size:12px;font-weight:500;margin:8px 0;}
 
 .stat-row{display:flex;gap:10px;margin-bottom:10px;}
 .stat-card{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-md);padding:13px;box-shadow:none;}
@@ -453,8 +455,8 @@ textarea.field{min-height:84px;resize:vertical;}
 .ad-row .metrics{display:flex;gap:11px;margin-top:6px;color:var(--ink-faint);font-size:11px;}
 .ad-row .metrics span{display:flex;align-items:center;gap:3px;}
 .status-pill{font-size:10px;font-weight:800;padding:4px 9px;border-radius:100px;white-space:nowrap;}
-.status-pill.active{background:#E1F1E5;color:var(--ok);}
-.status-pill.expired{background:#F1E9E1;color:#8C6A3F;}
+.status-pill.active{background:var(--ok-tint);color:var(--ok);}
+.status-pill.expired{background:var(--muted-tint);color:var(--muted);}
 .status-pill.paused{background:var(--accent-tint);color:var(--accent-dark);}
 
 /* Two-color line-legend under CombinedTrendChart. */
