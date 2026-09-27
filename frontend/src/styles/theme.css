@@ -609,10 +609,12 @@ textarea.field{min-height:84px;resize:vertical;}
 .bottom-nav{display:flex;align-items:center;position:relative;width:100%;height:62px;background:var(--surface);border:1px solid var(--line);border-radius:31px;padding:0 6px;box-shadow:0 6px 20px rgba(0,0,0,.18);}
 .nav-icon-wrap{position:relative;display:flex;}
 .nav-dot{position:absolute;top:-2px;right:-5px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:1.5px solid var(--surface);}
-.nav-item{flex:1;display:flex;flex-direction:row;align-items:center;justify-content:center;text-decoration:none;color:var(--ink-faint);height:42px;border-radius:21px;transition:background .2s ease,color .2s ease;}
+.nav-item{flex:1;position:relative;display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink-faint);height:42px;border-radius:21px;transition:background .2s ease,color .2s ease;}
 .nav-item.active{color:var(--primary);background:var(--primary-tint);}
-.nav-label{max-width:0;opacity:0;margin-left:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:10.5px;font-weight:700;transition:max-width .22s ease,opacity .18s ease,margin-left .22s ease;}
-.nav-item.active .nav-label{max-width:64px;opacity:1;margin-left:5px;}
+.nav-label{position:absolute;top:50%;transform:translateY(-50%);white-space:nowrap;font-size:10.5px;font-weight:700;opacity:0;pointer-events:none;transition:opacity .18s ease;}
+.bottom-nav .nav-item:nth-child(1) .nav-label,.bottom-nav .nav-item:nth-child(2) .nav-label{right:calc(50% + 15px);}
+.bottom-nav .nav-item:nth-child(3) .nav-label,.bottom-nav .nav-item:nth-child(4) .nav-label{left:calc(50% + 15px);}
+.nav-item.active .nav-label{opacity:1;}
 .nav-fab-wrapper{position:absolute;left:50%;top:-20px;transform:translateX(-50%);width:64px;height:64px;background:transparent;display:flex;align-items:center;justify-content:center;z-index:50;}
 .nav-fab{width:54px;height:54px;background:var(--primary);border-radius:18px;display:flex;align-items:center;justify-content:center;text-decoration:none;color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.28);transition:transform .12s ease;}
 .nav-fab:active{transform:scale(.92);}
