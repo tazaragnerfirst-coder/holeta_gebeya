@@ -250,25 +250,37 @@ function BottomNav() {
       <span className="nav-label">{label}</span>
     </NavLink>
   );
+  const postItem = onPostPage ? (
+    <button
+      type="button"
+      className="nav-item active"
+      onClick={() => { hapticImpact('light'); triggerPostAdSubmit(); }}
+    >
+      <span className="nav-icon-wrap">
+        <Icon key="up" name="arrowUp" size={21} className="nav-swap-icon" />
+      </span>
+      <span className="nav-label">Post</span>
+    </button>
+  ) : (
+    <NavLink
+      to="/post"
+      className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+      onClick={() => hapticImpact('light')}
+    >
+      <span className="nav-icon-wrap">
+        <Icon key="plus" name="plus" size={21} className="nav-swap-icon" />
+      </span>
+      <span className="nav-label">Post</span>
+    </NavLink>
+  );
   return (
     <div className="bottom-nav-wrap">
       <nav className="bottom-nav">
         {item('/', 'Home', 'home')}
         {item('/chat', 'Chat', 'chat', totalUnread)}
-        <div className="nav-space-holder"></div>
+        {postItem}
         {item('/dashboard', 'Dashboard', 'chartBar')}
         {item('/profile', 'Profile', 'user')}
-        <div className="nav-fab-wrapper">
-          {onPostPage ? (
-            <button type="button" className="nav-fab" onClick={() => { hapticImpact('light'); triggerPostAdSubmit(); }}>
-              <Icon key="up" name="arrowUp" size={22} className="nav-fab-icon" />
-            </button>
-          ) : (
-            <NavLink to="/post" className="nav-fab" onClick={() => hapticImpact('light')}>
-              <Icon key="plus" name="plus" size={22} className="nav-fab-icon" />
-            </NavLink>
-          )}
-        </div>
       </nav>
     </div>
   );
