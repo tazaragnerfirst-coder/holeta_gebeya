@@ -38,6 +38,7 @@ jobs:
       - name: Apply app icon
         working-directory: android-app
         run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick
           res=android/app/src/main/res
           # Use our own PNG icon instead of Capacitor's default adaptive icon.
           rm -rf "$res"/mipmap-anydpi-v26 "$res"/drawable-v24 "$res"/drawable/ic_launcher_background.xml 2>/dev/null || true
