@@ -1,10 +1,11 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db, ensureLoggedIn, BACKEND_URL } from './firebase';
+import { auth, db, ensureLoggedIn, setBrowserLoginHandler, BACKEND_URL } from './firebase';
 import { getUnsafeUserPreview } from './telegram';
 import { useAppData } from './appData';
 import SignupSheet from '../components/SignupSheet.jsx';
 import ConnectingIndicator from '../components/ConnectingIndicator.jsx';
+import BrowserLoginSheet from '../components/BrowserLoginSheet.jsx';
 
 const AuthGateContext = createContext(null);
 
@@ -24,6 +25,13 @@ export function AuthGateProvider({ children }) {
   const [error, setError] = useState('');
   const [connecting, setConnecting] = useState(false);
   const pendingRef = useRef(null);
+  const [loginReq, setLoginReq] = useState(null); // { resolve, reject } while the browser login sheet is open
+
+  // Browser/app login (no Telegram initData) — see BrowserLoginSheet.
+  useEffect(() => {
+    setBrowserLoginHandler(() => new Promise((resolve, reject) => setLoginReq({ resolve, reject })));
+    return () => setBrowserLoginHandler(null);
+  }, []);
   const { registeredUid, markRegistered } = useAppData();
 
   const requireRegistered = useCallback(async () => {
@@ -84,7 +92,12 @@ export function AuthGateProvider({ children }) {
   return (
     <AuthGateContext.Provider value={requireRegistered}>
       {children}
-      <ConnectingIndicator active={connecting} />
+      <ConnectingIndicator active={connecting && !loginReq} />
+      <BrowserLoginSheet
+        open={!!loginReq}
+        onToken={(token) => { loginReq?.resolve(token); setLoginReq(null); }}
+        onCancel={() => { loginReq?.reject(new Error('Login cancelled.')); setLoginReq(null); }}
+      />
       <SignupSheet
         open={open}
         busy={busy}

@@ -39,6 +39,13 @@ export const auth = getAuth(app);
 
 let loginPromise = null;
 
+// Outside the Telegram Mini App (installed PWA / Android app / plain
+// browser) there is no initData to verify, so identity comes from the
+// bot deep-link flow instead. AuthGateProvider registers a handler that
+// shows the login sheet and resolves with a Firebase custom token.
+let browserLoginHandler = null;
+export function setBrowserLoginHandler(fn) { browserLoginHandler = fn; }
+
 // Backend mints uids as `tg_<telegram id>` (see server/index.js
 // telegramAuth handler) — mirror that here so we can tell whether a
 // cached Firebase session actually belongs to the Telegram user
@@ -80,6 +87,15 @@ export function ensureLoggedIn() {
   const mismatchedSession = auth.currentUser && expectedUid && auth.currentUser.uid !== expectedUid;
   if (mismatchedSession) {
     console.warn('Cached Firebase session belongs to a different Telegram user — signing out before re-authenticating.');
+  }
+
+  // No Telegram session available -> browser/app login via the bot.
+  if (!getInitData() && browserLoginHandler) {
+    loginPromise = browserLoginHandler()
+      .then((token) => signInWithCustomToken(auth, token))
+      .then((cred) => cred.user)
+      .finally(() => { loginPromise = null; });
+    return loginPromise;
   }
 
   loginPromise = (mismatchedSession ? signOut(auth) : Promise.resolve())

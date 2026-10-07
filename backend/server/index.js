@@ -49,6 +49,7 @@ function verifyInitData(initData, botToken) {
 }
 
 const app = express();
+app.set('trust proxy', 1); // Render sits behind a proxy — needed for the real client IP (req.ip)
 app.use(cors()); // Telegram webview + your Firebase Hosting domain call this
 app.use(express.json());
 
@@ -150,6 +151,54 @@ async function creditReferralIfEligible(referralCode, newUserUid) {
   });
 }
 
+// Creates/updates users/{uid} for a verified Telegram user and returns
+// the uid. Shared by the Mini App login (/telegramAuth, verified via
+// initData) and the browser/app login (/authPoll, verified via the bot
+// deep-link confirmation) so both always produce the same `tg_<id>`
+// account — same listings, Wallet and Coin on every surface.
+// `includePhoto` is false for the browser login: the bot's update has no
+// photo_url, and writing '' would wipe the photo a Mini App login saved.
+async function upsertTelegramUser(tgUser, startParam, includePhoto) {
+  const uid = `tg_${tgUser.id}`;
+  const userRef = db.collection('users').doc(uid);
+  const existingSnap = await userRef.get();
+  const isNewUser = !existingSnap.exists;
+
+  const update = {
+    telegramId: tgUser.id,
+    firstName: tgUser.first_name || '',
+    lastName: tgUser.last_name || '',
+    username: tgUser.username || '',
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (includePhoto) {
+    // Telegram only includes this in initData when the user has a
+    // public profile photo. Stored here (not just read from the
+    // unsafe client-side preview) so it can be trusted and reused
+    // anywhere a verified profile picture is needed — e.g. as the
+    // seller's avatar on a listing, or a chat participant's avatar.
+    update.photoUrl = tgUser.photo_url || '';
+  }
+  // Holeta Coin address (#hog070) — generated once, kept forever.
+  if (isNewUser || !existingSnap.data().coinAddress) {
+    update.coinAddress = await generateUniqueCoinAddress();
+  }
+
+  await userRef.set(update, { merge: true });
+
+  // Referral crediting (#hog070) — only on true first registration,
+  // via the invite link's start_param (which is the referrer's own
+  // coinAddress — see frontend lib/telegram.js's getStartParam()).
+  const referralCode = (startParam || '').trim();
+  if (isNewUser && referralCode) {
+    creditReferralIfEligible(referralCode, uid).catch((err) => {
+      console.error('Referral credit failed (non-fatal):', err);
+    });
+  }
+
+  return uid;
+}
+
 // Called only when the user takes an action that needs an account
 // (post an ad, message a seller) — never on plain browsing.
 app.post('/telegramAuth', async (req, res) => {
@@ -159,41 +208,7 @@ app.post('/telegramAuth', async (req, res) => {
     const tgUser = verifyInitData(req.body.initData || '', BOT_TOKEN);
     if (!tgUser) return res.status(401).json({ error: 'Invalid or expired Telegram session.' });
 
-    const uid = `tg_${tgUser.id}`;
-    const userRef = db.collection('users').doc(uid);
-    const existingSnap = await userRef.get();
-    const isNewUser = !existingSnap.exists;
-
-    const update = {
-      telegramId: tgUser.id,
-      firstName: tgUser.first_name || '',
-      lastName: tgUser.last_name || '',
-      username: tgUser.username || '',
-      // Telegram only includes this in initData when the user has a
-      // public profile photo. Stored here (not just read from the
-      // unsafe client-side preview) so it can be trusted and reused
-      // anywhere a verified profile picture is needed — e.g. as the
-      // seller's avatar on a listing, or a chat participant's avatar.
-      photoUrl: tgUser.photo_url || '',
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-    // Holeta Coin address (#hog070) — generated once, kept forever.
-    if (isNewUser || !existingSnap.data().coinAddress) {
-      update.coinAddress = await generateUniqueCoinAddress();
-    }
-
-    await userRef.set(update, { merge: true });
-
-    // Referral crediting (#hog070) — only on true first registration,
-    // via the invite link's start_param (which is the referrer's own
-    // coinAddress — see frontend lib/telegram.js's getStartParam()).
-    const referralCode = (req.body.startParam || '').trim();
-    if (isNewUser && referralCode) {
-      creditReferralIfEligible(referralCode, uid).catch((err) => {
-        console.error('Referral credit failed (non-fatal):', err);
-      });
-    }
-
+    const uid = await upsertTelegramUser(tgUser, req.body.startParam, true);
     const token = await admin.auth().createCustomToken(uid);
     res.json({ token });
   } catch (err) {
@@ -201,6 +216,199 @@ app.post('/telegramAuth', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// ---------------------------------------------------------------
+// Browser / installed-app login (outside the Telegram Mini App).
+//
+// No initData exists outside Telegram, so identity is proven through
+// the bot instead:
+//   1. App calls /authStart -> gets a one-time nonce, a 4-digit code
+//      and a t.me deep link carrying the nonce.
+//   2. User opens the link, bot shows the SAME code with a Confirm
+//      button. Confirming (callback_query.from is Telegram-verified)
+//      marks the nonce approved with that Telegram user.
+//   3. App polls /authPoll; once approved it gets a Firebase custom
+//      token for `tg_<id>` (single use — the nonce doc is deleted).
+// The code comparison blocks login-CSRF: someone sending a victim a
+// link with the attacker's nonce can't get it confirmed, because the
+// victim's app shows no matching code.
+// ---------------------------------------------------------------
+const AUTH_NONCE_TTL_MS = 5 * 60 * 1000;
+const NONCE_RE = /^[A-Za-z0-9_-]{20,64}$/;
+const WEBHOOK_SECRET = BOT_TOKEN
+  ? crypto.createHmac('sha256', BOT_TOKEN).update('hg-webhook-secret').digest('hex')
+  : '';
+
+async function tgApi(method, body) {
+  const r = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return r.json().catch(() => ({}));
+}
+
+let botUsernameCache = null;
+async function getBotUsername() {
+  if (botUsernameCache) return botUsernameCache;
+  const data = await tgApi('getMe', {});
+  botUsernameCache = data?.result?.username || null;
+  return botUsernameCache;
+}
+
+// Tiny in-memory throttle so /authStart can't be used to flood
+// Firestore with nonce docs (per IP, 10 per minute).
+const authStartHits = new Map();
+function authStartAllowed(ip) {
+  const now = Date.now();
+  const hits = (authStartHits.get(ip) || []).filter((t) => now - t < 60 * 1000);
+  if (hits.length >= 10) { authStartHits.set(ip, hits); return false; }
+  hits.push(now);
+  authStartHits.set(ip, hits);
+  return true;
+}
+
+app.post('/authStart', async (req, res) => {
+  try {
+    if (!BOT_TOKEN) return res.status(500).json({ error: 'Bot token not configured on the server.' });
+    if (!authStartAllowed(req.ip)) return res.status(429).json({ error: 'Too many attempts — wait a minute and try again.' });
+
+    const username = await getBotUsername();
+    if (!username) return res.status(500).json({ error: 'Could not reach the Telegram bot.' });
+
+    const nonce = crypto.randomBytes(18).toString('base64url');
+    const code = String(crypto.randomInt(1000, 10000));
+    await db.collection('authNonces').doc(nonce).set({
+      status: 'pending',
+      code,
+      expiresAt: Date.now() + AUTH_NONCE_TTL_MS,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    res.json({ nonce, code, botLink: `https://t.me/${username}?start=login_${nonce}` });
+  } catch (err) {
+    console.error('authStart failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.post('/authPoll', async (req, res) => {
+  try {
+    const nonce = String(req.body?.nonce || '');
+    if (!NONCE_RE.test(nonce)) return res.status(400).json({ error: 'Bad login request.' });
+
+    const ref = db.collection('authNonces').doc(nonce);
+    // Single use: an approved nonce is deleted in the same transaction
+    // that reads it, so two polls can never both mint a token.
+    const result = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { status: 'expired' };
+      const d = snap.data();
+      if (d.expiresAt < Date.now()) { tx.delete(ref); return { status: 'expired' }; }
+      if (d.status !== 'approved') return { status: 'pending' };
+      tx.delete(ref);
+      return { status: 'ok', tgUser: d.tgUser };
+    });
+
+    if (result.status !== 'ok') return res.json({ status: result.status });
+
+    const uid = await upsertTelegramUser(result.tgUser, '', false);
+    const token = await admin.auth().createCustomToken(uid);
+    res.json({ status: 'ok', token });
+  } catch (err) {
+    console.error('authPoll failed:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Telegram -> us. Only handles the login deep link and its Confirm
+// button; every other update is ignored.
+app.post('/telegramWebhook', (req, res) => {
+  if (!WEBHOOK_SECRET || req.get('X-Telegram-Bot-Api-Secret-Token') !== WEBHOOK_SECRET) {
+    return res.sendStatus(403);
+  }
+  res.sendStatus(200); // answer Telegram right away; work continues below
+  handleTelegramUpdate(req.body || {}).catch((err) => console.error('webhook update failed:', err));
+});
+
+async function handleTelegramUpdate(update) {
+  const msg = update.message;
+  if (msg?.chat?.type === 'private' && typeof msg.text === 'string') {
+    const m = msg.text.match(/^\/start login_([A-Za-z0-9_-]{20,64})$/);
+    if (!m) return;
+    const snap = await db.collection('authNonces').doc(m[1]).get();
+    const d = snap.exists ? snap.data() : null;
+    if (!d || d.status !== 'pending' || d.expiresAt < Date.now()) {
+      await tgApi('sendMessage', {
+        chat_id: msg.chat.id,
+        text: 'This login link has expired. Go back to the Holeta Gebeya app and try again.',
+      });
+      return;
+    }
+    await tgApi('sendMessage', {
+      chat_id: msg.chat.id,
+      text: `🔐 Holeta Gebeya login\n\nCode shown in the app: ${d.code}\n\nTap Confirm only if this is the code you see in the app.`,
+      reply_markup: { inline_keyboard: [[{ text: '✅ Confirm login', callback_data: `lc:${m[1]}` }]] },
+    });
+    return;
+  }
+
+  const cb = update.callback_query;
+  if (cb && typeof cb.data === 'string' && cb.data.startsWith('lc:')) {
+    const nonce = cb.data.slice(3);
+    if (!NONCE_RE.test(nonce)) return;
+    const ref = db.collection('authNonces').doc(nonce);
+    const ok = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const d = snap.exists ? snap.data() : null;
+      if (!d || d.status !== 'pending' || d.expiresAt < Date.now()) return false;
+      tx.update(ref, {
+        status: 'approved',
+        tgUser: {
+          id: cb.from.id,
+          first_name: cb.from.first_name || '',
+          last_name: cb.from.last_name || '',
+          username: cb.from.username || '',
+        },
+      });
+      return true;
+    });
+    await tgApi('answerCallbackQuery', {
+      callback_query_id: cb.id,
+      text: ok ? 'Logged in' : 'This login link has expired',
+    });
+    if (cb.message) {
+      await tgApi('editMessageText', {
+        chat_id: cb.message.chat.id,
+        message_id: cb.message.message_id,
+        text: ok ? '✅ Logged in. You can go back to the Holeta Gebeya app.' : 'This login link has expired. Go back to the app and try again.',
+      });
+    }
+  }
+}
+
+// Points the bot's webhook at this server on startup so no manual
+// BotFather/curl step is needed. Never overrides a webhook someone
+// else already set (that would silently break whatever uses it) —
+// set FORCE_TELEGRAM_WEBHOOK=1 on Render to take it over on purpose.
+async function ensureTelegramWebhook() {
+  const base = (process.env.PUBLIC_BACKEND_URL || process.env.RENDER_EXTERNAL_URL || '').replace(/\/$/, '');
+  if (!BOT_TOKEN || !base) return;
+  const want = `${base}/telegramWebhook`;
+  const info = await tgApi('getWebhookInfo', {});
+  const current = info?.result?.url || '';
+  if (current === want) return;
+  if (current && process.env.FORCE_TELEGRAM_WEBHOOK !== '1') {
+    console.warn(`Bot already has a different webhook (${current}); browser login via the bot will not work until it points to ${want}. Set FORCE_TELEGRAM_WEBHOOK=1 to override.`);
+    return;
+  }
+  const r = await tgApi('setWebhook', {
+    url: want,
+    secret_token: WEBHOOK_SECRET,
+    allowed_updates: ['message', 'callback_query'],
+  });
+  console.log('setWebhook ->', r.ok ? 'ok' : JSON.stringify(r));
+}
 
 // Called from the signup sheet the first time a user takes an
 // account-required action (post, chat, call) and has no phone number
@@ -908,4 +1116,7 @@ ${imageUrl ? `<meta property="og:image" content="${imageUrl}">\n<meta name="twit
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Holeta Gebeya backend listening on ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Holeta Gebeya backend listening on ${PORT}`);
+  ensureTelegramWebhook().catch((err) => console.error('ensureTelegramWebhook failed:', err));
+});

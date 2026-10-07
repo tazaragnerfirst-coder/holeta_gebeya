@@ -1,0 +1,11 @@
+{
+  "name": "holeta-gebeya-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Thin Android shell (Capacitor) that opens the live Holeta Gebeya site. Built by .github/workflows/build-apk.yml",
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
+  }
+}
