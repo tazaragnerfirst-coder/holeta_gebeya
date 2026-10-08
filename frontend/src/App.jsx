@@ -250,35 +250,33 @@ function BottomNav() {
       <span className="nav-label">{label}</span>
     </NavLink>
   );
-  const postItem = onPostPage ? (
+  // Post is a separate round FAB floating above the bar's right side
+  // (Telegram-style), not one of the bar's tabs.
+  const postFab = onPostPage ? (
     <button
       type="button"
-      className="nav-item active"
+      className="nav-fab"
+      aria-label="Post"
       onClick={() => { hapticImpact('light'); triggerPostAdSubmit(); }}
     >
-      <span className="nav-icon-wrap">
-        <Icon key="up" name="arrowUp" size={21} className="nav-swap-icon" />
-      </span>
-      <span className="nav-label">Post</span>
+      <Icon key="up" name="arrowUp" size={26} className="nav-swap-icon" />
     </button>
   ) : (
     <NavLink
       to="/post"
-      className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+      className="nav-fab"
+      aria-label="Post"
       onClick={() => hapticImpact('light')}
     >
-      <span className="nav-icon-wrap">
-        <Icon key="plus" name="plus" size={21} className="nav-swap-icon" />
-      </span>
-      <span className="nav-label">Post</span>
+      <Icon key="plus" name="plus" size={26} className="nav-swap-icon" />
     </NavLink>
   );
   return (
     <div className="bottom-nav-wrap">
+      {postFab}
       <nav className="bottom-nav">
         {item('/', 'Home', 'home')}
         {item('/chat', 'Chat', 'chat', totalUnread)}
-        {postItem}
         {item('/dashboard', 'Dashboard', 'chartBar')}
         {item('/profile', 'Profile', 'user')}
       </nav>

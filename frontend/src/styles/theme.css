@@ -37,7 +37,7 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .icon{flex:0 0 auto;display:inline-block;vertical-align:middle;}
 
 .app-shell{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;background:var(--bg-app);}
-.screen-container{flex:1;overflow-y:auto;padding-bottom:78px;}
+.screen-container{flex:1;overflow-y:auto;padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));}
 .page{padding:14px var(--space-md) var(--space-xs);}
 .page.px{padding-left:0;padding-right:0;}
 .px{padding:0 16px;}
@@ -66,7 +66,12 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .panel-section:last-child{margin-bottom:0;}
 .panel-section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;}
 .panel-section-head span{font-size:11px;font-weight:800;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.4px;}
-.cat-chip-row{margin-top:14px;padding-bottom:2px;}
+/* Telegram-style: all category chips sit inside one shared pill;
+   the active chip is a tinted pill inside it. */
+.cat-chip-row{margin-top:14px;gap:2px;padding:5px;background:var(--surface);border:1px solid var(--line);border-radius:100px;scrollbar-width:none;}
+.cat-chip-row::-webkit-scrollbar{display:none;}
+.cat-chip-row .cat-chip{flex:0 0 auto;background:transparent;border:none;padding:9px 16px;font-size:13.5px;font-weight:700;color:var(--ink-soft);}
+.cat-chip-row .cat-chip.active{background:var(--primary-tint);color:var(--primary);}
 
 .chip-row{display:flex;gap:8px;margin-top:12px;overflow-x:auto;}
 .chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--line);border-radius:100px;padding:8px 14px;font-size:12.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap;cursor:pointer;}
@@ -605,8 +610,10 @@ textarea.field{min-height:84px;resize:vertical;}
 .ci-track{stroke:var(--line);}
 .ci-arc{stroke:var(--primary);stroke-linecap:round;stroke-dasharray:56.5;stroke-dashoffset:20;transform-origin:center;animation:ppr-spin .9s linear infinite;}
 
-.bottom-nav-wrap{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:50;}
-.bottom-nav{display:flex;align-items:center;justify-content:space-around;position:relative;width:100%;height:calc(62px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line);padding:0 6px env(safe-area-inset-bottom,0px);box-sizing:border-box;}
+.bottom-nav-wrap{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:50;padding:0 var(--space-md) calc(12px + env(safe-area-inset-bottom,0px));box-sizing:border-box;pointer-events:none;}
+.bottom-nav{pointer-events:auto;display:flex;align-items:center;justify-content:space-around;position:relative;width:100%;height:62px;background:var(--surface);border:1px solid var(--line);border-radius:100px;padding:0 10px;box-sizing:border-box;}
+.nav-fab{pointer-events:auto;position:absolute;right:var(--space-md);bottom:calc(12px + env(safe-area-inset-bottom,0px) + 62px + 12px);width:56px;height:56px;border-radius:50%;border:none;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.28);}
+.nav-fab:active{transform:scale(.95);}
 .nav-icon-wrap{position:relative;display:flex;}
 .nav-dot{position:absolute;top:-2px;right:-5px;width:8px;height:8px;border-radius:50%;background:var(--accent);border:1.5px solid var(--surface);}
 .nav-item{flex:0 0 auto;display:flex;flex-direction:row;align-items:center;justify-content:center;text-decoration:none;color:var(--ink-faint);height:42px;padding:0 11px;border-radius:21px;border:none;background:transparent;font:inherit;cursor:pointer;transition:background .2s ease,color .2s ease;}
