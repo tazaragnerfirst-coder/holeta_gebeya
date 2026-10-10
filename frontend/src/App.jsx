@@ -249,7 +249,10 @@ function NativeBackButton() {
     const CapApp = window.Capacitor?.Plugins?.App;
     if (!CapApp?.addListener) return undefined;
     let handle = null;
-    CapApp.addListener('backButton', () => handlerRef.current?.()).then((h) => { handle = h; });
+    // Depending on the Capacitor version, addListener returns the handle
+    // directly or a promise of it; Promise.resolve accepts both.
+    Promise.resolve(CapApp.addListener('backButton', () => handlerRef.current?.()))
+      .then((h) => { handle = h; });
     return () => { handle?.remove?.(); };
   }, []);
 
