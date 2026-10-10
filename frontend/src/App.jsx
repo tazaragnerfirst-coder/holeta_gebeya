@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy, Suspense } from 'react';
+import React, { useEffect, useRef, useState, lazy, Suspense } from 'react';
 import { Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home.jsx';
 import Icon from './components/Icon.jsx';
@@ -10,6 +10,8 @@ import PostProgressRing from './components/PostProgressRing.jsx';
 import { triggerPostAdSubmit } from './lib/postAdFab';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import SplashScreen from './components/SplashScreen.jsx';
+import { ErrorBanner } from './components/Banner.jsx';
+import { IS_NATIVE } from './lib/platform';
 
 // Longest we'll ever hold the splash up for slow/first-load data. On
 // a flaky connection this is hit before categories/listings are
@@ -147,6 +149,8 @@ export default function App() {
             </Suspense>
           </div>
           <TelegramBackButton />
+          <NativeBackButton />
+          <OfflineNotice />
           <PostProgressRing />
           <ConditionalBottomNav />
         </div>
@@ -220,6 +224,59 @@ function TelegramBackButton() {
   }, [pathname, location.state, navigate]);
 
   return null;
+}
+
+// Android's hardware back button in the APK. Behaves like the in-app
+// back arrow: step back through the app's own pages, and only leave the
+// app from Home when there is nothing left to go back to. Uses the
+// Capacitor App plugin (android-app/package.json) when it is present.
+function NativeBackButton() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const handlerRef = useRef(null);
+
+  handlerRef.current = () => {
+    const onHomeRoot = location.pathname === '/' && !location.state?.activeCategory;
+    if (onHomeRoot) {
+      window.Capacitor?.Plugins?.App?.exitApp?.();
+    } else {
+      navigate(-1);
+    }
+  };
+
+  useEffect(() => {
+    if (!IS_NATIVE) return undefined;
+    const CapApp = window.Capacitor?.Plugins?.App;
+    if (!CapApp?.addListener) return undefined;
+    let handle = null;
+    CapApp.addListener('backButton', () => handlerRef.current?.()).then((h) => { handle = h; });
+    return () => { handle?.remove?.(); };
+  }, []);
+
+  return null;
+}
+
+// Shows a clear message when there is no connection. The app keeps
+// working from saved data (listings, chats, profile) — nothing here
+// reloads or leaves the app.
+function OfflineNotice() {
+  const [offline, setOffline] = useState(typeof navigator !== 'undefined' && !navigator.onLine);
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => {
+      window.removeEventListener('online', on);
+      window.removeEventListener('offline', off);
+    };
+  }, []);
+  if (!offline) return null;
+  return (
+    <div className="offline-notice">
+      <ErrorBanner text="You're offline. Showing saved data; new actions will need a connection." />
+    </div>
+  );
 }
 
 function BottomNav() {
