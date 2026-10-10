@@ -6,8 +6,10 @@ import { initTelegramApp } from './lib/telegram';
 import { initVersionWatch } from './lib/appVersion';
 import { initTheme } from './lib/theme';
 import { IS_NATIVE } from './lib/platform';
+import NativeErrorScreen, { installNativeErrorOverlay } from './components/NativeErrorScreen.jsx';
 import './styles/theme.css';
 
+if (IS_NATIVE) installNativeErrorOverlay();
 initTelegramApp();
 // The APK ships its own copy of the app, so the web version reload is off there.
 if (!IS_NATIVE) initVersionWatch();
@@ -24,7 +26,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     {/* The APK serves the bundled files from a local origin, where path
         URLs can't be resolved, so it uses hash URLs (/#/product/123). */}
     {IS_NATIVE
-      ? <HashRouter><App /></HashRouter>
+      ? <NativeErrorScreen><HashRouter><App /></HashRouter></NativeErrorScreen>
       : <BrowserRouter><App /></BrowserRouter>}
   </React.StrictMode>
 );
