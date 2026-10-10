@@ -2,11 +2,6 @@
   "appId": "app.holeta.gebeya",
   "appName": "Holeta Gebeya",
   "webDir": "www",
-  "server": {
-    "url": "https://holeta-c22fc.web.app",
-    "androidScheme": "https",
-    "allowNavigation": ["holeta-c22fc.web.app"]
-  },
   "android": {
     "backgroundColor": "#FFFFFF"
   }

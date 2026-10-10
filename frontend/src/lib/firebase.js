@@ -1,7 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentSingleTabManager } from 'firebase/firestore';
 import { getAuth, signInWithCustomToken, signOut } from 'firebase/auth';
 import { getInitData, getUnsafeUserPreview, getStartParam } from './telegram';
+import { isInTelegram } from './platform';
 
 // Fill these in from Firebase Console → Project Settings → General.
 // Safe to keep in the client bundle (these are public identifiers,
@@ -24,16 +25,20 @@ export { BACKEND_URL };
 
 export const app = initializeApp(firebaseConfig);
 
-// Plain in-memory Firestore client — deliberately NOT using
-// persistentLocalCache (IndexedDB). Telegram Mini Apps tear down and
-// recreate the WebView on every open; that teardown mid-transaction
-// is what was corrupting Firestore's IndexedDB persistence layer and
-// causing the recurring "FIRESTORE INTERNAL ASSERTION FAILED:
-// Unexpected state" crash on posting/loading. Fast first-paint (the
-// original reason persistence was added) is already handled by our
-// own localStorage cache in lib/pageCache.js, so dropping Firestore's
-// own persistence loses nothing and removes the crash at its root.
-export const db = getFirestore(app);
+// Telegram Mini Apps: plain in-memory Firestore client. Telegram tears
+// down and recreates the WebView on every open, and that teardown
+// mid-transaction corrupted Firestore's IndexedDB layer ("FIRESTORE
+// INTERNAL ASSERTION FAILED"), so persistence stays OFF there.
+//
+// Standalone (installed app / APK): IndexedDB persistence ON. This is
+// what lets listings and chats show from cache when the phone is
+// offline. The app is not torn down between opens, so the corruption
+// above does not apply.
+export const db = isInTelegram()
+  ? getFirestore(app)
+  : initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentSingleTabManager({}) }),
+    });
 
 export const auth = getAuth(app);
 

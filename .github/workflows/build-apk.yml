@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - 'android-app/**'
+      - 'frontend/**'
       - 'frontend/public/icons/**'
       - '.github/workflows/build-apk.yml'
 
@@ -50,6 +51,20 @@ jobs:
               convert "$src" -resize ${s}x${s} "$d/$n.png"
             done
           done
+
+      - name: Build web app for the APK
+        working-directory: frontend
+        env:
+          VITE_NATIVE: '1'
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL }}
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
+      - name: Bundle web app into the shell
+        run: |
+          rm -rf android-app/www
+          cp -r frontend/dist android-app/www
 
       - name: Sync Capacitor
         run: npx cap sync android

@@ -6,6 +6,7 @@ import { useAppData } from './appData';
 import SignupSheet from '../components/SignupSheet.jsx';
 import ConnectingIndicator from '../components/ConnectingIndicator.jsx';
 import BrowserLoginSheet from '../components/BrowserLoginSheet.jsx';
+import { isInTelegram } from './platform';
 
 const AuthGateContext = createContext(null);
 
@@ -33,6 +34,23 @@ export function AuthGateProvider({ children }) {
     return () => setBrowserLoginHandler(null);
   }, []);
   const { registeredUid, markRegistered } = useAppData();
+
+  // Standalone app (installed PWA / APK): nothing is shown until the
+  // person has logged in through Telegram. Inside the Telegram Mini App
+  // this is skipped entirely — Telegram signs them in silently.
+  const standalone = !isInTelegram();
+  const [sessionChecked, setSessionChecked] = useState(!standalone);
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    if (!standalone) return undefined;
+    // Fires once Firebase has restored any saved session (offline too),
+    // then again on every sign-in / sign-out.
+    return auth.onAuthStateChanged((user) => {
+      setSignedIn(Boolean(user));
+      setSessionChecked(true);
+    });
+  }, [standalone]);
+  const gateLocked = standalone && (!sessionChecked || !signedIn);
 
   const requireRegistered = useCallback(async () => {
     setConnecting(true);
@@ -91,7 +109,9 @@ export function AuthGateProvider({ children }) {
 
   return (
     <AuthGateContext.Provider value={requireRegistered}>
-      {children}
+      {gateLocked
+        ? (sessionChecked ? <LoginWall onLogin={() => ensureLoggedIn().catch(() => {})} /> : null)
+        : children}
       <ConnectingIndicator active={connecting && !loginReq} />
       <BrowserLoginSheet
         open={!!loginReq}
@@ -107,6 +127,22 @@ export function AuthGateProvider({ children }) {
         onSubmit={handleSubmit}
       />
     </AuthGateContext.Provider>
+  );
+}
+
+// Full-screen login for the standalone app. The actual Telegram code
+// flow is BrowserLoginSheet, which opens on top of this when the button
+// is tapped (ensureLoggedIn -> browserLoginHandler). Once Firebase signs
+// the person in, onAuthStateChanged unlocks the app.
+function LoginWall({ onLogin }) {
+  return (
+    <div className="login-wall">
+      <span className="splash-wordmark">Holeta Gebeya</span>
+      <p className="login-wall-text">Log in with your Telegram account to continue.</p>
+      <button type="button" className="btn-primary login-wall-btn" onClick={onLogin}>
+        Log in with Telegram
+      </button>
+    </div>
   );
 }
 

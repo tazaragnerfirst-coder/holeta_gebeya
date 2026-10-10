@@ -1,12 +1,16 @@
 # Android app (APK)
 
-A thin Capacitor shell that opens the live site (https://holeta-c22fc.web.app),
-so every website deploy reaches the app instantly with no new APK needed.
-Only rebuild the APK to change the icon, name or package settings.
+A Capacitor shell that contains the whole web app. The build in
+`.github/workflows/build-apk.yml` compiles `frontend/` with `VITE_NATIVE=1`,
+copies the result into `www/`, and wraps it as an APK. The app runs fully
+from the phone: it opens without a connection, shows cached listings and chats
+offline, and needs the network only for live data and actions.
 
-Built in CI by `.github/workflows/build-apk.yml` (Actions → "Build Android APK"
-→ Run workflow). The APK is attached to the `apk-latest` release:
-https://github.com/tazaragnerfirst-coder/holeta_gebeya/releases/download/apk-latest/HoletaGebeya.apk
+Because the APK carries its own copy of the app, a new APK is needed for
+every app change (run "Build Android APK" in Actions, or push to `main`).
+The website (Firebase Hosting) is unaffected by this.
+
+Output: https://github.com/tazaragnerfirst-coder/holeta_gebeya/releases/download/apk-latest/HoletaGebeya.apk
 
 It is debug-signed (installable directly, not Play Store ready). Users must allow
 "Install unknown apps" for the app they open the file from.
