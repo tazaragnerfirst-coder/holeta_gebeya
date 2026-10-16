@@ -27,6 +27,17 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Check signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for v in KEYSTORE_B64 KEYSTORE_PASS KEY_ALIAS KEY_PASS; do
+            if [ -z "${!v}" ]; then echo "Missing GitHub secret for $v"; exit 1; fi
+          done
+
       - name: Install Capacitor
         run: npm install --no-audit --no-fund
         working-directory: android-app
@@ -55,12 +66,58 @@ jobs:
         run: npx cap sync android
         working-directory: android-app
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Configure release signing and version
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION_CODE: ${{ github.run_number }}
+        working-directory: android-app/android
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > app/release.keystore
+          python3 - <<'EOF'
+          import os, re
+
+          path = 'app/build.gradle'
+          s = open(path).read()
+          vc = os.environ['VERSION_CODE']
+
+          # Every build gets a higher versionCode, so Android installs it over the previous one.
+          s, n1 = re.subn(r'versionCode\s+\d+', f'versionCode {vc}', s, count=1)
+          s, n2 = re.subn(r'versionName\s+"[^"]*"', f'versionName "1.{vc}"', s, count=1)
+
+          # Use the release buildType and point it at the signing config.
+          s, n3 = re.subn(r'(buildTypes\s*\{\s*release\s*\{)',
+                          r'\1\n            signingConfig signingConfigs.release', s, count=1)
+
+          signing = """    signingConfigs {
+                release {
+                    storeFile file("release.keystore")
+                    storePassword System.getenv("KEYSTORE_PASS")
+                    keyAlias System.getenv("KEY_ALIAS")
+                    keyPassword System.getenv("KEY_PASS")
+                }
+            }
+        """
+          s, n4 = re.subn(r'(\n\s*buildTypes\s*\{)', '\n' + signing + r'\1', s, count=1)
+
+          if not all([n1, n2, n3, n4]):
+              raise SystemExit(f'build.gradle patch failed: {n1} {n2} {n3} {n4}')
+          open(path, 'w').write(s)
+          print('Patched build.gradle: versionCode', vc)
+          EOF
+
+      - name: Build release APK
+        env:
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-daemon
         working-directory: android-app/android
 
       - name: Rename APK
-        run: cp android-app/android/app/build/outputs/apk/debug/app-debug.apk HoletaGebeya.apk
+        run: cp android-app/android/app/build/outputs/apk/release/app-release.apk HoletaGebeya.apk
 
       - uses: actions/upload-artifact@v4
         with:
@@ -74,4 +131,4 @@ jobs:
           gh release delete apk-latest --cleanup-tag --yes || true
           gh release create apk-latest HoletaGebeya.apk \
             --title "Holeta Gebeya (Android APK)" \
-            --notes "Latest Android build. Download HoletaGebeya.apk and install it (allow 'Install unknown apps' when asked)."
+            --notes "Latest Android build. Download HoletaGebeya.apk and install it. Future updates install over the top of this one."
