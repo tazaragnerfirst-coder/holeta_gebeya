@@ -1,5 +1,6 @@
 import { getApps, initializeApp } from 'firebase/app';
 import { getReactNativePersistence, initializeAuth } from '@firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Same public Firebase config as the web app (frontend/src/lib/firebase.js).
@@ -25,3 +26,7 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = initializeAuth(app, {
   persistence: getReactNativePersistence(AsyncStorage),
 });
+
+// Firestore for the public listing feed. Default in-memory cache; the
+// web app's IndexedDB persistence is not used on native.
+export const db = getFirestore(app);
