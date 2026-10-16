@@ -79,6 +79,13 @@ jobs:
           echo "Using $apksigner"
           "$apksigner" verify --verbose --print-certs HoletaGebeya-next.apk
           ls -la HoletaGebeya-next.apk
+          aapt2=$(ls -d "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          echo "--- badging ---"
+          "$aapt2" dump badging HoletaGebeya-next.apk | head -30
+          echo "--- manifest ---"
+          "$aapt2" dump xmltree --file AndroidManifest.xml HoletaGebeya-next.apk | head -80
+          echo "--- contents ---"
+          unzip -l HoletaGebeya-next.apk | head -40
 
       - uses: actions/upload-artifact@v4
         with:
