@@ -1,3 +1,4 @@
+# Release-signed APK. Signing key comes from the ANDROID_* repository secrets.
 name: Build Android APK
 
 on:
