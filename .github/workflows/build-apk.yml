@@ -92,15 +92,17 @@ jobs:
           s, n3 = re.subn(r'(buildTypes\s*\{\s*release\s*\{)',
                           r'\1\n            signingConfig signingConfigs.release', s, count=1)
 
-          signing = """    signingConfigs {
-                release {
-                    storeFile file("release.keystore")
-                    storePassword System.getenv("KEYSTORE_PASS")
-                    keyAlias System.getenv("KEY_ALIAS")
-                    keyPassword System.getenv("KEY_PASS")
-                }
-            }
-        """
+          signing = "\n".join([
+              "    signingConfigs {",
+              "        release {",
+              '            storeFile file("release.keystore")',
+              '            storePassword System.getenv("KEYSTORE_PASS")',
+              '            keyAlias System.getenv("KEY_ALIAS")',
+              '            keyPassword System.getenv("KEY_PASS")',
+              "        }",
+              "    }",
+              "",
+          ])
           s, n4 = re.subn(r'(\n\s*buildTypes\s*\{)', '\n' + signing + r'\1', s, count=1)
 
           if not all([n1, n2, n3, n4]):
