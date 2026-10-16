@@ -8,7 +8,6 @@
     "userInterfaceStyle": "light",
     "android": {
       "package": "app.holeta.gebeya.next",
-      "permissions": ["android.permission.REQUEST_INSTALL_PACKAGES"],
       "adaptiveIcon": {
         "backgroundColor": "#22B861",
         "foregroundImage": "./assets/android-icon-foreground.png",

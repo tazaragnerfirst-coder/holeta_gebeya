@@ -96,10 +96,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          cat > version.json <<EOF
-          {"versionCode": ${{ github.run_number }}, "url": "https://github.com/${{ github.repository }}/releases/download/mobile-apk-latest/HoletaGebeya-next.apk"}
-          EOF
           gh release delete mobile-apk-latest --cleanup-tag --yes || true
-          gh release create mobile-apk-latest HoletaGebeya-next.apk version.json \
+          gh release create mobile-apk-latest HoletaGebeya-next.apk \
             --title "Holeta Gebeya (native app, preview)" \
             --notes "Native app preview. Future updates install over the top of this one."
