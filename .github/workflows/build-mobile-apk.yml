@@ -1,0 +1,88 @@
+name: Build Mobile APK (Expo)
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      - 'mobile/**'
+      - '.github/scripts/sign-expo-android.py'
+      - '.github/workflows/build-mobile-apk.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signing secrets
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          for v in KEYSTORE_B64 KEYSTORE_PASS KEY_ALIAS KEY_PASS; do
+            if [ -z "${!v}" ]; then echo "Missing GitHub secret for $v"; exit 1; fi
+          done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+        working-directory: mobile
+
+      - name: Generate Android project
+        env:
+          CI: '1'
+        run: npx expo prebuild --platform android --no-install
+        working-directory: mobile
+
+      - name: Configure release signing and version
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          VERSION_CODE: ${{ github.run_number }}
+        working-directory: mobile
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > android/app/release.keystore
+          python3 ../.github/scripts/sign-expo-android.py
+
+      - name: Build release APK
+        env:
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+        working-directory: mobile/android
+
+      - name: Rename APK
+        run: cp mobile/android/app/build/outputs/apk/release/app-release.apk HoletaGebeya-next.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: HoletaGebeya-next-apk
+          path: HoletaGebeya-next.apk
+
+      - name: Publish to mobile-apk-latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete mobile-apk-latest --cleanup-tag --yes || true
+          gh release create mobile-apk-latest HoletaGebeya-next.apk \
+            --title "Holeta Gebeya (native app, preview)" \
+            --notes "Native app preview. Future updates install over the top of this one."
