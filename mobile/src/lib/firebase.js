@@ -17,7 +17,7 @@ const firebaseConfig = {
 };
 
 // Same Render backend the web app uses (see README.md).
-export const BACKEND_URL = 'https://holeta-gebeya.onrender.com';
+export const BACKEND_URL = 'https://holeta-gebeya-r4tn.onrender.com';
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
