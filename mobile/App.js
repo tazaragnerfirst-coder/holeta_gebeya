@@ -5,10 +5,13 @@ import { onAuthStateChanged } from '@firebase/auth';
 import { auth } from './src/lib/firebase';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import ListingDetailScreen from './src/screens/ListingDetailScreen';
 
 export default function App() {
   // undefined = still checking the saved session, null = logged out
   const [user, setUser] = useState(undefined);
+  // The listing currently open in the detail view, or null for the feed.
+  const [openListing, setOpenListing] = useState(null);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -21,8 +24,10 @@ export default function App() {
     );
   } else if (user === null) {
     screen = <LoginScreen />;
+  } else if (openListing) {
+    screen = <ListingDetailScreen item={openListing} onBack={() => setOpenListing(null)} />;
   } else {
-    screen = <HomeScreen />;
+    screen = <HomeScreen onOpen={setOpenListing} />;
   }
 
   return (

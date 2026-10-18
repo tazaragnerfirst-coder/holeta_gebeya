@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatListingPrice, subscribeListings } from '../lib/listings';
 
 // Public listing feed (read-only for now). Browsing needs no login.
-export default function HomeScreen() {
+export default function HomeScreen({ onOpen }) {
   const [listings, setListings] = useState(null); // null = still loading
   const [error, setError] = useState(false);
 
@@ -43,15 +43,15 @@ export default function HomeScreen() {
       numColumns={2}
       contentContainerStyle={styles.list}
       columnWrapperStyle={styles.row}
-      renderItem={({ item }) => <ListingCard item={item} />}
+      renderItem={({ item }) => <ListingCard item={item} onPress={() => onOpen && onOpen(item)} />}
     />
   );
 }
 
-function ListingCard({ item }) {
+function ListingCard({ item, onPress }) {
   const photo = item.images?.[0] || item.photo;
   return (
-    <View style={styles.card}>
+    <Pressable style={styles.card} onPress={onPress} accessibilityRole="button">
       {photo ? (
         <Image source={{ uri: photo }} style={styles.photo} resizeMode="cover" />
       ) : (
@@ -61,7 +61,7 @@ function ListingCard({ item }) {
         <Text style={styles.title} numberOfLines={2}>{item.title || 'Untitled'}</Text>
         <Text style={styles.price}>{formatListingPrice(item)}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
