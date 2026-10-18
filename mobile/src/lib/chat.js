@@ -1,6 +1,6 @@
 import {
-  addDoc, collection, doc, increment, onSnapshot, orderBy, query, serverTimestamp,
-  updateDoc, where,
+  addDoc, collection, doc, getDoc, increment, onSnapshot, orderBy, query, serverTimestamp,
+  setDoc, updateDoc, where,
 } from 'firebase/firestore';
 import { db, BACKEND_URL } from './firebase';
 
@@ -37,13 +37,55 @@ export function markChatRead(chatId, uid) {
   }).catch(() => {});
 }
 
-// Sends a text message in an existing conversation, updates the chat doc
-// and pings the other side. Mirrors ChatThread.jsx send() for existing threads.
-export async function sendChatMessage({ chatId, chat, uid, text, senderName }) {
+// Deterministic one-thread-per-buyer/seller-pair id (same as the web app).
+export function chatIdFor(sellerId, buyerId) {
+  return [sellerId, buyerId].sort().join('_');
+}
+
+// Returns the existing chat doc (with id) or null if it hasn't been created yet.
+export async function getChat(chatId) {
+  const snap = await getDoc(doc(db, 'chats', chatId));
+  return snap.exists() ? { id: chatId, ...snap.data() } : null;
+}
+
+// Sends a text message. For a draft (brand-new thread opened from a
+// listing) the chat doc is created first, with the listing attached,
+// the same way the web ChatThread does on the first send.
+export async function sendChatMessage({ chatId, chat, uid, text, senderName, buyerProfile }) {
   const outgoing = text.trim();
   if (!outgoing) return;
-  const recipientUid = chat.buyerId === uid ? chat.sellerId : chat.buyerId;
   const chatRef = doc(db, 'chats', chatId);
+  const recipientUid = chat.buyerId === uid ? chat.sellerId : chat.buyerId;
+
+  if (chat.draft) {
+    const d = chat.draft;
+    await setDoc(chatRef, {
+      listingId: d.listingId,
+      listingTitle: d.listingTitle,
+      listingPhoto: d.listingPhoto || '',
+      sellerId: d.sellerId,
+      sellerName: d.sellerName,
+      sellerPhoto: d.sellerPhoto || '',
+      buyerId: uid,
+      buyerName: buyerProfile?.name || 'Buyer',
+      buyerPhoto: buyerProfile?.photo || '',
+      participants: [d.sellerId, uid],
+      lastMessage: '',
+      lastSenderId: '',
+      createdAt: serverTimestamp(),
+      lastMessageAt: serverTimestamp(),
+    });
+    await addDoc(collection(db, 'chats', chatId, 'messages'), {
+      senderId: uid,
+      type: 'listing',
+      listingId: d.listingId,
+      listingTitle: d.listingTitle,
+      listingPhoto: d.listingPhoto || '',
+      listingPrice: d.listingPrice ?? null,
+      listingPriceType: d.listingPriceType || 'fixed',
+      createdAt: serverTimestamp(),
+    });
+  }
 
   await addDoc(collection(db, 'chats', chatId, 'messages'), {
     senderId: uid,
@@ -66,7 +108,7 @@ export async function sendChatMessage({ chatId, chat, uid, text, senderName }) {
       body: JSON.stringify({
         recipientUid,
         senderName: senderName || 'Someone',
-        listingTitle: chat.listingTitle,
+        listingTitle: chat.listingTitle || chat.draft?.listingTitle,
         text: outgoing,
         chatId,
       }),

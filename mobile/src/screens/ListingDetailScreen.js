@@ -1,6 +1,9 @@
-import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { auth } from '../lib/firebase';
 import { formatListingPrice } from '../lib/listings';
+import { chatIdFor, getChat } from '../lib/chat';
+import { setFavorite, subscribeFavorites } from '../lib/favorites';
 
 const DESC_LIMIT = 180;
 
@@ -20,8 +23,66 @@ function timeAgo(ts) {
 
 // Public listing detail. Layout only for now: chat, call and favorite
 // actions are added in later steps.
-export default function ListingDetailScreen({ item, onBack }) {
+export default function ListingDetailScreen({ item, onBack, onOpenChat }) {
+  const uid = auth.currentUser?.uid;
   const [descExpanded, setDescExpanded] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+  const [favBusy, setFavBusy] = useState(false);
+  const [chatBusy, setChatBusy] = useState(false);
+  const isMine = !!uid && item.sellerId === uid;
+  const isFavorited = favorites.some((f) => f.listingId === item.id);
+
+  useEffect(() => {
+    if (!uid) return undefined;
+    return subscribeFavorites(uid, setFavorites);
+  }, [uid]);
+
+  async function toggleFavorite() {
+    if (!uid || favBusy) return;
+    setFavBusy(true);
+    try {
+      await setFavorite(uid, item, isFavorited);
+    } catch (err) {
+      Alert.alert("Couldn't update favorites", err.message || 'Please try again.');
+    } finally {
+      setFavBusy(false);
+    }
+  }
+
+  // Opens the existing thread with this seller, or a draft one that is created on the first message.
+  async function startChat() {
+    if (!uid || chatBusy || !onOpenChat) return;
+    setChatBusy(true);
+    try {
+      const chatId = chatIdFor(item.sellerId, uid);
+      const existing = await getChat(chatId);
+      if (existing) {
+        onOpenChat(existing);
+      } else {
+        onOpenChat({
+          id: chatId,
+          buyerId: uid,
+          sellerId: item.sellerId,
+          sellerName: item.sellerName || 'Seller',
+          listingTitle: item.title,
+          draft: {
+            listingId: item.id,
+            listingTitle: item.title,
+            listingPhoto: item.images?.[0] || '',
+            listingPrice: item.price,
+            listingPriceType: item.priceType || 'fixed',
+            sellerId: item.sellerId,
+            sellerName: item.sellerName || 'Seller',
+            sellerPhoto: item.sellerPhoto || '',
+          },
+        });
+      }
+    } catch (err) {
+      Alert.alert("Couldn't open chat", err.message || 'Please try again.');
+    } finally {
+      setChatBusy(false);
+    }
+  }
   const photo = item.images?.[0] || item.photo;
   const description = item.description || '';
   const isLong = description.length > DESC_LIMIT;
@@ -73,6 +134,27 @@ export default function ListingDetailScreen({ item, onBack }) {
           </View>
         ) : null}
       </ScrollView>
+
+      {!isMine && uid && item.sellerId ? (
+        <View style={styles.actionBar}>
+          <Pressable
+            onPress={toggleFavorite}
+            disabled={favBusy}
+            accessibilityRole="button"
+            style={[styles.secondaryButton, favBusy && styles.disabled]}
+          >
+            <Text style={styles.secondaryText}>{isFavorited ? '★ Saved' : '☆ Save'}</Text>
+          </Pressable>
+          <Pressable
+            onPress={startChat}
+            disabled={chatBusy}
+            accessibilityRole="button"
+            style={[styles.primaryButton, chatBusy && styles.disabled]}
+          >
+            <Text style={styles.primaryText}>Chat with seller</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -154,6 +236,42 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     color: '#333333',
+  },
+  actionBar: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#EEEEEE',
+    paddingBottom: 24,
+  },
+  primaryButton: {
+    flex: 2,
+    backgroundColor: '#4F7052',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  primaryText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#4F7052',
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  secondaryText: {
+    color: '#4F7052',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  disabled: {
+    opacity: 0.5,
   },
   moreText: {
     marginTop: 6,

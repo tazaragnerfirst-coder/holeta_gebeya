@@ -8,17 +8,25 @@ import HomeScreen from './src/screens/HomeScreen';
 import ListingDetailScreen from './src/screens/ListingDetailScreen';
 import ChatListScreen from './src/screens/ChatListScreen';
 import ChatThreadScreen from './src/screens/ChatThreadScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import FavoritesScreen from './src/screens/FavoritesScreen';
 
 export default function App() {
   // undefined = still checking the saved session, null = logged out
   const [user, setUser] = useState(undefined);
-  // Bottom tab: 'home' or 'chats'
+  // Bottom tab: 'home', 'chats' or 'profile'
   const [tab, setTab] = useState('home');
   // Detail views opened on top of the tabs
   const [openListing, setOpenListing] = useState(null);
   const [openChat, setOpenChat] = useState(null);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  // Favorites stays open underneath, so Back from a saved listing returns to it.
+  function closeListing() {
+    setOpenListing(null);
+  }
 
   let screen;
   if (user === undefined) {
@@ -32,14 +40,29 @@ export default function App() {
   } else if (openChat) {
     screen = <ChatThreadScreen chat={openChat} onBack={() => setOpenChat(null)} />;
   } else if (openListing) {
-    screen = <ListingDetailScreen item={openListing} onBack={() => setOpenListing(null)} />;
+    screen = (
+      <ListingDetailScreen
+        item={openListing}
+        onBack={closeListing}
+        onOpenChat={setOpenChat}
+      />
+    );
+  } else if (favoritesOpen) {
+    screen = (
+      <FavoritesScreen
+        onBack={() => setFavoritesOpen(false)}
+        onOpen={setOpenListing}
+      />
+    );
   } else if (tab === 'chats') {
     screen = <ChatListScreen onOpen={setOpenChat} />;
+  } else if (tab === 'profile') {
+    screen = <ProfileScreen onOpenFavorites={() => setFavoritesOpen(true)} />;
   } else {
     screen = <HomeScreen onOpen={setOpenListing} />;
   }
 
-  const showTabs = user && !openChat && !openListing;
+  const showTabs = user && !openChat && !openListing && !favoritesOpen;
 
   return (
     <View style={styles.container}>
@@ -48,6 +71,7 @@ export default function App() {
         <View style={styles.tabBar}>
           <TabButton label="Home" active={tab === 'home'} onPress={() => setTab('home')} />
           <TabButton label="Messages" active={tab === 'chats'} onPress={() => setTab('chats')} />
+          <TabButton label="Profile" active={tab === 'profile'} onPress={() => setTab('profile')} />
         </View>
       ) : null}
       <StatusBar style="dark" />

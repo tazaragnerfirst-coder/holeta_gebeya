@@ -5,11 +5,16 @@ import {
 } from 'react-native';
 import { auth } from '../lib/firebase';
 import { subscribeMessages, markChatRead, sendChatMessage } from '../lib/chat';
+import { getMyProfile } from '../lib/profile';
+import { formatListingPrice } from '../lib/listings';
 
 // One conversation: live messages plus a composer (same behavior as the web ChatThread for existing chats).
-export default function ChatThreadScreen({ chat, onBack }) {
+export default function ChatThreadScreen({ chat: initialChat, onBack }) {
   const uid = auth.currentUser?.uid;
-  const [messages, setMessages] = useState(null); // null = still loading
+  // A draft has no chat doc yet (opened from a listing); it becomes live after the first send.
+  const [chat, setChat] = useState(initialChat);
+  const isDraft = !!chat.draft;
+  const [messages, setMessages] = useState(isDraft ? [] : null); // null = still loading
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -19,13 +24,13 @@ export default function ChatThreadScreen({ chat, onBack }) {
   const otherName = amBuyer ? chat.sellerName || 'Seller' : chat.buyerName || 'Buyer';
 
   useEffect(() => {
-    if (!uid) return undefined;
+    if (!uid || isDraft) return undefined;
     markChatRead(chat.id, uid);
     return subscribeMessages(chat.id, (data) => {
       setMessages(data);
       markChatRead(chat.id, uid);
     }, () => setError("Couldn't load messages."));
-  }, [chat.id, uid]);
+  }, [chat.id, uid, isDraft]);
 
   async function send() {
     const outgoing = text.trim();
@@ -34,13 +39,19 @@ export default function ChatThreadScreen({ chat, onBack }) {
     setError('');
     try {
       setText('');
+      const buyerProfile = isDraft ? await getMyProfile(uid) : null;
       await sendChatMessage({
         chatId: chat.id,
         chat,
         uid,
         text: outgoing,
-        senderName: auth.currentUser?.displayName,
+        senderName: buyerProfile?.name || auth.currentUser?.displayName,
+        buyerProfile,
       });
+      if (isDraft) {
+        // The chat doc now exists: switch to the live view with the real chat fields.
+        setChat({ id: chat.id, buyerId: uid, sellerId: chat.sellerId, sellerName: chat.sellerName, listingTitle: chat.draft.listingTitle });
+      }
     } catch (err) {
       setText(outgoing);
       setError(err.message || "Couldn't send that message.");
@@ -61,7 +72,7 @@ export default function ChatThreadScreen({ chat, onBack }) {
         <Text style={styles.headerName} numberOfLines={1}>{otherName}</Text>
       </View>
 
-      {messages === null ? (
+      {messages === null && !isDraft ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color="#4F7052" />
         </View>
@@ -100,6 +111,17 @@ export default function ChatThreadScreen({ chat, onBack }) {
 }
 
 function Bubble({ message, mine }) {
+  if (message.type === 'listing') {
+    const price = formatListingPrice({ price: message.listingPrice, priceType: message.listingPriceType });
+    return (
+      <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
+        <View style={[styles.bubble, styles.listingCard]}>
+          <Text style={styles.listingTitle}>{message.listingTitle}</Text>
+          <Text style={styles.listingPrice}>{price}</Text>
+        </View>
+      </View>
+    );
+  }
   if (!message.text) return null;
   return (
     <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
@@ -176,6 +198,23 @@ const styles = StyleSheet.create({
   bubbleTextMine: {
     fontSize: 15,
     color: '#FFFFFF',
+  },
+  listingCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#D0D4D8',
+    minWidth: 180,
+  },
+  listingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1F1F1F',
+  },
+  listingPrice: {
+    marginTop: 2,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4F7052',
   },
   error: {
     paddingHorizontal: 16,
