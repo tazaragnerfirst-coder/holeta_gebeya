@@ -1,5 +1,8 @@
+import { Platform } from 'react-native';
 import { getApps, initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth, initializeAuth, getReactNativePersistence } from '@firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Same public Firebase config as the web app (frontend/src/lib/firebase.js).
 // These identifiers are not secrets; access is controlled by firestore.rules.
@@ -13,7 +16,17 @@ const firebaseConfig = {
   measurementId: 'G-THX2TJHHR3',
 };
 
+// Same Render backend the web app uses (see README.md).
+export const BACKEND_URL = 'https://holeta-gebeya.onrender.com';
+
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-// Firestore for the public listing feed (login is not wired up yet).
+// Native keeps the signed-in session in AsyncStorage so it survives app
+// restarts. On the web, the browser's own storage is used instead.
+export const auth =
+  Platform.OS === 'web'
+    ? getAuth(app)
+    : initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) });
+
+// Firestore for the public listing feed.
 export const db = getFirestore(app);
