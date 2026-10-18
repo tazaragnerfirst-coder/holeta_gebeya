@@ -1,11 +1,13 @@
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import HomeScreen from './src/screens/HomeScreen';
 
+// Login is skipped for now: the Home feed (public listings) is shown directly.
+// Restore the login gate when login is wired back in.
 export default function App() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Holeta Gebeya</Text>
-      <Text style={styles.subtitle}>Native app: coming soon</Text>
+      <HomeScreen />
       <StatusBar style="dark" />
     </View>
   );
@@ -15,17 +17,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F1F1F',
-  },
-  subtitle: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#5F6368',
   },
 });
