@@ -12,9 +12,11 @@ export async function getMyProfile(uid) {
       photo: data.customPhotoUrl || data.photoUrl || '',
       phone: data.phone || '',
       location: data.location || '',
+      subscriptionActive: !!data.subscriptionActive,
+      subscriptionExpiresAt: data.subscriptionExpiresAt?.toMillis ? data.subscriptionExpiresAt.toMillis() : null,
     };
   } catch {
-    return { name: 'User', photo: '', phone: '', location: '' };
+    return { name: 'User', photo: '', phone: '', location: '', subscriptionActive: false, subscriptionExpiresAt: null };
   }
 }
 
@@ -37,4 +39,16 @@ export async function updateMyProfile({ fullName, phone, location }) {
   });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || "Couldn't save your details.");
+}
+
+// Active only while the flag is set and the expiry (if any) hasn't passed.
+export function isSubscriptionActive(profile) {
+  if (!profile?.subscriptionActive) return false;
+  if (!profile.subscriptionExpiresAt) return true;
+  return profile.subscriptionExpiresAt > Date.now();
+}
+
+export function formatExpiry(ms) {
+  if (!ms) return '';
+  return new Date(ms).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }

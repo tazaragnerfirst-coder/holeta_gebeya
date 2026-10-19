@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { onAuthStateChanged } from '@firebase/auth';
 import { auth } from './src/lib/firebase';
+import { openSupportChat } from './src/lib/chat';
+import { getMyProfile } from './src/lib/profile';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ListingDetailScreen from './src/screens/ListingDetailScreen';
@@ -12,24 +14,85 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
 import EditProfileScreen from './src/screens/EditProfileScreen';
 import MyAdsScreen from './src/screens/MyAdsScreen';
+import WalletScreen from './src/screens/WalletScreen';
+import CoinScreen from './src/screens/CoinScreen';
+import SubscriptionScreen from './src/screens/SubscriptionScreen';
+import BoostScreen from './src/screens/BoostScreen';
+import StoreScreen from './src/screens/StoreScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
+import PrivacyScreen from './src/screens/PrivacyScreen';
 
 export default function App() {
   // undefined = still checking the saved session, null = logged out
   const [user, setUser] = useState(undefined);
   // Bottom tab: 'home', 'chats' or 'profile'
   const [tab, setTab] = useState('home');
-  // Detail views opened on top of the tabs
-  const [openListing, setOpenListing] = useState(null);
-  const [openChat, setOpenChat] = useState(null);
-  const [favoritesOpen, setFavoritesOpen] = useState(false);
-  const [myAdsOpen, setMyAdsOpen] = useState(false);
-  const [editInfoOpen, setEditInfoOpen] = useState(false);
+  // Screens opened on top of the tabs, newest last. Back pops one, so
+  // e.g. Saved listings -> a listing -> Back returns to Saved listings.
+  const [stack, setStack] = useState([]);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
-  // Favorites stays open underneath, so Back from a saved listing returns to it.
-  function closeListing() {
-    setOpenListing(null);
+  const push = (name, params = {}) => setStack((s) => [...s, { name, params }]);
+  const pop = () => setStack((s) => s.slice(0, -1));
+
+  // Android back button follows the same stack.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (stack.length > 0) { pop(); return true; }
+      return false;
+    });
+    return () => sub.remove();
+  }, [stack.length]);
+
+  // Logging out clears any open screens.
+  useEffect(() => {
+    if (user === null) { setStack([]); setTab('home'); }
+  }, [user]);
+
+  async function openSupport() {
+    try {
+      const profile = await getMyProfile(auth.currentUser.uid);
+      const chat = await openSupportChat(auth.currentUser.uid, profile.name);
+      push('chat', { chat });
+    } catch (err) {
+      Alert.alert("Couldn't open support", err.message || 'Please try again.');
+    }
+  }
+
+  const top = stack[stack.length - 1];
+  const openListing = (item) => push('listing', { item });
+  const openChat = (chat) => push('chat', { chat });
+
+  function renderTop() {
+    switch (top.name) {
+      case 'listing':
+        return <ListingDetailScreen item={top.params.item} onBack={pop} onOpenChat={openChat} />;
+      case 'chat':
+        return <ChatThreadScreen chat={top.params.chat} onBack={pop} />;
+      case 'favorites':
+        return <FavoritesScreen onBack={pop} onOpen={openListing} />;
+      case 'editInfo':
+        return <EditProfileScreen onBack={pop} />;
+      case 'myAds':
+        return <MyAdsScreen onBack={pop} onOpen={openListing} />;
+      case 'store':
+        return <StoreScreen onBack={pop} onOpen={openListing} />;
+      case 'wallet':
+        return <WalletScreen onBack={pop} />;
+      case 'coin':
+        return <CoinScreen onBack={pop} />;
+      case 'subscription':
+        return <SubscriptionScreen onBack={pop} onOpenWallet={() => push('wallet')} />;
+      case 'boost':
+        return <BoostScreen onBack={pop} onOpenWallet={() => push('wallet')} />;
+      case 'settings':
+        return <SettingsScreen onBack={pop} />;
+      case 'privacy':
+        return <PrivacyScreen onBack={pop} />;
+      default:
+        return null;
+    }
   }
 
   let screen;
@@ -41,42 +104,17 @@ export default function App() {
     );
   } else if (user === null) {
     screen = <LoginScreen />;
-  } else if (openChat) {
-    screen = <ChatThreadScreen chat={openChat} onBack={() => setOpenChat(null)} />;
-  } else if (openListing) {
-    screen = (
-      <ListingDetailScreen
-        item={openListing}
-        onBack={closeListing}
-        onOpenChat={setOpenChat}
-      />
-    );
-  } else if (editInfoOpen) {
-    screen = <EditProfileScreen onBack={() => setEditInfoOpen(false)} />;
-  } else if (myAdsOpen) {
-    screen = <MyAdsScreen onBack={() => setMyAdsOpen(false)} onOpen={setOpenListing} />;
-  } else if (favoritesOpen) {
-    screen = (
-      <FavoritesScreen
-        onBack={() => setFavoritesOpen(false)}
-        onOpen={setOpenListing}
-      />
-    );
+  } else if (top) {
+    screen = renderTop();
   } else if (tab === 'chats') {
-    screen = <ChatListScreen onOpen={setOpenChat} />;
+    screen = <ChatListScreen onOpen={openChat} />;
   } else if (tab === 'profile') {
-    screen = (
-      <ProfileScreen
-        onOpenFavorites={() => setFavoritesOpen(true)}
-        onEditInfo={() => setEditInfoOpen(true)}
-        onOpenMyAds={() => setMyAdsOpen(true)}
-      />
-    );
+    screen = <ProfileScreen onNavigate={push} onOpenSupport={openSupport} />;
   } else {
-    screen = <HomeScreen onOpen={setOpenListing} />;
+    screen = <HomeScreen onOpen={openListing} />;
   }
 
-  const showTabs = user && !openChat && !openListing && !favoritesOpen && !myAdsOpen && !editInfoOpen;
+  const showTabs = !!user && !top;
 
   return (
     <View style={styles.container}>

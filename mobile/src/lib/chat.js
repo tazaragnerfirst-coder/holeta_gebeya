@@ -3,6 +3,7 @@ import {
   setDoc, updateDoc, where,
 } from 'firebase/firestore';
 import { db, BACKEND_URL } from './firebase';
+import { SUPPORT_UID, SUPPORT_NAME } from './constants';
 
 // Live list of the current user's conversations, newest first.
 // Same participants query the web app uses (appData.jsx).
@@ -46,6 +47,28 @@ export function chatIdFor(sellerId, buyerId) {
 export async function getChat(chatId) {
   const snap = await getDoc(doc(db, 'chats', chatId));
   return snap.exists() ? { id: chatId, ...snap.data() } : null;
+}
+
+// Opens (creating if needed) the always-available support chat, same doc shape as the web app.
+export async function openSupportChat(uid, buyerName) {
+  const chatId = `support_${uid}`;
+  const existing = await getChat(chatId);
+  if (existing) return existing;
+  await setDoc(doc(db, 'chats', chatId), {
+    participants: [SUPPORT_UID, uid],
+    buyerId: uid,
+    buyerName: buyerName || 'You',
+    sellerId: SUPPORT_UID,
+    sellerName: SUPPORT_NAME,
+    isSupport: true,
+    listingTitle: '',
+    listingPhoto: '',
+    lastMessage: '',
+    lastSenderId: '',
+    createdAt: serverTimestamp(),
+    lastMessageAt: serverTimestamp(),
+  });
+  return getChat(chatId);
 }
 
 // Sends a text message. For a draft (brand-new thread opened from a

@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { signOut } from '@firebase/auth';
 import { auth } from '../lib/firebase';
 import { getMyProfile } from '../lib/profile';
 
 // Signed-in user's profile: name, photo, location, and entry points to saved listings and logout.
-export default function ProfileScreen({ onOpenFavorites, onEditInfo, onOpenMyAds }) {
+export default function ProfileScreen({ onNavigate, onOpenSupport }) {
   const uid = auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
 
@@ -47,12 +47,20 @@ export default function ProfileScreen({ onOpenFavorites, onEditInfo, onOpenMyAds
         {profile.location ? <Text style={styles.muted}>📍 {profile.location}</Text> : null}
       </View>
 
-      <View style={styles.menu}>
-        <MenuItem label="Edit info" onPress={onEditInfo} />
-        <MenuItem label="My ads" onPress={onOpenMyAds} />
-        <MenuItem label="Saved listings" onPress={onOpenFavorites} />
+      <ScrollView style={styles.menu}>
+        <MenuItem label="Edit info" onPress={() => onNavigate('editInfo')} />
+        <MenuItem label="My ads" onPress={() => onNavigate('myAds')} />
+        <MenuItem label="My store" onPress={() => onNavigate('store')} />
+        <MenuItem label="Saved listings" onPress={() => onNavigate('favorites')} />
+        <MenuItem label="Wallet" onPress={() => onNavigate('wallet')} />
+        <MenuItem label="Holeta Coin" onPress={() => onNavigate('coin')} />
+        <MenuItem label="Subscription" onPress={() => onNavigate('subscription')} />
+        <MenuItem label="Boost" onPress={() => onNavigate('boost')} />
+        <MenuItem label="Help & Support" onPress={onOpenSupport} />
+        <MenuItem label="Settings" onPress={() => onNavigate('settings')} />
+        <MenuItem label="Privacy policy" onPress={() => onNavigate('privacy')} />
         <MenuItem label="Log out" onPress={confirmLogout} danger />
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -86,7 +94,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    paddingVertical: 20,
+    paddingVertical: 12,
   },
   avatar: {
     width: 84,
@@ -119,6 +127,7 @@ const styles = StyleSheet.create({
     color: '#5F6368',
   },
   menu: {
+    flex: 1,
     borderTopWidth: 1,
     borderTopColor: '#EEEEEE',
   },

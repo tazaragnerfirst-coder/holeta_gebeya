@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { auth } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../lib/firebase';
 import { formatListingPrice } from '../lib/listings';
 import { chatIdFor, getChat } from '../lib/chat';
 import { setFavorite, subscribeFavorites } from '../lib/favorites';
@@ -23,8 +24,16 @@ function timeAgo(ts) {
 
 // Public listing detail. Layout only for now: chat, call and favorite
 // actions are added in later steps.
-export default function ListingDetailScreen({ item, onBack, onOpenChat }) {
+export default function ListingDetailScreen({ item: initialItem, onBack, onOpenChat }) {
   const uid = auth.currentUser?.uid;
+  // Items opened from Saved listings carry only a snapshot; load the full listing (seller, description).
+  const [item, setItem] = useState(initialItem);
+  useEffect(() => {
+    if (initialItem.sellerId && initialItem.description !== undefined) return;
+    getDoc(doc(db, 'listings', initialItem.id))
+      .then((snap) => { if (snap.exists()) setItem({ id: snap.id, ...snap.data() }); })
+      .catch(() => {});
+  }, [initialItem.id]);
   const [descExpanded, setDescExpanded] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [favBusy, setFavBusy] = useState(false);
