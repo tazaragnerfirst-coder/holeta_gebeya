@@ -5,7 +5,7 @@ import { auth } from '../lib/firebase';
 import { getMyProfile } from '../lib/profile';
 
 // Signed-in user's profile: name, photo, location, and entry points to saved listings and logout.
-export default function ProfileScreen({ onOpenFavorites }) {
+export default function ProfileScreen({ onOpenFavorites, onEditInfo, onOpenMyAds }) {
   const uid = auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
 
@@ -48,6 +48,8 @@ export default function ProfileScreen({ onOpenFavorites }) {
       </View>
 
       <View style={styles.menu}>
+        <MenuItem label="Edit info" onPress={onEditInfo} />
+        <MenuItem label="My ads" onPress={onOpenMyAds} />
         <MenuItem label="Saved listings" onPress={onOpenFavorites} />
         <MenuItem label="Log out" onPress={confirmLogout} danger />
       </View>

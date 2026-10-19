@@ -10,6 +10,8 @@ import ChatListScreen from './src/screens/ChatListScreen';
 import ChatThreadScreen from './src/screens/ChatThreadScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import FavoritesScreen from './src/screens/FavoritesScreen';
+import EditProfileScreen from './src/screens/EditProfileScreen';
+import MyAdsScreen from './src/screens/MyAdsScreen';
 
 export default function App() {
   // undefined = still checking the saved session, null = logged out
@@ -20,6 +22,8 @@ export default function App() {
   const [openListing, setOpenListing] = useState(null);
   const [openChat, setOpenChat] = useState(null);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const [myAdsOpen, setMyAdsOpen] = useState(false);
+  const [editInfoOpen, setEditInfoOpen] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
 
@@ -47,6 +51,10 @@ export default function App() {
         onOpenChat={setOpenChat}
       />
     );
+  } else if (editInfoOpen) {
+    screen = <EditProfileScreen onBack={() => setEditInfoOpen(false)} />;
+  } else if (myAdsOpen) {
+    screen = <MyAdsScreen onBack={() => setMyAdsOpen(false)} onOpen={setOpenListing} />;
   } else if (favoritesOpen) {
     screen = (
       <FavoritesScreen
@@ -57,12 +65,18 @@ export default function App() {
   } else if (tab === 'chats') {
     screen = <ChatListScreen onOpen={setOpenChat} />;
   } else if (tab === 'profile') {
-    screen = <ProfileScreen onOpenFavorites={() => setFavoritesOpen(true)} />;
+    screen = (
+      <ProfileScreen
+        onOpenFavorites={() => setFavoritesOpen(true)}
+        onEditInfo={() => setEditInfoOpen(true)}
+        onOpenMyAds={() => setMyAdsOpen(true)}
+      />
+    );
   } else {
     screen = <HomeScreen onOpen={setOpenListing} />;
   }
 
-  const showTabs = user && !openChat && !openListing && !favoritesOpen;
+  const showTabs = user && !openChat && !openListing && !favoritesOpen && !myAdsOpen && !editInfoOpen;
 
   return (
     <View style={styles.container}>
