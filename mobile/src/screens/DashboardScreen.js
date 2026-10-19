@@ -37,7 +37,7 @@ function avg(list) {
   return Math.round((list.reduce((s, a) => s + viewsPerDay(a), 0) / list.length) * 10) / 10;
 }
 
-export default function DashboardScreen({ onBack, onOpenBoost }) {
+export default function DashboardScreen({ onBack, onOpenBoost, onOpenViews, onOpenExpired, onOpenAds }) {
   const uid = auth.currentUser?.uid;
 
   const [ads, setAds] = useState(null);
@@ -115,11 +115,11 @@ export default function DashboardScreen({ onBack, onOpenBoost }) {
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
       <View style={styles.statGrid}>
-        <Stat label="Total views" value={ads ? totalViews : '—'} />
+        <Stat label="Total views" value={ads ? totalViews : '—'} onPress={onOpenViews} />
         <Stat label="Contact clicks" value={allTimeContacts ?? '—'} />
         <Stat label="Active chats" value={chats ? chats.length : '—'} />
-        <Stat label="Active ads" value={ads ? activeAds.length : '—'} />
-        <Stat label="Expired" value={ads ? expiredCount : '—'} />
+        <Stat label="Active ads" value={ads ? activeAds.length : '—'} onPress={onOpenAds} />
+        <Stat label="Expired" value={ads ? expiredCount : '—'} onPress={onOpenExpired} />
       </View>
 
       <View style={ui.card}>
@@ -184,13 +184,17 @@ export default function DashboardScreen({ onBack, onOpenBoost }) {
   );
 }
 
-function Stat({ label, value }) {
-  return (
-    <View style={styles.stat}>
+function Stat({ label, value, onPress }) {
+  const body = (
+    <>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </>
   );
+  if (onPress) {
+    return <Pressable onPress={onPress} style={styles.stat} accessibilityRole="button">{body}</Pressable>;
+  }
+  return <View style={styles.stat}>{body}</View>;
 }
 
 const styles = StyleSheet.create({

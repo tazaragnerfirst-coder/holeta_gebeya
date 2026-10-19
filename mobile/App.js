@@ -22,6 +22,8 @@ import StoreScreen from './src/screens/StoreScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import PrivacyScreen from './src/screens/PrivacyScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
+import ViewsDetailScreen from './src/screens/ViewsDetailScreen';
+import ExpiredScreen from './src/screens/ExpiredScreen';
 
 export default function App() {
   // undefined = still checking the saved session, null = logged out
@@ -92,7 +94,19 @@ export default function App() {
       case 'privacy':
         return <PrivacyScreen onBack={pop} />;
       case 'dashboard':
-        return <DashboardScreen onBack={pop} onOpenBoost={() => push('boost')} />;
+        return (
+          <DashboardScreen
+            onBack={pop}
+            onOpenBoost={() => push('boost')}
+            onOpenViews={() => push('views')}
+            onOpenExpired={() => push('expired')}
+            onOpenAds={() => push('myAds')}
+          />
+        );
+      case 'views':
+        return <ViewsDetailScreen onBack={pop} />;
+      case 'expired':
+        return <ExpiredScreen onBack={pop} />;
       default:
         return null;
     }
