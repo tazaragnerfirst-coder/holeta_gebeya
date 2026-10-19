@@ -21,6 +21,7 @@ import BoostScreen from './src/screens/BoostScreen';
 import StoreScreen from './src/screens/StoreScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import PrivacyScreen from './src/screens/PrivacyScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
 
 export default function App() {
   // undefined = still checking the saved session, null = logged out
@@ -90,6 +91,8 @@ export default function App() {
         return <SettingsScreen onBack={pop} />;
       case 'privacy':
         return <PrivacyScreen onBack={pop} />;
+      case 'dashboard':
+        return <DashboardScreen onBack={pop} onOpenBoost={() => push('boost')} />;
       default:
         return null;
     }

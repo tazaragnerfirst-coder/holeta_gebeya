@@ -49,6 +49,7 @@ export default function ProfileScreen({ onNavigate, onOpenSupport }) {
 
       <ScrollView style={styles.menu}>
         <MenuItem label="Edit info" onPress={() => onNavigate('editInfo')} />
+        <MenuItem label="Dashboard" onPress={() => onNavigate('dashboard')} />
         <MenuItem label="My ads" onPress={() => onNavigate('myAds')} />
         <MenuItem label="My store" onPress={() => onNavigate('store')} />
         <MenuItem label="Saved listings" onPress={() => onNavigate('favorites')} />
