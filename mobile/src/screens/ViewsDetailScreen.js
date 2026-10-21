@@ -5,6 +5,7 @@ import { subscribeMyAds } from '../lib/ads';
 import { getSellerAnalytics } from '../lib/analytics';
 import { DailyBars, RankedBars } from '../components/Charts';
 import ScreenShell, { ui } from '../components/ScreenShell';
+import { colors, font, radius } from '../theme';
 
 // Views analytics for all of the seller's ads. Mirrors frontend/src/pages/ViewsDetail.jsx.
 const RANGES = [
@@ -81,7 +82,7 @@ export default function ViewsDetailScreen({ onBack }) {
             ))}
           </View>
         </View>
-        {daily === null ? <ActivityIndicator color="#4F7052" /> : <DailyBars data={dailySeries} />}
+        {daily === null ? <ActivityIndicator color={colors.primary} /> : <DailyBars data={dailySeries} />}
       </View>
 
       <View style={ui.card}>
@@ -99,13 +100,19 @@ export default function ViewsDetailScreen({ onBack }) {
 
 const styles = StyleSheet.create({
   statRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  stat: { flex: 1, backgroundColor: '#F4F8F4', borderRadius: 14, padding: 14 },
-  statValue: { fontSize: 22, fontWeight: '700', color: '#4F7052' },
-  statLabel: { marginTop: 4, fontSize: 12, color: '#5F6368' },
+  stat: {
+    flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    borderRadius: radius.md, padding: 14,
+  },
+  statValue: { fontFamily: font.familyExtraBold, fontSize: 24, color: colors.primary },
+  statLabel: { marginTop: 4, fontFamily: font.family, fontSize: 12.5, color: colors.inkFaint },
   head: { marginBottom: 10 },
   rangeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  rangeBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D0D4D8' },
-  rangeBtnActive: { backgroundColor: '#4F7052', borderColor: '#4F7052' },
-  rangeText: { fontSize: 12, color: '#1F1F1F' },
-  rangeTextActive: { color: '#FFFFFF', fontWeight: '600' },
+  rangeBtn: {
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+  },
+  rangeBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  rangeText: { fontFamily: font.familySemiBold, fontSize: 12.5, color: colors.inkSoft },
+  rangeTextActive: { color: colors.white },
 });

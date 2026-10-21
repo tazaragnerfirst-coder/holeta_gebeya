@@ -6,6 +6,7 @@ import { getMyProfile, isSubscriptionActive } from '../lib/profile';
 import { getSellerRating, getStoreProfile } from '../lib/store';
 import { isLiveAd, subscribeMyAds } from '../lib/ads';
 import { formatListingPrice } from '../lib/listings';
+import { colors, font, radius } from '../theme';
 
 function socialHref(key, value) {
   if (!value) return '';
@@ -71,13 +72,13 @@ export default function StoreScreen({ onBack, onOpen }) {
       ) : live.map((item) => (
         <Pressable key={item.id} style={[ui.txRow, { justifyContent: 'flex-start' }]} onPress={() => onOpen(item)} accessibilityRole="button">
           {item.images?.[0] ? (
-            <Image source={{ uri: item.images[0] }} style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: '#F4F5F7' }} />
+            <Image source={{ uri: item.images[0] }} style={{ width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken }} />
           ) : (
-            <View style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: '#E0E0E0' }} />
+            <View style={{ width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.line }} />
           )}
           <View style={{ flex: 1, marginLeft: 12 }}>
             <Text style={ui.txLabel} numberOfLines={2}>{item.title || 'Untitled'}</Text>
-            <Text style={[ui.txDate, { color: '#4F7052', fontWeight: '700' }]}>{formatListingPrice(item)}</Text>
+            <Text style={[ui.txDate, { color: colors.primary, fontFamily: font.familyExtraBold }]}>{formatListingPrice(item)}</Text>
           </View>
         </Pressable>
       ))}

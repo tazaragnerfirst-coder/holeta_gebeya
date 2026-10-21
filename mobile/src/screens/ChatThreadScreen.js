@@ -7,6 +7,8 @@ import { auth } from '../lib/firebase';
 import { subscribeMessages, markChatRead, sendChatMessage } from '../lib/chat';
 import { getMyProfile } from '../lib/profile';
 import { formatListingPrice } from '../lib/listings';
+import Icon from '../components/Icon';
+import { colors, font, radius } from '../theme';
 
 // One conversation: live messages plus a composer (same behavior as the web ChatThread for existing chats).
 export default function ChatThreadScreen({ chat: initialChat, onBack }) {
@@ -60,21 +62,26 @@ export default function ChatThreadScreen({ chat: initialChat, onBack }) {
     }
   }
 
+  const canSend = !!text.trim() && !sending;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.topBar}>
-        <Pressable onPress={onBack} accessibilityRole="button" style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
+        <Pressable onPress={onBack} accessibilityRole="button" hitSlop={8} style={styles.backButton}>
+          <Icon name="chevronLeft" size={20} color={colors.ink} />
         </Pressable>
+        <View style={styles.headerAvatar}>
+          <Text style={styles.headerAvatarText}>{otherName.charAt(0).toUpperCase()}</Text>
+        </View>
         <Text style={styles.headerName} numberOfLines={1}>{otherName}</Text>
       </View>
 
       {messages === null && !isDraft ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#4F7052" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -95,15 +102,17 @@ export default function ChatThreadScreen({ chat: initialChat, onBack }) {
           value={text}
           onChangeText={setText}
           placeholder="Write a message…"
+          placeholderTextColor={colors.inkFaint}
           multiline
         />
         <Pressable
           onPress={send}
-          disabled={!text.trim() || sending}
+          disabled={!canSend}
           accessibilityRole="button"
-          style={[styles.sendButton, (!text.trim() || sending) && styles.sendDisabled]}
+          accessibilityLabel="Send"
+          style={[styles.sendButton, !canSend && styles.sendDisabled]}
         >
-          <Text style={styles.sendText}>Send</Text>
+          <Icon name="send" size={18} color={colors.white} weight="fill" />
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -116,8 +125,8 @@ function Bubble({ message, mine }) {
     return (
       <View style={[styles.bubbleRow, mine ? styles.rowMine : styles.rowTheirs]}>
         <View style={[styles.bubble, styles.listingCard]}>
-          <Text style={styles.listingTitle}>{message.listingTitle}</Text>
           <Text style={styles.listingPrice}>{price}</Text>
+          <Text style={styles.listingTitle}>{message.listingTitle}</Text>
         </View>
       </View>
     );
@@ -133,126 +142,49 @@ function Bubble({ message, mine }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
+  container: { flex: 1, backgroundColor: colors.bgApp },
   topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 48,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingTop: Platform.OS === 'ios' ? 56 : 48, paddingHorizontal: 16, paddingBottom: 10,
+    borderBottomWidth: 1, borderBottomColor: colors.line,
   },
   backButton: {
-    paddingVertical: 6,
-    paddingRight: 12,
+    width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
-  backText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4F7052',
+  headerAvatar: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: colors.primaryTint,
+    alignItems: 'center', justifyContent: 'center',
   },
-  headerName: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1F1F1F',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  list: {
-    padding: 12,
-  },
-  bubbleRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  rowMine: {
-    justifyContent: 'flex-end',
-  },
-  rowTheirs: {
-    justifyContent: 'flex-start',
-  },
-  bubble: {
-    maxWidth: '78%',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 14,
-  },
-  bubbleMine: {
-    backgroundColor: '#4F7052',
-  },
-  bubbleTheirs: {
-    backgroundColor: '#F1F3F4',
-  },
-  bubbleText: {
-    fontSize: 15,
-    color: '#1F1F1F',
-  },
-  bubbleTextMine: {
-    fontSize: 15,
-    color: '#FFFFFF',
-  },
+  headerAvatarText: { color: colors.primary, fontFamily: font.familyExtraBold, fontSize: 14 },
+  headerName: { flex: 1, fontFamily: font.familyExtraBold, fontSize: 16, color: colors.ink },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  list: { padding: 12 },
+  bubbleRow: { flexDirection: 'row', marginBottom: 8 },
+  rowMine: { justifyContent: 'flex-end' },
+  rowTheirs: { justifyContent: 'flex-start' },
+  bubble: { maxWidth: '78%', paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.md },
+  bubbleMine: { backgroundColor: colors.primary },
+  bubbleTheirs: { backgroundColor: colors.surface },
+  bubbleText: { fontFamily: font.family, fontSize: 14.5, color: colors.ink },
+  bubbleTextMine: { fontFamily: font.family, fontSize: 14.5, color: colors.white },
   listingCard: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#D0D4D8',
-    minWidth: 180,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, minWidth: 180,
   },
-  listingTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F1F1F',
-  },
-  listingPrice: {
-    marginTop: 2,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4F7052',
-  },
-  error: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    fontSize: 13,
-    color: '#B3261E',
-  },
+  listingPrice: { fontFamily: font.familyExtraBold, fontSize: 14, color: colors.primary },
+  listingTitle: { marginTop: 2, fontFamily: font.familyMedium, fontSize: 13, color: colors.ink },
+  error: { paddingHorizontal: 16, paddingVertical: 6, fontFamily: font.familyMedium, fontSize: 13, color: colors.safety },
   composer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 10,
+    borderTopWidth: 1, borderTopColor: colors.line,
   },
   input: {
-    flex: 1,
-    maxHeight: 110,
-    borderWidth: 1,
-    borderColor: '#D0D4D8',
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    fontSize: 15,
-    color: '#1F1F1F',
+    flex: 1, maxHeight: 110, backgroundColor: colors.tgSearch, borderRadius: 20,
+    paddingHorizontal: 16, paddingVertical: 10, fontFamily: font.family, fontSize: 14.5, color: colors.ink,
   },
   sendButton: {
-    marginLeft: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 18,
-    backgroundColor: '#4F7052',
+    width: 40, height: 40, borderRadius: 20, backgroundColor: colors.tgAccent,
+    alignItems: 'center', justifyContent: 'center',
   },
-  sendDisabled: {
-    opacity: 0.5,
-  },
-  sendText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  sendDisabled: { opacity: 0.5 },
 });

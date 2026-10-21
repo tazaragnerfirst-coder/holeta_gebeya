@@ -3,8 +3,11 @@ import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Tex
 import { signOut } from '@firebase/auth';
 import { auth } from '../lib/firebase';
 import { getMyProfile } from '../lib/profile';
+import Icon from '../components/Icon';
+import { colors, font, radius } from '../theme';
 
 // Signed-in user's profile: name, photo, location, and entry points to saved listings and logout.
+// Layout mirrors frontend/src/pages/Profile.jsx (.profile-head + grouped .menu-list boxes).
 export default function ProfileScreen({ onNavigate, onOpenSupport }) {
   const uid = auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
@@ -24,17 +27,34 @@ export default function ProfileScreen({ onNavigate, onOpenSupport }) {
   if (!profile) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4F7052" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   const initial = profile.name ? profile.name.charAt(0).toUpperCase() : '?';
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Profile</Text>
+  const account = [
+    { icon: 'edit', t: 'Edit info', onPress: () => onNavigate('editInfo') },
+    { icon: 'chartBar', t: 'Dashboard', onPress: () => onNavigate('dashboard') },
+    { icon: 'bookmark', t: 'Saved listings', onPress: () => onNavigate('favorites') },
+    { icon: 'gear', t: 'Settings', onPress: () => onNavigate('settings') },
+  ];
+  const box1 = [
+    { icon: 'wallet', t: 'Wallet', onPress: () => onNavigate('wallet') },
+    { icon: 'listBullets', t: 'My ads', onPress: () => onNavigate('myAds') },
+    { icon: 'store', t: 'My store', onPress: () => onNavigate('store') },
+    { icon: 'coin', t: 'Holeta Coin', onPress: () => onNavigate('coin') },
+  ];
+  const box2 = [
+    { icon: 'crown', t: 'Subscription', onPress: () => onNavigate('subscription') },
+    { icon: 'trendingUp', t: 'Boost', onPress: () => onNavigate('boost') },
+    { icon: 'lock', t: 'Privacy policy', onPress: () => onNavigate('privacy') },
+    { icon: 'helpCircle', t: 'Help & Support', onPress: onOpenSupport },
+  ];
 
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.hero}>
         {profile.photo ? (
           <Image source={{ uri: profile.photo }} style={styles.avatarImage} />
@@ -44,112 +64,72 @@ export default function ProfileScreen({ onNavigate, onOpenSupport }) {
           </View>
         )}
         <Text style={styles.name}>{profile.name}</Text>
-        {profile.location ? <Text style={styles.muted}>📍 {profile.location}</Text> : null}
+        {profile.location ? (
+          <View style={styles.locRow}>
+            <Icon name="mapPin" size={13} color={colors.inkFaint} />
+            <Text style={styles.muted}>{profile.location}</Text>
+          </View>
+        ) : null}
       </View>
 
-      <ScrollView style={styles.menu}>
-        <MenuItem label="Edit info" onPress={() => onNavigate('editInfo')} />
-        <MenuItem label="Dashboard" onPress={() => onNavigate('dashboard')} />
-        <MenuItem label="My ads" onPress={() => onNavigate('myAds')} />
-        <MenuItem label="My store" onPress={() => onNavigate('store')} />
-        <MenuItem label="Saved listings" onPress={() => onNavigate('favorites')} />
-        <MenuItem label="Wallet" onPress={() => onNavigate('wallet')} />
-        <MenuItem label="Holeta Coin" onPress={() => onNavigate('coin')} />
-        <MenuItem label="Subscription" onPress={() => onNavigate('subscription')} />
-        <MenuItem label="Boost" onPress={() => onNavigate('boost')} />
-        <MenuItem label="Help & Support" onPress={onOpenSupport} />
-        <MenuItem label="Settings" onPress={() => onNavigate('settings')} />
-        <MenuItem label="Privacy policy" onPress={() => onNavigate('privacy')} />
-        <MenuItem label="Log out" onPress={confirmLogout} danger />
-      </ScrollView>
+      <MenuBox items={account} />
+      <MenuBox items={box1} />
+      <MenuBox items={box2} />
+      <MenuBox items={[{ icon: 'logOut', t: 'Log out', onPress: confirmLogout, danger: true }]} />
+    </ScrollView>
+  );
+}
+
+function MenuBox({ items }) {
+  return (
+    <View style={styles.menuList}>
+      {items.map((m, i) => (
+        <Pressable
+          key={m.t}
+          onPress={m.onPress}
+          accessibilityRole="button"
+          style={[styles.menuItem, i === items.length - 1 && styles.menuItemLast]}
+        >
+          <View style={[styles.menuIcon, m.danger && styles.menuIconDanger]}>
+            <Icon name={m.icon} size={17} color={m.danger ? colors.safety : colors.inkSoft} />
+          </View>
+          <Text style={[styles.menuText, m.danger && styles.danger]}>{m.t}</Text>
+          {!m.danger ? <Icon name="chevronRight" size={16} color={colors.inkFaint} /> : null}
+        </Pressable>
+      ))}
     </View>
   );
 }
 
-function MenuItem({ label, onPress, danger }) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={styles.menuItem}>
-      <Text style={[styles.menuText, danger && styles.danger]}>{label}</Text>
-      <Text style={styles.chevron}>›</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    paddingTop: 48,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1F1F1F',
-  },
-  hero: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
+  container: { flex: 1, backgroundColor: colors.bgApp },
+  content: { paddingHorizontal: 16, paddingBottom: 100 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgApp },
+  hero: { alignItems: 'center', paddingTop: 64, paddingBottom: 14 },
   avatar: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: '#4F7052',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryTint,
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatarImage: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: '#F4F5F7',
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 32,
-    fontWeight: '700',
-  },
-  name: {
-    marginTop: 10,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F1F1F',
-  },
-  muted: {
-    marginTop: 4,
-    fontSize: 14,
-    color: '#5F6368',
-  },
-  menu: {
-    flex: 1,
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
+  avatarImage: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.surface },
+  avatarText: { color: colors.primary, fontFamily: font.familyExtraBold, fontSize: 26 },
+  name: { marginTop: 12, fontFamily: font.familyExtraBold, fontSize: 17, color: colors.ink },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  muted: { fontFamily: font.family, fontSize: 12, color: colors.inkFaint },
+  // Web .menu-list / .menu-item / .menu-icon
+  menuList: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    borderRadius: radius.md, overflow: 'hidden', marginTop: 12,
   },
   menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14,
+    borderBottomWidth: 1, borderBottomColor: colors.line,
   },
-  menuText: {
-    fontSize: 16,
-    color: '#1F1F1F',
+  menuItemLast: { borderBottomWidth: 0 },
+  menuIcon: {
+    width: 34, height: 34, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken,
+    alignItems: 'center', justifyContent: 'center',
   },
-  danger: {
-    color: '#B3261E',
-  },
-  chevron: {
-    fontSize: 20,
-    color: '#9AA0A6',
-  },
+  menuIconDanger: { backgroundColor: colors.safetyTint },
+  menuText: { flex: 1, fontFamily: font.familySemiBold, fontSize: 13.5, color: colors.ink },
+  danger: { color: colors.safety },
 });

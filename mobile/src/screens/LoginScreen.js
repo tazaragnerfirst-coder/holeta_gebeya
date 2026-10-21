@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { signInWithCustomToken } from '@firebase/auth';
 import { auth, BACKEND_URL } from '../lib/firebase';
+import Icon from '../components/Icon';
+import { colors, font, radius } from '../theme';
 
 // Telegram login for the native app. Same flow as the web's
 // BrowserLoginSheet: the app shows a 4-digit code, the user opens the
@@ -70,6 +72,9 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.iconWrap}>
+        <Icon name="send" size={26} color={colors.primary} />
+      </View>
       <Text style={styles.title}>Log in with Telegram</Text>
 
       {status === 'starting' && (
@@ -83,7 +88,9 @@ export default function LoginScreen() {
             2. Check the code there matches this one, then tap Confirm login.{'\n'}
             3. Come back here. You'll be logged in automatically.
           </Text>
-          <Text style={styles.code} accessibilityLabel={`Login code ${code}`}>{code}</Text>
+          <View style={styles.codeBox}>
+            <Text style={styles.code} accessibilityLabel={`Login code ${code}`}>{code}</Text>
+          </View>
           <Text style={styles.text}>Waiting for confirmation…</Text>
           <Pressable
             style={styles.button}
@@ -111,48 +118,25 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+    flex: 1, backgroundColor: colors.bgApp, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1F1F1F',
-    marginBottom: 16,
+  iconWrap: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primaryTint,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
   },
+  title: { fontFamily: font.familyExtraBold, fontSize: 20, color: colors.ink, marginBottom: 12 },
   text: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#5F6368',
-    textAlign: 'center',
-    marginVertical: 8,
+    fontFamily: font.family, fontSize: 13.5, lineHeight: 22, color: colors.inkSoft,
+    textAlign: 'center', marginVertical: 8,
   },
-  code: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: 8,
-    color: '#4F7052',
-    marginVertical: 12,
+  codeBox: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md,
+    paddingHorizontal: 28, paddingVertical: 10, marginVertical: 12,
   },
-  error: {
-    fontSize: 14,
-    color: '#B3261E',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
+  code: { fontFamily: font.familyExtraBold, fontSize: 36, letterSpacing: 8, color: colors.primary },
+  error: { fontFamily: font.familyMedium, fontSize: 13.5, color: colors.safety, textAlign: 'center', marginBottom: 16 },
   button: {
-    marginTop: 16,
-    backgroundColor: '#4F7052',
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 24,
+    marginTop: 16, backgroundColor: colors.primary, paddingVertical: 13, paddingHorizontal: 32, borderRadius: 14,
   },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  buttonText: { color: colors.white, fontFamily: font.familyBold, fontSize: 14 },
 });

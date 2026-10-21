@@ -4,6 +4,7 @@ import { auth } from '../lib/firebase';
 import { subscribeMyAds, renewAd, isExpiredAd } from '../lib/ads';
 import { formatListingPrice } from '../lib/listings';
 import ScreenShell from '../components/ScreenShell';
+import { colors, font, radius } from '../theme';
 
 // Ads whose expiry date has passed. Mirrors frontend/src/pages/ExpiredItems.jsx.
 export default function ExpiredScreen({ onBack }) {
@@ -29,7 +30,7 @@ export default function ExpiredScreen({ onBack }) {
 
   let body;
   if (ads === null) {
-    body = <ActivityIndicator size="large" color="#4F7052" style={styles.loader} />;
+    body = <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />;
   } else {
     const expired = ads.filter(isExpiredAd);
     body = expired.length === 0 ? (
@@ -67,20 +68,20 @@ export default function ExpiredScreen({ onBack }) {
 
 const styles = StyleSheet.create({
   loader: { marginTop: 24 },
-  muted: { fontSize: 14, color: '#5F6368', marginTop: 8 },
+  muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, marginTop: 8 },
   row: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 10,
-    borderBottomWidth: 1, borderBottomColor: '#EEEEEE',
+    flexDirection: 'row', alignItems: 'center', padding: 8, marginBottom: 10,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md,
   },
-  thumb: { width: 56, height: 56, borderRadius: 8, backgroundColor: '#F4F5F7' },
-  noThumb: { backgroundColor: '#E0E0E0' },
+  thumb: { width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken },
+  noThumb: { backgroundColor: colors.line },
   info: { flex: 1, marginHorizontal: 10 },
-  title: { fontSize: 14, fontWeight: '600', color: '#1F1F1F' },
-  price: { marginTop: 3, fontSize: 13, fontWeight: '700', color: '#4F7052' },
+  title: { fontFamily: font.familyMedium, fontSize: 13, color: colors.ink },
+  price: { marginTop: 3, fontFamily: font.familyExtraBold, fontSize: 14, color: colors.primary },
   renew: {
-    borderWidth: 1, borderColor: '#4F7052', borderRadius: 100,
-    paddingHorizontal: 12, paddingVertical: 6,
+    backgroundColor: colors.primaryTint, borderRadius: radius.pill,
+    paddingHorizontal: 14, paddingVertical: 8,
   },
-  renewText: { fontSize: 13, fontWeight: '700', color: '#4F7052' },
+  renewText: { fontFamily: font.familyBold, fontSize: 13, color: colors.primary },
   disabled: { opacity: 0.5 },
 });

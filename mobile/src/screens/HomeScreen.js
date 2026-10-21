@@ -6,6 +6,7 @@ import {
   searchListings, subscribeCategories,
 } from '../lib/search';
 import { SearchBar, FilterModal } from '../components/SearchBar';
+import { colors, font, radius } from '../theme';
 
 const EMPTY_FILTERS = { minPrice: null, maxPrice: null, conditions: [] };
 
@@ -125,7 +126,7 @@ export default function HomeScreen({ onOpen }) {
   if (listings === null) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4F7052" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -153,7 +154,7 @@ export default function HomeScreen({ onOpen }) {
           );
         })}
       </ScrollView>
-      {filtering && searchLoading ? <ActivityIndicator style={styles.inlineLoad} color="#4F7052" /> : null}
+      {filtering && searchLoading ? <ActivityIndicator style={styles.inlineLoad} color={colors.primary} /> : null}
     </View>
   );
 
@@ -196,72 +197,35 @@ function ListingCard({ item, onPress }) {
         <View style={[styles.photo, styles.noPhoto]} />
       )}
       <View style={styles.body}>
-        <Text style={styles.title} numberOfLines={2}>{item.title || 'Untitled'}</Text>
         <Text style={styles.price}>{formatListingPrice(item)}</Text>
+        <Text style={styles.title} numberOfLines={2}>{item.title || 'Untitled'}</Text>
       </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: '#FFFFFF' },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  muted: {
-    fontSize: 14,
-    color: '#5F6368',
-    textAlign: 'center',
-  },
+  flex: { flex: 1, backgroundColor: colors.bgApp },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, textAlign: 'center' },
   emptyBox: { padding: 24, alignItems: 'center' },
   inlineLoad: { marginVertical: 12 },
-  chipScroll: { flexGrow: 0, marginTop: 4 },
-  chipRow: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16,
-    borderWidth: 1, borderColor: '#D0D4D8', backgroundColor: '#FFFFFF',
+  // One segmented pill (web .cat-chip-row): tgBar track, active = tgActive.
+  chipScroll: { flexGrow: 0, marginTop: 10, marginHorizontal: 16 },
+  chipRow: {
+    gap: 2, padding: 5, backgroundColor: colors.tgBar, borderRadius: radius.pill, alignItems: 'center',
   },
-  chipActive: { backgroundColor: '#4F7052', borderColor: '#4F7052' },
-  chipText: { fontSize: 13, color: '#1F1F1F' },
-  chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
-  list: {
-    padding: 12,
-  },
-  row: {
-    gap: 12,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  photo: {
-    width: '100%',
-    aspectRatio: 1,
-    backgroundColor: '#F4F5F7',
-  },
-  noPhoto: {
-    backgroundColor: '#E0E0E0',
-  },
-  body: {
-    padding: 10,
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F1F1F',
-  },
-  price: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4F7052',
-  },
+  chip: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: radius.pill },
+  chipActive: { backgroundColor: colors.tgActive },
+  chipText: { fontFamily: font.familyBold, fontSize: 13.5, color: colors.inkSoft },
+  chipTextActive: { color: colors.tgActiveInk },
+  list: { paddingHorizontal: 10, paddingTop: 12, paddingBottom: 100 },
+  row: { gap: 6 },
+  // Web .listing-card: flat, borderless, price-first, 1:1 rounded thumb.
+  card: { flex: 1, marginBottom: 12 },
+  photo: { width: '100%', aspectRatio: 1, borderRadius: radius.md, backgroundColor: colors.surfaceSunken },
+  noPhoto: { backgroundColor: colors.line },
+  body: { paddingTop: 7, paddingHorizontal: 2 },
+  price: { fontFamily: font.familyExtraBold, fontSize: 14.5, color: colors.primary },
+  title: { marginTop: 2, fontFamily: font.familyMedium, fontSize: 13, color: colors.ink, lineHeight: 17 },
 });

@@ -3,6 +3,8 @@ import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View }
 import { auth } from '../lib/firebase';
 import { subscribeFavorites } from '../lib/favorites';
 import { formatListingPrice } from '../lib/listings';
+import ScreenShell from '../components/ScreenShell';
+import { colors, font, radius } from '../theme';
 
 // Saved listings. Tapping one opens its detail view.
 export default function FavoritesScreen({ onBack, onOpen }) {
@@ -15,17 +17,10 @@ export default function FavoritesScreen({ onBack, onOpen }) {
   }, [uid]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Pressable onPress={onBack} accessibilityRole="button" style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
-        </Pressable>
-        <Text style={styles.title}>Saved listings</Text>
-      </View>
-
+    <ScreenShell title="Saved listings" onBack={onBack} scroll={false}>
       {favorites === null ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#4F7052" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : favorites.length === 0 ? (
         <View style={styles.center}>
@@ -35,6 +30,7 @@ export default function FavoritesScreen({ onBack, onOpen }) {
         <FlatList
           data={favorites}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <Pressable
               style={styles.row}
@@ -55,85 +51,28 @@ export default function FavoritesScreen({ onBack, onOpen }) {
                 <View style={[styles.thumb, styles.noPhoto]} />
               )}
               <View style={styles.info}>
-                <Text style={styles.name} numberOfLines={2}>{item.title || 'Untitled'}</Text>
                 <Text style={styles.price}>{formatListingPrice(item)}</Text>
+                <Text style={styles.name} numberOfLines={2}>{item.title || 'Untitled'}</Text>
               </View>
             </Pressable>
           )}
         />
       )}
-    </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  topBar: {
-    paddingTop: 48,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
-  },
-  backText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4F7052',
-  },
-  title: {
-    marginTop: 4,
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F1F1F',
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  muted: {
-    fontSize: 14,
-    color: '#5F6368',
-    textAlign: 'center',
-  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, textAlign: 'center' },
+  list: { paddingHorizontal: 16, paddingBottom: 100 },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    flexDirection: 'row', alignItems: 'center', padding: 8, marginBottom: 10,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md,
   },
-  thumb: {
-    width: 64,
-    height: 64,
-    borderRadius: 8,
-    backgroundColor: '#F4F5F7',
-  },
-  noPhoto: {
-    backgroundColor: '#E0E0E0',
-  },
-  info: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  name: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1F1F1F',
-  },
-  price: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#4F7052',
-  },
+  thumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken },
+  noPhoto: { backgroundColor: colors.line },
+  info: { flex: 1, marginLeft: 12 },
+  price: { fontFamily: font.familyExtraBold, fontSize: 14.5, color: colors.primary },
+  name: { marginTop: 2, fontFamily: font.familyMedium, fontSize: 13, color: colors.ink },
 });

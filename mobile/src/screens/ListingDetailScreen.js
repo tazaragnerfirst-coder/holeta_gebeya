@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { formatListingPrice } from '../lib/listings';
 import { chatIdFor, getChat } from '../lib/chat';
 import { setFavorite, subscribeFavorites } from '../lib/favorites';
+import Icon from '../components/Icon';
+import { colors, font, radius } from '../theme';
 
 const DESC_LIMIT = 180;
 
@@ -101,8 +103,8 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpenC
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <Pressable onPress={onBack} accessibilityRole="button" style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
+        <Pressable onPress={onBack} accessibilityRole="button" hitSlop={8} style={styles.backButton}>
+          <Icon name="chevronLeft" size={20} color={colors.ink} />
         </Pressable>
       </View>
 
@@ -119,8 +121,18 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpenC
 
           <View style={styles.metaRow}>
             {item.condition ? <Text style={styles.badge}>{item.condition}</Text> : null}
-            {item.location ? <Text style={styles.meta}>📍 {item.location}</Text> : null}
-            {item.createdAt ? <Text style={styles.meta}>🕒 {timeAgo(item.createdAt)}</Text> : null}
+            {item.location ? (
+              <View style={styles.metaItem}>
+                <Icon name="mapPin" size={13} color={colors.inkFaint} />
+                <Text style={styles.meta}>{item.location}</Text>
+              </View>
+            ) : null}
+            {item.createdAt ? (
+              <View style={styles.metaItem}>
+                <Icon name="clock" size={13} color={colors.inkFaint} />
+                <Text style={styles.meta}>{timeAgo(item.createdAt)}</Text>
+              </View>
+            ) : null}
           </View>
 
           {item.category ? (
@@ -152,7 +164,8 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpenC
             accessibilityRole="button"
             style={[styles.secondaryButton, favBusy && styles.disabled]}
           >
-            <Text style={styles.secondaryText}>{isFavorited ? '★ Saved' : '☆ Save'}</Text>
+            <Icon name="bookmark" size={17} color={colors.primary} weight={isFavorited ? 'fill' : 'regular'} />
+            <Text style={styles.secondaryText}>{isFavorited ? 'Saved' : 'Save'}</Text>
           </Pressable>
           <Pressable
             onPress={startChat}
@@ -160,6 +173,7 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpenC
             accessibilityRole="button"
             style={[styles.primaryButton, chatBusy && styles.disabled]}
           >
+            <Icon name="chat" size={17} color={colors.white} weight="fill" />
             <Text style={styles.primaryText}>Chat with seller</Text>
           </Pressable>
         </View>
@@ -169,123 +183,41 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpenC
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
-  topBar: {
-    paddingTop: 48,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
+  container: { flex: 1, backgroundColor: colors.bgApp },
+  topBar: { paddingTop: Platform.OS === 'ios' ? 56 : 48, paddingHorizontal: 16, paddingBottom: 10 },
   backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 6,
+    width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
-  backText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4F7052',
-  },
-  content: {
-    paddingBottom: 32,
-  },
-  photo: {
-    width: '100%',
-    aspectRatio: 1,
-    backgroundColor: '#F4F5F7',
-  },
-  noPhoto: {
-    backgroundColor: '#E0E0E0',
-  },
-  section: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-  },
-  price: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#4F7052',
-  },
-  title: {
-    marginTop: 4,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F1F1F',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 10,
-  },
+  content: { paddingBottom: 32 },
+  photo: { width: '100%', aspectRatio: 1, backgroundColor: colors.surfaceSunken },
+  noPhoto: { backgroundColor: colors.line },
+  section: { paddingHorizontal: 16, paddingTop: 16 },
+  price: { fontFamily: font.familyExtraBold, fontSize: 22, color: colors.primary },
+  title: { marginTop: 4, fontFamily: font.familySemiBold, fontSize: 17, color: colors.ink },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 10 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   badge: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#1F1F1F',
-    backgroundColor: '#EEF3EE',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    overflow: 'hidden',
+    fontFamily: font.familyBold, fontSize: 11.5, color: colors.primary, backgroundColor: colors.primaryTint,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.pill, overflow: 'hidden',
   },
-  meta: {
-    fontSize: 13,
-    color: '#5F6368',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1F1F1F',
-    marginBottom: 6,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#333333',
-  },
+  meta: { fontFamily: font.family, fontSize: 12.5, color: colors.inkFaint },
+  sectionTitle: { fontFamily: font.familyBold, fontSize: 15, color: colors.ink, marginBottom: 6 },
+  description: { fontFamily: font.family, fontSize: 14, lineHeight: 22, color: colors.inkSoft },
   actionBar: {
-    flexDirection: 'row',
-    gap: 10,
-    padding: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-    paddingBottom: 24,
+    flexDirection: 'row', gap: 10, padding: 12, paddingBottom: 24,
+    borderTopWidth: 1, borderTopColor: colors.line,
   },
   primaryButton: {
-    flex: 2,
-    backgroundColor: '#4F7052',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
+    flex: 2, flexDirection: 'row', gap: 7, backgroundColor: colors.primary,
+    paddingVertical: 13, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
-  primaryText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  primaryText: { color: colors.white, fontFamily: font.familyBold, fontSize: 14 },
   secondaryButton: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#4F7052',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
+    flex: 1, flexDirection: 'row', gap: 6, backgroundColor: colors.primaryTint,
+    paddingVertical: 13, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
-  secondaryText: {
-    color: '#4F7052',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  moreText: {
-    marginTop: 6,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#4F7052',
-  },
+  secondaryText: { color: colors.primary, fontFamily: font.familyBold, fontSize: 14 },
+  disabled: { opacity: 0.5 },
+  moreText: { marginTop: 6, fontFamily: font.familySemiBold, fontSize: 13.5, color: colors.tgActiveInk },
 });

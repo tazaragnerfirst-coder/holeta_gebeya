@@ -3,6 +3,9 @@ import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text,
 import { auth } from '../lib/firebase';
 import { subscribeMyAds, setAdStatus, deleteAd, isLiveAd } from '../lib/ads';
 import { formatListingPrice } from '../lib/listings';
+import ScreenShell from '../components/ScreenShell';
+import Icon from '../components/Icon';
+import { colors, font, radius } from '../theme';
 
 // The seller's own listings: pause/resume and delete. Editing an ad comes in a later step.
 export default function MyAdsScreen({ onBack, onOpen }) {
@@ -47,17 +50,10 @@ export default function MyAdsScreen({ onBack, onOpen }) {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Pressable onPress={onBack} accessibilityRole="button" style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
-        </Pressable>
-        <Text style={styles.title}>My ads</Text>
-      </View>
-
+    <ScreenShell title="My ads" onBack={onBack} scroll={false}>
       {ads === null ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#4F7052" />
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : ads.length === 0 ? (
         <View style={styles.center}>
@@ -67,6 +63,7 @@ export default function MyAdsScreen({ onBack, onOpen }) {
         <FlatList
           data={ads}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const photo = item.images?.[0];
             const live = isLiveAd(item);
@@ -78,18 +75,26 @@ export default function MyAdsScreen({ onBack, onOpen }) {
                 <Pressable style={styles.top} onPress={() => onOpen(item)} accessibilityRole="button">
                   {photo ? <Image source={{ uri: photo }} style={styles.thumb} /> : <View style={[styles.thumb, styles.noPhoto]} />}
                   <View style={styles.info}>
-                    <Text style={styles.name} numberOfLines={2}>{item.title || 'Untitled'}</Text>
                     <Text style={styles.price}>{formatListingPrice(item)}</Text>
-                    <Text style={styles.meta}>👁 {item.views || 0} · {statusLabel}</Text>
+                    <Text style={styles.name} numberOfLines={2}>{item.title || 'Untitled'}</Text>
+                    <View style={styles.metaRow}>
+                      <Icon name="eye" size={13} color={colors.inkFaint} />
+                      <Text style={styles.meta}>{item.views || 0}</Text>
+                      <View style={[styles.pill, live && !paused ? styles.pillActive : styles.pillMuted]}>
+                        <Text style={[styles.pillText, live && !paused ? styles.pillActiveText : styles.pillMutedText]}>{statusLabel}</Text>
+                      </View>
+                    </View>
                   </View>
                 </Pressable>
                 <View style={styles.actions}>
                   {item.status !== 'expired' ? (
                     <Pressable onPress={() => togglePause(item)} disabled={busy} style={[styles.actionBtn, busy && styles.disabled]} accessibilityRole="button">
+                      <Icon name={paused ? 'play' : 'pause'} size={14} color={colors.ink} />
                       <Text style={styles.actionText}>{paused ? 'Resume' : 'Pause'}</Text>
                     </Pressable>
                   ) : null}
                   <Pressable onPress={() => confirmDelete(item)} disabled={busy} style={[styles.actionBtn, busy && styles.disabled]} accessibilityRole="button">
+                    <Icon name="x" size={14} color={colors.safety} />
                     <Text style={styles.dangerText}>Delete</Text>
                   </Pressable>
                 </View>
@@ -98,35 +103,39 @@ export default function MyAdsScreen({ onBack, onOpen }) {
           }}
         />
       )}
-    </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  muted: { fontSize: 14, color: '#5F6368', textAlign: 'center' },
-  topBar: {
-    paddingTop: 48, paddingHorizontal: 16, paddingBottom: 10,
-    borderBottomWidth: 1, borderBottomColor: '#EEEEEE',
+  muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, textAlign: 'center' },
+  list: { paddingHorizontal: 16, paddingBottom: 100 },
+  // Web .ad-manage-card: tappable card with plain border.
+  card: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    borderRadius: radius.md, padding: 10, marginBottom: 10,
   },
-  backButton: { alignSelf: 'flex-start', paddingVertical: 6 },
-  backText: { fontSize: 16, fontWeight: '600', color: '#4F7052' },
-  title: { marginTop: 4, fontSize: 18, fontWeight: '700', color: '#1F1F1F' },
-  card: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#EEEEEE' },
   top: { flexDirection: 'row', alignItems: 'center' },
-  thumb: { width: 64, height: 64, borderRadius: 8, backgroundColor: '#F4F5F7' },
-  noPhoto: { backgroundColor: '#E0E0E0' },
+  thumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken },
+  noPhoto: { backgroundColor: colors.line },
   info: { flex: 1, marginLeft: 12 },
-  name: { fontSize: 14, fontWeight: '600', color: '#1F1F1F' },
-  price: { marginTop: 4, fontSize: 13, fontWeight: '700', color: '#4F7052' },
-  meta: { marginTop: 4, fontSize: 12, color: '#5F6368' },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 10 },
+  price: { fontFamily: font.familyExtraBold, fontSize: 14.5, color: colors.primary },
+  name: { marginTop: 2, fontFamily: font.familyMedium, fontSize: 13, color: colors.ink },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  meta: { fontFamily: font.family, fontSize: 12, color: colors.inkFaint, marginRight: 6 },
+  pill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill },
+  pillActive: { backgroundColor: colors.okTint },
+  pillMuted: { backgroundColor: colors.mutedTint },
+  pillText: { fontFamily: font.familyBold, fontSize: 10.5 },
+  pillActiveText: { color: colors.ok },
+  pillMutedText: { color: colors.muted },
+  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10 },
   actionBtn: {
-    borderWidth: 1, borderColor: '#D0D4D8', borderRadius: 8,
-    paddingVertical: 7, paddingHorizontal: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.bgApp,
+    borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: 7, paddingHorizontal: 12,
   },
-  actionText: { fontSize: 14, fontWeight: '600', color: '#1F1F1F' },
-  dangerText: { fontSize: 14, fontWeight: '600', color: '#B3261E' },
+  actionText: { fontFamily: font.familySemiBold, fontSize: 13, color: colors.ink },
+  dangerText: { fontFamily: font.familySemiBold, fontSize: 13, color: colors.safety },
   disabled: { opacity: 0.5 },
 });

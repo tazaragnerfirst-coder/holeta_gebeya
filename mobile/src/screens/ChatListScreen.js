@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { auth } from '../lib/firebase';
 import { subscribeChats, formatChatTime } from '../lib/chat';
+import Icon from '../components/Icon';
+import { colors, font } from '../theme';
 
 // Conversations list (same data and unread badge as the web Messages page).
 export default function ChatListScreen({ onOpen }) {
@@ -24,13 +26,16 @@ export default function ChatListScreen({ onOpen }) {
   if (chats === null) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4F7052" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
   if (chats.length === 0) {
     return (
       <View style={styles.center}>
+        <View style={styles.emptyIcon}>
+          <Icon name="chat" size={26} color={colors.primary} />
+        </View>
         <Text style={styles.title}>No conversations yet</Text>
         <Text style={styles.muted}>Message a seller from a listing to start one.</Text>
       </View>
@@ -43,6 +48,7 @@ export default function ChatListScreen({ onOpen }) {
       <FlatList
         data={chats}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.list}
         renderItem={({ item }) => <ChatRow chat={item} uid={uid} onPress={() => onOpen(item)} />}
       />
     </>
@@ -79,93 +85,35 @@ function ChatRow({ chat, uid, onPress }) {
 
 const styles = StyleSheet.create({
   header: {
-    paddingTop: 48,
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1F1F1F',
+    paddingTop: 48, paddingHorizontal: 16, paddingBottom: 12,
+    fontFamily: font.familyExtraBold, fontSize: 20, color: colors.ink,
   },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+  list: { paddingBottom: 100 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, backgroundColor: colors.bgApp },
+  emptyIcon: {
+    width: 56, height: 56, borderRadius: 28, backgroundColor: colors.primaryTint,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F1F1F',
-    marginBottom: 6,
-  },
-  muted: {
-    fontSize: 14,
-    color: '#5F6368',
-    textAlign: 'center',
-  },
+  title: { fontFamily: font.familyBold, fontSize: 16, color: colors.ink, marginBottom: 6 },
+  muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, textAlign: 'center' },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEEEEE',
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.line,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#4F7052',
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primaryTint,
+    alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  info: {
-    flex: 1,
-    marginLeft: 12,
-    minWidth: 0,
-  },
-  top: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  name: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1F1F1F',
-    marginRight: 8,
-  },
-  time: {
-    fontSize: 12,
-    color: '#5F6368',
-  },
-  preview: {
-    marginTop: 2,
-    fontSize: 13,
-    color: '#5F6368',
-  },
-  bold: {
-    fontWeight: '700',
-    color: '#1F1F1F',
-  },
+  avatarText: { color: colors.primary, fontFamily: font.familyExtraBold, fontSize: 17 },
+  info: { flex: 1, marginLeft: 12, minWidth: 0 },
+  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  name: { flex: 1, fontFamily: font.familySemiBold, fontSize: 14.5, color: colors.ink, marginRight: 8 },
+  time: { fontFamily: font.family, fontSize: 11.5, color: colors.inkFaint },
+  preview: { marginTop: 2, fontFamily: font.family, fontSize: 13, color: colors.inkSoft },
+  bold: { fontFamily: font.familyBold, color: colors.ink },
   badge: {
-    marginLeft: 8,
-    minWidth: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#4F7052',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
+    marginLeft: 8, minWidth: 22, height: 22, borderRadius: 11, backgroundColor: colors.tgAccent,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6,
   },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
+  badgeText: { color: colors.white, fontFamily: font.familyBold, fontSize: 11.5 },
 });
