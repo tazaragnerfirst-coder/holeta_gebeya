@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { auth } from '../lib/firebase';
 import { subscribeMyAds, isLiveAd } from '../lib/ads';
 import { subscribeChats } from '../lib/chat';
 import { getSellerAnalytics, getListingAnalyticsBulk } from '../lib/analytics';
 import { DailyBars, RankedBars } from '../components/Charts';
+import BoostCard from '../components/BoostCard';
+import Icon from '../components/Icon';
 import ScreenShell, { ui } from '../components/ScreenShell';
+import { colors, font, radius } from '../theme';
 
 // Seller dashboard. Mirrors frontend/src/pages/Dashboard.jsx (the
-// views/contacts/expired detail pages are not ported yet).
+// per-ad "views detail" drill-down is not ported yet).
 const RANGES = [
   { key: '7', label: '7 days', days: 7 },
   { key: '30', label: '30 days', days: 30 },
@@ -115,16 +118,19 @@ export default function DashboardScreen({ onBack, onOpenBoost, onOpenViews, onOp
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
       <View style={styles.statGrid}>
-        <Stat label="Total views" value={ads ? totalViews : '—'} onPress={onOpenViews} />
-        <Stat label="Contact clicks" value={allTimeContacts ?? '—'} />
-        <Stat label="Active chats" value={chats ? chats.length : '—'} />
-        <Stat label="Active ads" value={ads ? activeAds.length : '—'} onPress={onOpenAds} />
+        <Stat label="Total Views" value={ads ? totalViews : '—'} onPress={onOpenViews} />
+        <Stat label="Contact Clicks" value={allTimeContacts ?? '—'} />
+        <Stat label="Active Chats" value={chats ? chats.length : '—'} />
+        <Stat label="Active Ads" value={ads ? activeAds.length : '—'} onPress={onOpenAds} />
         <Stat label="Expired" value={ads ? expiredCount : '—'} onPress={onOpenExpired} />
       </View>
 
-      <View style={ui.card}>
+      <View style={styles.chartCard}>
         <View style={styles.cardHead}>
-          <Text style={ui.sectionTitle}>Daily views</Text>
+          <View style={styles.cardHeadTitle}>
+            <Icon name="trendingUp" size={16} color={colors.ink} />
+            <Text style={ui.sectionTitle}>Daily Views</Text>
+          </View>
           <View style={styles.rangeRow}>
             {RANGES.map((r) => (
               <Pressable key={r.key} onPress={() => setRangeKey(r.key)} style={[styles.rangeBtn, r.key === rangeKey && styles.rangeBtnActive]}>
@@ -133,7 +139,7 @@ export default function DashboardScreen({ onBack, onOpenBoost, onOpenViews, onOp
             ))}
           </View>
         </View>
-        {daily === null ? <ActivityIndicator color="#4F7052" /> : (
+        {daily === null ? <ActivityIndicator color={colors.primary} /> : (
           <DailyBars data={dailySeries} />
         )}
         {daily !== null && daily.length === 0 ? (
@@ -145,40 +151,33 @@ export default function DashboardScreen({ onBack, onOpenBoost, onOpenViews, onOp
         ) : null}
       </View>
 
-      <View style={ui.card}>
-        <Text style={ui.sectionTitle}>Top ads by views</Text>
+      <View style={styles.chartCard}>
+        <View style={styles.cardHeadTitle}>
+          <Icon name="star" size={16} color={colors.ink} />
+          <Text style={ui.sectionTitle}>Top Ads by Views</Text>
+        </View>
         <RankedBars items={viewItems} emptyText="Post an ad to see its performance here." />
       </View>
 
-      <View style={ui.card}>
-        <Text style={ui.sectionTitle}>Top ads by contact clicks</Text>
+      <View style={styles.chartCard}>
+        <View style={styles.cardHeadTitle}>
+          <Icon name="chat" size={16} color={colors.ink} />
+          <Text style={ui.sectionTitle}>Top Ads by Contact Clicks</Text>
+        </View>
         <RankedBars items={contactItems} emptyText="Contact clicks from buyers will show up here." />
       </View>
 
       {ads && ads.length > 0 ? (
-        <View style={styles.boost}>
-          <Text style={styles.boostTop}>BOOST</Text>
-          <Text style={styles.boostTitle}>
-            {showCompare ? 'Boosted ads get more views' : 'Get more eyes on your ads'}
-          </Text>
-          {showCompare ? (
-            <View style={styles.compareRow}>
-              <View style={styles.compareItem}>
-                <Text style={styles.compareNum}>{boostedAvg}</Text>
-                <Text style={styles.compareLabel}>Boosted avg views/day</Text>
-              </View>
-              <View style={styles.compareItem}>
-                <Text style={styles.compareNum}>{regularAvg}</Text>
-                <Text style={styles.compareLabel}>Regular avg views/day</Text>
-              </View>
-            </View>
-          ) : (
-            <Text style={styles.boostText}>Boosted ads are shown as Featured on the home screen.</Text>
-          )}
-          <Pressable onPress={onOpenBoost} style={styles.boostBtn} accessibilityRole="button">
-            <Text style={styles.boostBtnText}>Boost an ad</Text>
-          </Pressable>
-        </View>
+        <BoostCard
+          title={showCompare ? 'Boosted ads get more views' : 'Get more eyes on your ads'}
+          description={showCompare ? undefined : 'Boosted ads are shown as Featured on the home screen.'}
+          compare={showCompare ? [
+            { label: 'Boosted avg views/day', value: boostedAvg },
+            { label: 'Regular avg views/day', value: regularAvg },
+          ] : null}
+          ctaLabel="Boost an ad"
+          onPress={onOpenBoost}
+        />
       ) : null}
     </ScreenShell>
   );
@@ -198,28 +197,19 @@ function Stat({ label, value, onPress }) {
 }
 
 const styles = StyleSheet.create({
-  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 },
   stat: {
-    width: '48%', backgroundColor: '#F4F8F4', borderRadius: 14, padding: 14,
+    width: '31%', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    borderRadius: radius.md, padding: 13,
   },
-  statValue: { fontSize: 22, fontWeight: '700', color: '#4F7052' },
-  statLabel: { marginTop: 4, fontSize: 12, color: '#5F6368' },
-  cardHead: { marginBottom: 10 },
+  statValue: { fontFamily: font.familyExtraBold, fontSize: 19, color: colors.ink },
+  statLabel: { marginTop: 3, fontFamily: font.familySemiBold, fontSize: 11, color: colors.inkFaint },
+  chartCard: { backgroundColor: colors.surfaceSunken, borderRadius: radius.md, padding: 14, marginTop: 14 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  cardHeadTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rangeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  rangeBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 14, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D0D4D8' },
-  rangeBtnActive: { backgroundColor: '#4F7052', borderColor: '#4F7052' },
-  rangeText: { fontSize: 12, color: '#1F1F1F' },
-  rangeTextActive: { color: '#FFFFFF', fontWeight: '600' },
-  boost: {
-    backgroundColor: '#1F3B24', borderRadius: 14, padding: 16, marginTop: 4, marginBottom: 16,
-  },
-  boostTop: { fontSize: 11, fontWeight: '700', color: '#A7D7AE', letterSpacing: 1 },
-  boostTitle: { marginTop: 6, fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
-  boostText: { marginTop: 6, fontSize: 13, color: '#D6E6D8', lineHeight: 19 },
-  compareRow: { flexDirection: 'row', gap: 12, marginTop: 10 },
-  compareItem: { flex: 1 },
-  compareNum: { fontSize: 20, fontWeight: '700', color: '#FFFFFF' },
-  compareLabel: { marginTop: 2, fontSize: 12, color: '#D6E6D8' },
-  boostBtn: { marginTop: 14, backgroundColor: '#FFFFFF', borderRadius: 10, paddingVertical: 11, alignItems: 'center' },
-  boostBtnText: { color: '#1F3B24', fontSize: 15, fontWeight: '700' },
+  rangeBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
+  rangeBtnActive: { backgroundColor: colors.primaryTint, borderColor: colors.primaryTint },
+  rangeText: { fontFamily: font.familySemiBold, fontSize: 11.5, color: colors.inkSoft },
+  rangeTextActive: { color: colors.primary, fontFamily: font.familyBold },
 });

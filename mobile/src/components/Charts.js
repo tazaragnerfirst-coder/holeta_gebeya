@@ -1,11 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
+import { colors, font } from '../theme';
 
-// Plain-View charts (no chart library), matching the web Dashboard.
+// Plain-View charts (no chart library), styled to match
+// frontend/src/components/DailyViewsChart.jsx and RankedBarChart.jsx.
 
 // data: [{ date: 'YYYY-MM-DD', value: number }], ascending.
 export function DailyBars({ data, height = 120 }) {
   if (!data || data.length === 0) {
-    return <Text style={styles.empty}>No views recorded yet for this period.</Text>;
+    return <Text style={styles.empty}>No views yet in this period.</Text>;
   }
   const max = Math.max(1, ...data.map((d) => d.value));
   // Keep the bars readable on a phone: show at most ~30 of them.
@@ -18,7 +20,8 @@ export function DailyBars({ data, height = 120 }) {
             <View
               style={[
                 styles.bar,
-                { height: Math.max((d.value / max) * (height - 8), d.value > 0 ? 3 : 1), backgroundColor: d.value > 0 ? '#4F7052' : '#E0E0E0' },
+                { height: Math.max((d.value / max) * (height - 8), d.value > 0 ? 3 : 1) },
+                d.value > 0 ? styles.barFilled : styles.barEmpty,
               ]}
             />
           </View>
@@ -38,7 +41,7 @@ export function RankedBars({ items, limit = 5, emptyText = 'Nothing to show yet.
   if (sorted.length === 0) return <Text style={styles.empty}>{emptyText}</Text>;
   const max = sorted[0].value;
   return (
-    <View>
+    <View style={styles.rankList}>
       {sorted.map((item) => (
         <View key={item.id || item.label} style={styles.rankRow}>
           <Text style={styles.rankLabel} numberOfLines={1}>{item.label}</Text>
@@ -53,15 +56,21 @@ export function RankedBars({ items, limit = 5, emptyText = 'Nothing to show yet.
 }
 
 const styles = StyleSheet.create({
-  empty: { fontSize: 13, color: '#5F6368', paddingVertical: 8 },
+  empty: { fontFamily: font.familyMedium, fontSize: 12.5, color: colors.inkFaint, paddingVertical: 8 },
   barRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   barCol: { flex: 1, justifyContent: 'flex-end', height: '100%' },
   bar: { width: '100%', borderRadius: 2 },
-  axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  axisText: { fontSize: 11, color: '#5F6368' },
-  rankRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  rankLabel: { width: 110, fontSize: 13, color: '#1F1F1F' },
-  track: { flex: 1, height: 10, borderRadius: 5, backgroundColor: '#EEF2EE', marginHorizontal: 8, overflow: 'hidden' },
-  fill: { height: 10, borderRadius: 5, backgroundColor: '#4F7052' },
-  rankValue: { width: 36, textAlign: 'right', fontSize: 13, fontWeight: '700', color: '#4F7052' },
+  barFilled: { backgroundColor: colors.primary },
+  barEmpty: { backgroundColor: colors.line },
+  axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  axisText: { fontFamily: font.family, fontSize: 10.5, color: colors.inkFaint },
+  rankList: { gap: 10 },
+  rankRow: { flexDirection: 'row', alignItems: 'center' },
+  rankLabel: { width: 96, fontFamily: font.familySemiBold, fontSize: 11.5, color: colors.inkSoft },
+  track: {
+    flex: 1, height: 10, borderRadius: 999, backgroundColor: colors.surfaceSunken,
+    marginHorizontal: 8, overflow: 'hidden',
+  },
+  fill: { height: 10, borderRadius: 999, backgroundColor: colors.primary },
+  rankValue: { width: 32, textAlign: 'right', fontFamily: font.familyExtraBold, fontSize: 11.5, color: colors.ink },
 });

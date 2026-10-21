@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import * as SplashScreen from 'expo-splash-screen';
+import {
+  useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 import { onAuthStateChanged } from '@firebase/auth';
 import { auth } from './src/lib/firebase';
 import { openSupportChat } from './src/lib/chat';
 import { getMyProfile } from './src/lib/profile';
+import { colors, font } from './src/theme';
+import Icon from './src/components/Icon';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import ListingDetailScreen from './src/screens/ListingDetailScreen';
@@ -25,7 +31,19 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import ViewsDetailScreen from './src/screens/ViewsDetailScreen';
 import ExpiredScreen from './src/screens/ExpiredScreen';
 
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+const TABS = [
+  { key: 'home', label: 'Home', icon: 'home' },
+  { key: 'chats', label: 'Messages', icon: 'chat' },
+  { key: 'profile', label: 'Profile', icon: 'user' },
+];
+
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold,
+  });
+
   // undefined = still checking the saved session, null = logged out
   const [user, setUser] = useState(undefined);
   // Bottom tab: 'home', 'chats' or 'profile'
@@ -52,6 +70,12 @@ export default function App() {
   useEffect(() => {
     if (user === null) { setStack([]); setTab('home'); }
   }, [user]);
+
+  useEffect(() => {
+    if (fontsLoaded && user !== undefined) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, user]);
 
   async function openSupport() {
     try {
@@ -112,11 +136,13 @@ export default function App() {
     }
   }
 
+  if (!fontsLoaded) return null;
+
   let screen;
   if (user === undefined) {
     screen = (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#4F7052" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   } else if (user === null) {
@@ -137,10 +163,12 @@ export default function App() {
     <View style={styles.container}>
       <View style={styles.content}>{screen}</View>
       {showTabs ? (
-        <View style={styles.tabBar}>
-          <TabButton label="Home" active={tab === 'home'} onPress={() => setTab('home')} />
-          <TabButton label="Messages" active={tab === 'chats'} onPress={() => setTab('chats')} />
-          <TabButton label="Profile" active={tab === 'profile'} onPress={() => setTab('profile')} />
+        <View style={styles.navWrap} pointerEvents="box-none">
+          <View style={styles.nav}>
+            {TABS.map((t) => (
+              <TabButton key={t.key} tab={t} active={tab === t.key} onPress={() => setTab(t.key)} />
+            ))}
+          </View>
         </View>
       ) : null}
       <StatusBar style="dark" />
@@ -148,10 +176,11 @@ export default function App() {
   );
 }
 
-function TabButton({ label, active, onPress }) {
+function TabButton({ tab, active, onPress }) {
   return (
-    <Pressable onPress={onPress} accessibilityRole="tab" style={styles.tabButton}>
-      <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{label}</Text>
+    <Pressable onPress={onPress} accessibilityRole="tab" style={[styles.navItem, active && styles.navItemActive]}>
+      <Icon name={tab.icon} size={19} color={active ? colors.tgActiveInk : colors.inkFaint} weight={active ? 'fill' : 'regular'} />
+      {active ? <Text style={styles.navLabel}>{tab.label}</Text> : null}
     </Pressable>
   );
 }
@@ -159,7 +188,7 @@ function TabButton({ label, active, onPress }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.bgApp,
   },
   content: {
     flex: 1,
@@ -169,24 +198,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tabBar: {
+  navWrap: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    bottom: 18,
+  },
+  nav: {
     flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#EEEEEE',
-    paddingBottom: 20,
-    paddingTop: 8,
-  },
-  tabButton: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: 6,
+    justifyContent: 'space-around',
+    height: 58,
+    backgroundColor: colors.tgBar,
+    borderRadius: 100,
+    paddingHorizontal: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 6,
   },
-  tabLabel: {
-    fontSize: 14,
-    color: '#5F6368',
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    paddingHorizontal: 14,
+    borderRadius: 20,
   },
-  tabLabelActive: {
-    fontWeight: '700',
-    color: '#4F7052',
+  navItemActive: {
+    backgroundColor: colors.tgActive,
+  },
+  navLabel: {
+    marginLeft: 6,
+    fontSize: 12,
+    fontFamily: font.familyBold,
+    color: colors.tgActiveInk,
   },
 });
