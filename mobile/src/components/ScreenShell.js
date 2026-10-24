@@ -8,9 +8,11 @@ export default function ScreenShell({ title, onBack, children, scroll = true }) 
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <Pressable onPress={onBack} accessibilityRole="button" hitSlop={8} style={styles.backButton}>
-          <Icon name="chevronLeft" size={20} color={colors.ink} />
-        </Pressable>
+        {onBack ? (
+          <Pressable onPress={onBack} accessibilityRole="button" hitSlop={8} style={styles.backButton}>
+            <Icon name="chevronLeft" size={20} color={colors.ink} />
+          </Pressable>
+        ) : null}
         <Text style={styles.title}>{title}</Text>
       </View>
       {scroll ? (
@@ -71,6 +73,6 @@ const styles = StyleSheet.create({
     width: 34, height: 34, borderRadius: 17, backgroundColor: colors.surface,
     alignItems: 'center', justifyContent: 'center',
   },
-  title: { fontFamily: font.familyExtraBold, fontSize: 19, color: colors.ink },
-  body: { paddingHorizontal: 16, paddingBottom: 100 },
+  title: { fontFamily: font.familyExtraBold, fontSize: 20, color: colors.ink },
+  body: { paddingHorizontal: 16, paddingBottom: 120 },
 });

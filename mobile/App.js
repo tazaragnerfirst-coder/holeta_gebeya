@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -7,7 +7,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { onAuthStateChanged } from '@firebase/auth';
 import { auth } from './src/lib/firebase';
-import { openSupportChat } from './src/lib/chat';
+import { openSupportChat, subscribeChats } from './src/lib/chat';
 import { getMyProfile } from './src/lib/profile';
 import { colors, font } from './src/theme';
 import Icon from './src/components/Icon';
@@ -30,14 +30,22 @@ import PrivacyScreen from './src/screens/PrivacyScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import ViewsDetailScreen from './src/screens/ViewsDetailScreen';
 import ExpiredScreen from './src/screens/ExpiredScreen';
+import PostTypeScreen from './src/screens/PostTypeScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
+// Same four tabs, names and icons as the bot's BottomNav (frontend/src/App.jsx).
 const TABS = [
   { key: 'home', label: 'Home', icon: 'home' },
-  { key: 'chats', label: 'Messages', icon: 'chat' },
+  { key: 'chats', label: 'Chat', icon: 'chat' },
+  { key: 'dashboard', label: 'Dashboard', icon: 'chartBar' },
   { key: 'profile', label: 'Profile', icon: 'user' },
 ];
+
+// Screens that live under the Dashboard tab (bot: /dashboard/*), so the tab stays highlighted.
+const DASHBOARD_SCREENS = ['views', 'expired', 'myAds'];
+// Bot hides its nav on a chat thread and on a product page.
+const NAV_HIDDEN_SCREENS = ['chat', 'listing'];
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -46,13 +54,32 @@ export default function App() {
 
   // undefined = still checking the saved session, null = logged out
   const [user, setUser] = useState(undefined);
-  // Bottom tab: 'home', 'chats' or 'profile'
+  // Bottom tab: 'home', 'chats', 'dashboard' or 'profile'
   const [tab, setTab] = useState('home');
   // Screens opened on top of the tabs, newest last. Back pops one, so
   // e.g. Saved listings -> a listing -> Back returns to Saved listings.
   const [stack, setStack] = useState([]);
 
   useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  // Total unread across conversations -> the dot on the Chat tab (same as the bot).
+  const [totalUnread, setTotalUnread] = useState(0);
+  useEffect(() => {
+    if (!user) { setTotalUnread(0); return undefined; }
+    return subscribeChats(
+      user.uid,
+      (chats) => setTotalUnread(chats.reduce((sum, c) => sum + (c.unreadCount?.[user.uid] || 0), 0)),
+      () => {},
+    );
+  }, [user]);
+
+  // Bot hides the nav while a text field is focused (on-screen keyboard open).
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const push = (name, params = {}) => setStack((s) => [...s, { name, params }]);
   const pop = () => setStack((s) => s.slice(0, -1));
@@ -61,10 +88,11 @@ export default function App() {
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (stack.length > 0) { pop(); return true; }
+      if (tab !== 'home') { setTab('home'); return true; }
       return false;
     });
     return () => sub.remove();
-  }, [stack.length]);
+  }, [stack.length, tab]);
 
   // Logging out clears any open screens.
   useEffect(() => {
@@ -117,16 +145,8 @@ export default function App() {
         return <SettingsScreen onBack={pop} />;
       case 'privacy':
         return <PrivacyScreen onBack={pop} />;
-      case 'dashboard':
-        return (
-          <DashboardScreen
-            onBack={pop}
-            onOpenBoost={() => push('boost')}
-            onOpenViews={() => push('views')}
-            onOpenExpired={() => push('expired')}
-            onOpenAds={() => push('myAds')}
-          />
-        );
+      case 'post':
+        return <PostTypeScreen onBack={pop} />;
       case 'views':
         return <ViewsDetailScreen onBack={pop} />;
       case 'expired':
@@ -151,22 +171,55 @@ export default function App() {
     screen = renderTop();
   } else if (tab === 'chats') {
     screen = <ChatListScreen onOpen={openChat} />;
+  } else if (tab === 'dashboard') {
+    screen = (
+      <DashboardScreen
+        onOpenBoost={() => push('boost')}
+        onOpenViews={() => push('views')}
+        onOpenExpired={() => push('expired')}
+        onOpenAds={() => push('myAds')}
+      />
+    );
   } else if (tab === 'profile') {
     screen = <ProfileScreen onNavigate={push} onOpenSupport={openSupport} />;
   } else {
     screen = <HomeScreen onOpen={openListing} />;
   }
 
-  const showTabs = !!user && !top;
+  const showTabs = !!user && !keyboardOpen && !(top && NAV_HIDDEN_SCREENS.includes(top.name));
+  // Which tab is highlighted: the open tab, or (on a pushed screen) the tab it belongs to.
+  const activeTab = !top ? tab : (DASHBOARD_SCREENS.includes(top.name) ? 'dashboard' : null);
+  const onPostPage = top?.name === 'post';
+
+  function goTab(key) {
+    setStack([]);
+    setTab(key);
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.content}>{screen}</View>
       {showTabs ? (
         <View style={styles.navWrap} pointerEvents="box-none">
+          {!onPostPage ? (
+            <Pressable
+              onPress={() => push('post')}
+              accessibilityRole="button"
+              accessibilityLabel="Post"
+              style={styles.fab}
+            >
+              <Icon name="plus" size={26} color={colors.white} />
+            </Pressable>
+          ) : null}
           <View style={styles.nav}>
             {TABS.map((t) => (
-              <TabButton key={t.key} tab={t} active={tab === t.key} onPress={() => setTab(t.key)} />
+              <TabButton
+                key={t.key}
+                tab={t}
+                active={activeTab === t.key}
+                dot={t.key === 'chats' && totalUnread > 0}
+                onPress={() => goTab(t.key)}
+              />
             ))}
           </View>
         </View>
@@ -176,63 +229,41 @@ export default function App() {
   );
 }
 
-function TabButton({ tab, active, onPress }) {
+function TabButton({ tab, active, dot, onPress }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="tab" style={[styles.navItem, active && styles.navItemActive]}>
-      <Icon name={tab.icon} size={19} color={active ? colors.tgActiveInk : colors.inkFaint} weight={active ? 'fill' : 'regular'} />
+      <View>
+        <Icon name={tab.icon} size={21} color={active ? colors.tgActiveInk : colors.inkFaint} />
+        {dot ? <View style={styles.navDot} /> : null}
+      </View>
       {active ? <Text style={styles.navLabel}>{tab.label}</Text> : null}
     </Pressable>
   );
 }
 
+// Values mirror .bottom-nav-wrap / .bottom-nav / .nav-item / .nav-fab in frontend/src/styles/theme.css.
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.bgApp,
-  },
-  content: {
-    flex: 1,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navWrap: {
-    position: 'absolute',
-    left: 16,
-    right: 16,
-    bottom: 18,
-  },
+  container: { flex: 1, backgroundColor: colors.bgApp },
+  content: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  navWrap: { position: 'absolute', left: 16, right: 16, bottom: 12 },
   nav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    height: 58,
-    backgroundColor: colors.tgBar,
-    borderRadius: 100,
-    paddingHorizontal: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 14,
-    elevation: 6,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
+    height: 62, backgroundColor: colors.tgBar, borderRadius: 100, paddingHorizontal: 10,
   },
   navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 40,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    height: 42, paddingHorizontal: 11, borderRadius: 21,
   },
-  navItemActive: {
-    backgroundColor: colors.tgActive,
+  navItemActive: { backgroundColor: colors.tgActive },
+  navLabel: { marginLeft: 6, fontSize: 11, fontFamily: font.familyBold, color: colors.tgActiveInk },
+  navDot: {
+    position: 'absolute', top: -2, right: -5, width: 8, height: 8, borderRadius: 4,
+    backgroundColor: colors.accent, borderWidth: 1.5, borderColor: colors.tgBar,
   },
-  navLabel: {
-    marginLeft: 6,
-    fontSize: 12,
-    fontFamily: font.familyBold,
-    color: colors.tgActiveInk,
+  fab: {
+    position: 'absolute', right: 0, bottom: 62 + 12, width: 56, height: 56, borderRadius: 28,
+    backgroundColor: colors.tgAccent, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 18, elevation: 8,
   },
 });

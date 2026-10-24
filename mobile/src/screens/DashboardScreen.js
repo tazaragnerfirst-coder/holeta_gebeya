@@ -114,7 +114,7 @@ export default function DashboardScreen({ onBack, onOpenBoost, onOpenViews, onOp
   if (!uid) return null;
 
   return (
-    <ScreenShell title="Seller dashboard" onBack={onBack}>
+    <ScreenShell title="Seller Dashboard" onBack={onBack}>
       {error ? <Text style={ui.error}>{error}</Text> : null}
 
       <View style={styles.statGrid}>
