@@ -23,7 +23,7 @@ export function SearchBar({
   return (
     <View style={styles.wrap}>
       <View style={[styles.bar, focused && styles.barFocused]}>
-        <Icon name="search" size={18} color={colors.inkFaint} />
+        <Icon name="search" size={17} color={colors.inkFaint} />
         <TextInput
           style={styles.input}
           placeholder="Search listings..."
@@ -37,16 +37,13 @@ export function SearchBar({
         />
         {value ? (
           <Pressable onPress={() => onChange('')} hitSlop={8}>
-            <Icon name="x" size={16} color={colors.inkFaint} />
+            <Icon name="xCircle" size={17} color={colors.inkFaint} />
           </Pressable>
         ) : null}
+        <View style={styles.divider} />
         <Pressable onPress={onOpenFilters} style={styles.filterBtn} accessibilityRole="button" accessibilityLabel="Filters">
-          <Icon name="sliders" size={18} color={filterCount > 0 ? colors.tgActiveInk : colors.inkSoft} />
-          {filterCount > 0 ? (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{filterCount}</Text>
-            </View>
-          ) : null}
+          <Icon name="sliders" size={17} color={colors.inkSoft} />
+          {filterCount > 0 ? <View style={styles.filterDot} /> : null}
         </Pressable>
       </View>
 
@@ -63,7 +60,7 @@ export function SearchBar({
         <View style={styles.panel}>
           <Pressable onPress={() => commit(value)} style={styles.suggestion}>
             <Icon name="search" size={15} color={colors.inkFaint} />
-            <Text style={styles.suggestionText}>Press search to find "{term}"</Text>
+            <Text style={styles.suggestionText}>Press Enter to search "{term}"</Text>
           </Pressable>
         </View>
       ) : null}
@@ -73,7 +70,7 @@ export function SearchBar({
           {recent.length > 0 ? (
             <>
               <View style={styles.panelHead}>
-                <Text style={styles.panelTitle}>Recent searches</Text>
+                <Text style={styles.panelTitle}>Recent Searches</Text>
                 <Pressable onPress={onClearRecent} hitSlop={8}>
                   <Text style={styles.link}>Clear all</Text>
                 </Pressable>
@@ -89,7 +86,7 @@ export function SearchBar({
           ) : null}
           {popularTags.length > 0 ? (
             <>
-              <Text style={[styles.panelTitle, { marginTop: 10 }]}>Popular in Holeta</Text>
+              <Text style={[styles.panelTitle, { marginTop: 14 }]}>Popular in Holeta</Text>
               <View style={styles.tags}>
                 {popularTags.map((t) => (
                   <Pressable key={t} onPress={() => commit(t)} style={[styles.tag, styles.tagAccent]}>
@@ -136,12 +133,12 @@ export function FilterModal({ visible, filters, onApply, onClose }) {
       <View style={styles.sheet}>
         <View style={styles.sheetHead}>
           <Text style={styles.sheetTitle}>Filters</Text>
-          <Pressable onPress={onClose} hitSlop={8}>
-            <Icon name="x" size={20} color={colors.ink} />
+          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+            <Icon name="x" size={18} color={colors.inkSoft} />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.sheetBody}>
-          <Text style={styles.label}>Price range (ETB)</Text>
+          <Text style={styles.label}>Price Range (ETB)</Text>
           <View style={styles.priceRow}>
             <TextInput
               style={styles.priceInput}
@@ -179,7 +176,7 @@ export function FilterModal({ visible, filters, onApply, onClose }) {
             <Text style={styles.ghostText}>Reset</Text>
           </Pressable>
           <Pressable onPress={apply} style={styles.primary}>
-            <Text style={styles.primaryText}>Apply filters</Text>
+            <Text style={styles.primaryText}>Apply Filters</Text>
           </Pressable>
         </View>
       </View>
@@ -200,56 +197,58 @@ const styles = StyleSheet.create({
     width: 34, height: 34, borderRadius: radius.sm, backgroundColor: colors.tgBar,
     alignItems: 'center', justifyContent: 'center',
   },
-  filterBadge: {
-    position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8,
-    backgroundColor: colors.tgAccent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+  divider: { width: 1, height: 22, backgroundColor: colors.line },
+  filterDot: {
+    position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: 4,
+    backgroundColor: colors.safety, borderWidth: 2, borderColor: colors.tgSearch,
   },
-  filterBadgeText: { fontFamily: font.familyBold, fontSize: 10, color: colors.white },
   panel: {
     marginTop: 8, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md,
-    backgroundColor: colors.bgApp, padding: 12,
+    backgroundColor: colors.surface, padding: 14,
+    shadowColor: '#141612', shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.18, shadowRadius: 17, elevation: 8,
   },
-  panelHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  panelTitle: { fontFamily: font.familyBold, fontSize: 12, color: colors.inkSoft, marginBottom: 6 },
-  suggestion: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 8 },
-  suggestionText: { flex: 1, fontFamily: font.family, fontSize: 14, color: colors.ink },
-  link: { fontFamily: font.familySemiBold, fontSize: 13, color: colors.tgActiveInk },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tag: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: radius.pill, backgroundColor: colors.surface },
-  tagText: { fontFamily: font.family, fontSize: 13, color: colors.ink },
-  tagAccent: { backgroundColor: colors.tgBar },
-  tagAccentText: { fontFamily: font.familySemiBold, color: colors.tgActiveInk },
+  panelHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 },
+  panelTitle: { fontFamily: font.familyExtraBold, fontSize: 11, color: colors.inkFaint, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 9 },
+  suggestion: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 10, paddingHorizontal: 6 },
+  suggestionText: { flex: 1, fontFamily: font.family, fontSize: 13.5, color: colors.ink },
+  link: { fontFamily: font.familyBold, fontSize: 12, color: colors.primary },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tag: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.line },
+  tagText: { fontFamily: font.familySemiBold, fontSize: 12.5, color: colors.inkSoft },
+  tagAccent: { backgroundColor: colors.accentTint, borderColor: colors.accentTint },
+  tagAccentText: { color: colors.accentDark },
   // Filter chips: web .chip (surface bg, line border; active = primary).
   chip: {
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill,
+    backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.line,
   },
   chipOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontFamily: font.familySemiBold, fontSize: 12.5, color: colors.inkSoft },
   chipOnText: { color: colors.white },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(20,22,18,0.28)' },
   sheet: {
-    backgroundColor: colors.bgApp, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
-    maxHeight: '70%', paddingBottom: 24,
+    backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
+    maxHeight: '72%', paddingBottom: 24,
   },
   sheetHead: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: colors.line,
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 14,
   },
-  sheetTitle: { fontFamily: font.familyExtraBold, fontSize: 17, color: colors.ink },
+  sheetTitle: { fontFamily: font.familyExtraBold, fontSize: 16.5, color: colors.ink },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
   sheetBody: { padding: 16 },
-  label: { fontFamily: font.familyBold, fontSize: 13, color: colors.inkSoft, marginTop: 10, marginBottom: 8 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  label: { fontFamily: font.familyBold, fontSize: 12.5, color: colors.inkSoft, marginTop: 0, marginBottom: 9 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
   priceInput: {
-    flex: 1, borderWidth: 1.5, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.surface,
-    paddingHorizontal: 13, paddingVertical: 11, fontFamily: font.family, fontSize: 14, color: colors.ink,
+    flex: 1, borderWidth: 1.5, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.bgApp,
+    paddingHorizontal: 12, paddingVertical: 11, fontFamily: font.family, fontSize: 14, color: colors.ink,
   },
-  dash: { color: colors.inkSoft },
+  dash: { color: colors.inkFaint, fontFamily: font.familySemiBold },
   sheetActions: { flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
   ghost: {
-    flex: 1, backgroundColor: colors.primaryTint, borderRadius: 14, paddingVertical: 13, alignItems: 'center',
+    flex: 1, backgroundColor: colors.surfaceSunken, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 16, alignItems: 'center',
   },
-  ghostText: { color: colors.primary, fontFamily: font.familyBold, fontSize: 14 },
-  primary: { flex: 2, backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 13, alignItems: 'center' },
+  ghostText: { color: colors.inkSoft, fontFamily: font.familyBold, fontSize: 14 },
+  primary: { flex: 1, backgroundColor: colors.primary, borderRadius: 14, paddingVertical: 13, alignItems: 'center' },
   primaryText: { color: colors.white, fontFamily: font.familyBold, fontSize: 14 },
 });

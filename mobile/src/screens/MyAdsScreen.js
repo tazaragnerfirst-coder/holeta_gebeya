@@ -75,8 +75,8 @@ export default function MyAdsScreen({ onBack, onOpen }) {
                 <Pressable style={styles.top} onPress={() => onOpen(item)} accessibilityRole="button">
                   {photo ? <Image source={{ uri: photo }} style={styles.thumb} /> : <View style={[styles.thumb, styles.noPhoto]} />}
                   <View style={styles.info}>
-                    <Text style={styles.price}>{formatListingPrice(item)}</Text>
                     <Text style={styles.name} numberOfLines={2}>{item.title || 'Untitled'}</Text>
+                    <Text style={styles.price}>{formatListingPrice(item)}</Text>
                     <View style={styles.metaRow}>
                       <Icon name="eye" size={13} color={colors.inkFaint} />
                       <Text style={styles.meta}>{item.views || 0}</Text>
@@ -94,7 +94,7 @@ export default function MyAdsScreen({ onBack, onOpen }) {
                     </Pressable>
                   ) : null}
                   <Pressable onPress={() => confirmDelete(item)} disabled={busy} style={[styles.actionBtn, busy && styles.disabled]} accessibilityRole="button">
-                    <Icon name="x" size={14} color={colors.safety} />
+                    <Icon name="xCircle" size={14} color={colors.safety} />
                     <Text style={styles.dangerText}>Delete</Text>
                   </Pressable>
                 </View>
@@ -114,28 +114,31 @@ const styles = StyleSheet.create({
   // Web .ad-manage-card: tappable card with plain border.
   card: {
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
-    borderRadius: radius.md, padding: 10, marginBottom: 10,
+    borderRadius: radius.md, padding: 11, marginBottom: 10,
   },
   top: { flexDirection: 'row', alignItems: 'center' },
-  thumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken },
-  noPhoto: { backgroundColor: colors.line },
-  info: { flex: 1, marginLeft: 12 },
-  price: { fontFamily: font.familyExtraBold, fontSize: 14.5, color: colors.primary },
-  name: { marginTop: 2, fontFamily: font.familyMedium, fontSize: 13, color: colors.ink },
+  thumb: { width: 54, height: 54, borderRadius: 11, backgroundColor: colors.surfaceSunken },
+  noPhoto: { backgroundColor: colors.surfaceSunken },
+  info: { flex: 1, marginLeft: 11 },
+  name: { fontFamily: font.familyBold, fontSize: 13, color: colors.ink },
+  price: { marginTop: 3, fontFamily: font.familyExtraBold, fontSize: 13, color: colors.ink },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
   meta: { fontFamily: font.family, fontSize: 12, color: colors.inkFaint, marginRight: 6 },
-  pill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.pill },
+  pill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: radius.pill },
   pillActive: { backgroundColor: colors.okTint },
-  pillMuted: { backgroundColor: colors.mutedTint },
-  pillText: { fontFamily: font.familyBold, fontSize: 10.5 },
+  pillMuted: { backgroundColor: colors.accentTint },
+  pillText: { fontFamily: font.familyExtraBold, fontSize: 10 },
   pillActiveText: { color: colors.ok },
-  pillMutedText: { color: colors.muted },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 10 },
-  actionBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.bgApp,
-    borderWidth: 1, borderColor: colors.line, borderRadius: radius.sm, paddingVertical: 7, paddingHorizontal: 12,
+  pillMutedText: { color: colors.accentDark },
+  actions: {
+    flexDirection: 'row', gap: 8, marginTop: 9, paddingTop: 9,
+    borderTopWidth: 1, borderTopColor: colors.line,
   },
-  actionText: { fontFamily: font.familySemiBold, fontSize: 13, color: colors.ink },
-  dangerText: { fontFamily: font.familySemiBold, fontSize: 13, color: colors.safety },
+  actionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    backgroundColor: colors.surfaceSunken, borderRadius: 9, paddingVertical: 8, paddingHorizontal: 6,
+  },
+  actionText: { fontFamily: font.familyBold, fontSize: 12, color: colors.inkSoft },
+  dangerText: { fontFamily: font.familyBold, fontSize: 12, color: colors.safety },
   disabled: { opacity: 0.5 },
 });

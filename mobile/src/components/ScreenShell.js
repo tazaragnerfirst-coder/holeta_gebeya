@@ -51,15 +51,15 @@ export const ui = StyleSheet.create({
     backgroundColor: colors.primaryTint, paddingVertical: 13, borderRadius: 14, alignItems: 'center',
   },
   secondaryText: { color: colors.primary, fontFamily: font.familyBold, fontSize: 14 },
-  disabled: { opacity: 0.5 },
+  disabled: { opacity: 0.6 },
   txRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.line,
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line,
   },
-  txLabel: { fontFamily: font.familySemiBold, fontSize: 13.5, color: colors.ink },
-  txDate: { marginTop: 2, fontFamily: font.family, fontSize: 11.5, color: colors.inkFaint },
-  pos: { fontFamily: font.familyBold, fontSize: 13.5, color: colors.ok },
-  neg: { fontFamily: font.familyBold, fontSize: 13.5, color: colors.safety },
+  txLabel: { fontFamily: font.familyBold, fontSize: 13, color: colors.ink },
+  txDate: { marginTop: 2, fontFamily: font.family, fontSize: 11, color: colors.inkFaint },
+  pos: { fontFamily: font.familyExtraBold, fontSize: 13, color: colors.ok },
+  neg: { fontFamily: font.familyExtraBold, fontSize: 13, color: colors.inkSoft },
 });
 
 const styles = StyleSheet.create({

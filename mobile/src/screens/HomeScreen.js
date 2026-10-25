@@ -197,8 +197,8 @@ function ListingCard({ item, onPress }) {
         <View style={[styles.photo, styles.noPhoto]} />
       )}
       <View style={styles.body}>
-        <Text style={styles.price}>{formatListingPrice(item)}</Text>
         <Text style={styles.title} numberOfLines={2}>{item.title || 'Untitled'}</Text>
+        <Text style={styles.price}>{formatListingPrice(item)}</Text>
       </View>
     </Pressable>
   );
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   emptyBox: { padding: 24, alignItems: 'center' },
   inlineLoad: { marginVertical: 12 },
   // One segmented pill (web .cat-chip-row): tgBar track, active = tgActive.
-  chipScroll: { flexGrow: 0, marginTop: 10, marginHorizontal: 16 },
+  chipScroll: { flexGrow: 0, marginTop: 14, marginHorizontal: 16 },
   chipRow: {
     gap: 2, padding: 5, backgroundColor: colors.tgBar, borderRadius: radius.pill, alignItems: 'center',
   },
@@ -219,13 +219,14 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.tgActive },
   chipText: { fontFamily: font.familyBold, fontSize: 13.5, color: colors.inkSoft },
   chipTextActive: { color: colors.tgActiveInk },
-  list: { paddingHorizontal: 10, paddingTop: 12, paddingBottom: 100 },
-  row: { gap: 6 },
-  // Web .listing-card: flat, borderless, price-first, 1:1 rounded thumb.
-  card: { flex: 1, marginBottom: 12 },
+  // Web .listing-grid: 6px edge margin, 6px gap both ways.
+  list: { paddingHorizontal: 0, paddingTop: 14, paddingBottom: 100 },
+  row: { gap: 6, paddingHorizontal: 6 },
+  // Web .listing-card: flat, borderless, title then price, 1:1 rounded thumb.
+  card: { flex: 1, marginBottom: 6 },
   photo: { width: '100%', aspectRatio: 1, borderRadius: radius.md, backgroundColor: colors.surfaceSunken },
-  noPhoto: { backgroundColor: colors.line },
+  noPhoto: { backgroundColor: colors.surfaceSunken },
   body: { paddingTop: 7, paddingHorizontal: 2 },
-  price: { fontFamily: font.familyExtraBold, fontSize: 14.5, color: colors.primary },
-  title: { marginTop: 2, fontFamily: font.familyMedium, fontSize: 13, color: colors.ink, lineHeight: 17 },
+  title: { fontFamily: font.familySemiBold, fontSize: 12.5, color: colors.ink, lineHeight: 16 },
+  price: { marginTop: 4, fontFamily: font.familyExtraBold, fontSize: 15, letterSpacing: -0.15, color: colors.primary },
 });

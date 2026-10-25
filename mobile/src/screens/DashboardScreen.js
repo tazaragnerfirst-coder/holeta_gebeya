@@ -129,7 +129,7 @@ export default function DashboardScreen({ onBack, onOpenBoost, onOpenViews, onOp
         <View style={styles.cardHead}>
           <View style={styles.cardHeadTitle}>
             <Icon name="trendingUp" size={16} color={colors.ink} />
-            <Text style={ui.sectionTitle}>Daily Views</Text>
+            <Text style={styles.chartTitle}>Daily Views</Text>
           </View>
           <View style={styles.rangeRow}>
             {RANGES.map((r) => (
@@ -152,17 +152,17 @@ export default function DashboardScreen({ onBack, onOpenBoost, onOpenViews, onOp
       </View>
 
       <View style={styles.chartCard}>
-        <View style={styles.cardHeadTitle}>
+        <View style={[styles.cardHeadTitle, styles.titleGap]}>
           <Icon name="star" size={16} color={colors.ink} />
-          <Text style={ui.sectionTitle}>Top Ads by Views</Text>
+          <Text style={styles.chartTitle}>Top Ads by Views</Text>
         </View>
         <RankedBars items={viewItems} emptyText="Post an ad to see its performance here." />
       </View>
 
       <View style={styles.chartCard}>
-        <View style={styles.cardHeadTitle}>
+        <View style={[styles.cardHeadTitle, styles.titleGap]}>
           <Icon name="chat" size={16} color={colors.ink} />
-          <Text style={ui.sectionTitle}>Top Ads by Contact Clicks</Text>
+          <Text style={styles.chartTitle}>Top Ads by Contact Clicks</Text>
         </View>
         <RankedBars items={contactItems} emptyText="Contact clicks from buyers will show up here." />
       </View>
@@ -197,16 +197,19 @@ function Stat({ label, value, onPress }) {
 }
 
 const styles = StyleSheet.create({
+  // Web .stat-row: 3 cards on row 1, remaining 2 stretch to 50% each on row 2.
   statGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10 },
   stat: {
-    width: '31%', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    flexGrow: 1, flexBasis: '30%', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
     borderRadius: radius.md, padding: 13,
   },
   statValue: { fontFamily: font.familyExtraBold, fontSize: 19, color: colors.ink },
   statLabel: { marginTop: 3, fontFamily: font.familySemiBold, fontSize: 11, color: colors.inkFaint },
   chartCard: { backgroundColor: colors.surfaceSunken, borderRadius: radius.md, padding: 14, marginTop: 14 },
-  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 2, marginHorizontal: 4, marginBottom: 12 },
   cardHeadTitle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  titleGap: { marginTop: 2, marginHorizontal: 4, marginBottom: 12 },
+  chartTitle: { fontFamily: font.familyBold, fontSize: 15, color: colors.ink },
   rangeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
   rangeBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.line },
   rangeBtnActive: { backgroundColor: colors.primaryTint, borderColor: colors.primaryTint },

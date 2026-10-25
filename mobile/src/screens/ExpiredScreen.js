@@ -69,18 +69,19 @@ export default function ExpiredScreen({ onBack }) {
 const styles = StyleSheet.create({
   loader: { marginTop: 24 },
   muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, marginTop: 8 },
+  // Web .ad-row: no card, 11px vertical padding, bottom hairline.
   row: {
-    flexDirection: 'row', alignItems: 'center', padding: 8, marginBottom: 10,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 11,
+    borderBottomWidth: 1, borderBottomColor: colors.line,
   },
-  thumb: { width: 56, height: 56, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken },
-  noThumb: { backgroundColor: colors.line },
-  info: { flex: 1, marginHorizontal: 10 },
-  title: { fontFamily: font.familyMedium, fontSize: 13, color: colors.ink },
-  price: { marginTop: 3, fontFamily: font.familyExtraBold, fontSize: 14, color: colors.primary },
+  thumb: { width: 54, height: 54, borderRadius: 11, backgroundColor: colors.surfaceSunken },
+  noThumb: { backgroundColor: colors.surfaceSunken },
+  info: { flex: 1, marginHorizontal: 11 },
+  title: { fontFamily: font.familyBold, fontSize: 13, color: colors.ink },
+  price: { marginTop: 3, fontFamily: font.familyExtraBold, fontSize: 13, color: colors.ink },
   renew: {
-    backgroundColor: colors.primaryTint, borderRadius: radius.pill,
-    paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: colors.primary, borderRadius: radius.pill,
+    paddingHorizontal: 10, paddingVertical: 6,
   },
   renewText: { fontFamily: font.familyBold, fontSize: 13, color: colors.primary },
   disabled: { opacity: 0.5 },

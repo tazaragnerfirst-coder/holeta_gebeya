@@ -56,7 +56,7 @@ export function RankedBars({ items, limit = 5, emptyText = 'Nothing to show yet.
 }
 
 const styles = StyleSheet.create({
-  empty: { fontFamily: font.familyMedium, fontSize: 12.5, color: colors.inkFaint, paddingVertical: 8 },
+  empty: { fontFamily: font.familyMedium, fontSize: 12.5, color: colors.inkFaint, paddingVertical: 8, textAlign: 'center' },
   barRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
   barCol: { flex: 1, justifyContent: 'flex-end', height: '100%' },
   bar: { width: '100%', borderRadius: 2 },
@@ -65,12 +65,12 @@ const styles = StyleSheet.create({
   axis: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
   axisText: { fontFamily: font.family, fontSize: 10.5, color: colors.inkFaint },
   rankList: { gap: 10 },
-  rankRow: { flexDirection: 'row', alignItems: 'center' },
-  rankLabel: { width: 96, fontFamily: font.familySemiBold, fontSize: 11.5, color: colors.inkSoft },
+  rankRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 2, paddingHorizontal: 4 },
+  rankLabel: { width: 84, fontFamily: font.familySemiBold, fontSize: 11.5, color: colors.inkSoft },
   track: {
-    flex: 1, height: 10, borderRadius: 999, backgroundColor: colors.surfaceSunken,
+    flex: 1, height: 14, borderRadius: 999, backgroundColor: colors.bgApp,
     marginHorizontal: 8, overflow: 'hidden',
   },
-  fill: { height: 10, borderRadius: 999, backgroundColor: colors.primary },
-  rankValue: { width: 32, textAlign: 'right', fontFamily: font.familyExtraBold, fontSize: 11.5, color: colors.ink },
+  fill: { height: 14, borderRadius: 999, backgroundColor: colors.primary },
+  rankValue: { width: 30, textAlign: 'right', fontFamily: font.familyExtraBold, fontSize: 11.5, color: colors.ink },
 });
