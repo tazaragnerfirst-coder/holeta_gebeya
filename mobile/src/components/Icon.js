@@ -7,6 +7,7 @@ import {
   SignOut, Pause, Play, Crown, Storefront, SealCheck, GearSix, Coins,
   Globe, BookmarkSimple, ShareNetwork, Lock,
   ChartBar, ListBullets, Vibrate, Wallet, ArrowDown, CopySimple, ArrowsLeftRight,
+  SmileySad, Sun, Moon, Monitor, Paperclip, WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo,
 } from 'phosphor-react-native';
 import { colors } from '../theme';
 
@@ -65,6 +66,15 @@ const ICONS = {
   globe: Globe,
   bookmark: BookmarkSimple,
   share: ShareNetwork,
+  frown: SmileySad,
+  sun: Sun,
+  moon: Moon,
+  monitor: Monitor,
+  paperclip: Paperclip,
+  wifiOff: WifiSlash,
+  tiktok: TiktokLogo,
+  instagram: InstagramLogo,
+  whatsapp: WhatsappLogo,
 };
 
 export default function Icon({ name, size = 20, color = colors.inkSoft, weight = 'regular', style }) {
