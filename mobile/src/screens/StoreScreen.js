@@ -22,9 +22,12 @@ function socialHref(key, value) {
 
 const SOCIAL = [['tiktok', 'TikTok'], ['instagram', 'Instagram'], ['whatsapp', 'WhatsApp'], ['website', 'Website']];
 
-// Your own storefront as buyers see it: name, rating, bio, links and active listings.
-export default function StoreScreen({ onBack, onOpen }) {
-  const uid = auth.currentUser?.uid;
+// A storefront as buyers see it: name, rating, bio, links and active
+// listings. `sellerId` views any seller's store (e.g. from ProductDetail's
+// "Visit Store" link); defaults to the signed-in user's own store.
+export default function StoreScreen({ onBack, onOpen, sellerId }) {
+  const uid = sellerId || auth.currentUser?.uid;
+  const isOwner = uid === auth.currentUser?.uid;
   const [profile, setProfile] = useState(null);
   const [store, setStore] = useState(null);
   const [rating, setRating] = useState({ avg: 0, count: 0 });
@@ -41,7 +44,7 @@ export default function StoreScreen({ onBack, onOpen }) {
   const live = (ads || []).filter(isLiveAd);
 
   return (
-    <ScreenShell title="My store" onBack={onBack}>
+    <ScreenShell title="Store" onBack={onBack}>
       <View style={ui.card}>
         <Text style={[ui.cardValue, { fontSize: 22 }]}>
           {profile?.name || '···'}{isSubscriptionActive(profile) ? '  ✔ Premium' : ''}
@@ -68,7 +71,7 @@ export default function StoreScreen({ onBack, onOpen }) {
 
       <Text style={ui.sectionTitle}>Listings ({live.length})</Text>
       {ads === null ? <Text style={ui.muted}>Loading…</Text> : live.length === 0 ? (
-        <Text style={ui.muted}>No active listings right now.</Text>
+        <Text style={ui.muted}>{isOwner ? "You don't have any active listings yet." : 'No active listings from this seller right now.'}</Text>
       ) : live.map((item) => (
         <Pressable key={item.id} style={[ui.txRow, { justifyContent: 'flex-start' }]} onPress={() => onOpen(item)} accessibilityRole="button">
           {item.images?.[0] ? (

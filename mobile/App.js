@@ -122,7 +122,15 @@ export default function App() {
   function renderTop() {
     switch (top.name) {
       case 'listing':
-        return <ListingDetailScreen item={top.params.item} onBack={pop} onOpenChat={openChat} />;
+        return (
+          <ListingDetailScreen
+            item={top.params.item}
+            onBack={pop}
+            onOpen={openListing}
+            onOpenChat={openChat}
+            onOpenStore={(sellerId) => push('store', { sellerId })}
+          />
+        );
       case 'chat':
         return <ChatThreadScreen chat={top.params.chat} onBack={pop} />;
       case 'favorites':
@@ -132,7 +140,7 @@ export default function App() {
       case 'myAds':
         return <MyAdsScreen onBack={pop} onOpen={openListing} />;
       case 'store':
-        return <StoreScreen onBack={pop} onOpen={openListing} />;
+        return <StoreScreen onBack={pop} onOpen={openListing} sellerId={top.params?.sellerId} />;
       case 'wallet':
         return <WalletScreen onBack={pop} />;
       case 'coin':
