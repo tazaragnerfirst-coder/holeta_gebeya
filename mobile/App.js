@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -210,12 +209,6 @@ export default function App() {
       <View style={styles.content}>{screen}</View>
       {showTabs ? (
         <View style={styles.navWrap} pointerEvents="box-none">
-          {/* Frosted blur band behind the pill: page content shows through, stepped from soft (top) to strong (bottom). */}
-          <View style={styles.blurBand} pointerEvents="none">
-            <BlurView intensity={10} tint="light" experimentalBlurMethod="dimezisBlurView" style={[styles.blurLayer, { height: 110 }]} />
-            <BlurView intensity={22} tint="light" experimentalBlurMethod="dimezisBlurView" style={[styles.blurLayer, { height: 82 }]} />
-            <BlurView intensity={40} tint="light" experimentalBlurMethod="dimezisBlurView" style={[styles.blurLayer, { height: 52 }]} />
-          </View>
           {!onPostPage ? (
             <Pressable
               onPress={() => push('post')}
@@ -262,11 +255,9 @@ const styles = StyleSheet.create({
   content: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   navWrap: { position: 'absolute', left: 16, right: 16, bottom: 12 },
-  blurBand: { position: 'absolute', left: -16, right: -16, bottom: -12, height: 110 },
-  blurLayer: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   nav: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
-    height: 68, backgroundColor: 'rgba(235,238,248,0.78)', borderRadius: 100, padding: 5,
+    height: 68, backgroundColor: colors.tgBar, borderRadius: 100, padding: 5,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.14, shadowRadius: 10, elevation: 4,
   },
