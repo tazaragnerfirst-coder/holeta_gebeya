@@ -241,10 +241,10 @@ function TabButton({ tab, active, dot, onPress }) {
   return (
     <Pressable onPress={onPress} accessibilityRole="tab" style={[styles.navItem, active && styles.navItemActive]}>
       <View>
-        <Icon name={tab.icon} size={21} color={active ? colors.tgActiveInk : colors.inkFaint} />
+        <Icon name={tab.icon} size={22} color={active ? colors.tgActiveInk : colors.ink} />
         {dot ? <View style={styles.navDot} /> : null}
       </View>
-      {active ? <Text style={styles.navLabel}>{tab.label}</Text> : null}
+      <Text numberOfLines={1} style={[styles.navLabel, active && styles.navLabelActive]}>{tab.label}</Text>
     </Pressable>
   );
 }
@@ -257,20 +257,23 @@ const styles = StyleSheet.create({
   navWrap: { position: 'absolute', left: 16, right: 16, bottom: 12 },
   nav: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
-    height: 62, backgroundColor: colors.tgBar, borderRadius: 100, paddingHorizontal: 10,
+    height: 68, backgroundColor: colors.tgBar, borderRadius: 100, padding: 5,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.55)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.14, shadowRadius: 10, elevation: 4,
   },
   navItem: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    height: 42, paddingHorizontal: 11, borderRadius: 21,
+    flex: 1, flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+    height: '100%', paddingHorizontal: 4, borderRadius: 100,
   },
   navItemActive: { backgroundColor: colors.tgActive },
-  navLabel: { marginLeft: 6, fontSize: 11, fontFamily: font.familyBold, color: colors.tgActiveInk },
+  navLabel: { marginTop: 2, fontSize: 11, fontFamily: font.familyBold, color: colors.ink },
+  navLabelActive: { color: colors.tgActiveInk },
   navDot: {
     position: 'absolute', top: -2, right: -5, width: 8, height: 8, borderRadius: 4,
     backgroundColor: colors.accent, borderWidth: 1.5, borderColor: colors.tgBar,
   },
   fab: {
-    position: 'absolute', right: 0, bottom: 62 + 12, width: 56, height: 56, borderRadius: 28,
+    position: 'absolute', right: 0, bottom: 68 + 12, width: 56, height: 56, borderRadius: 28,
     backgroundColor: colors.tgAccent, alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 18, elevation: 8,
   },
