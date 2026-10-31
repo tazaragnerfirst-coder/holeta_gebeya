@@ -47,7 +47,7 @@
   var LABELS = { all: 'ሁሉም', store: 'ሱቅ', rent: 'ኪራይ', product: 'ምርት', job: 'ስራ' };
 
   // --- our own style ---
-  var ROAD_W = { motorway: 7, trunk: 7, primary: 6, secondary: 5, tertiary: 4, residential: 3, unclassified: 3, service: 2, track: 1.5, path: 1, footway: 1 };
+  var ROAD_W = { motorway: 7, trunk: 7, primary: 6, secondary: 5, tertiary: 4, residential: 4, unclassified: 4, service: 3, track: 2.5, path: 2, footway: 2 };
   function styleFor(f) {
     var p = f.properties, t = f.geometry.type;
     if (p.waterway || p.natural === 'water') return { color: '#9CC6EC', weight: p.waterway ? 2 : 1, fillColor: '#BFD9F2', fillOpacity: 1 };
@@ -96,7 +96,14 @@
     var bounds = L.latLngBounds([bb.south, bb.west], [bb.north, bb.east]);
     // polygons/lines first (by layer order), points later as labels
     var shapes = data.features.filter(function (f) { return f.geometry.type !== 'Point'; }).sort(function (a, b) { return ORDER(a) - ORDER(b); });
-    L.geoJSON({ type: 'FeatureCollection', features: shapes }, { style: styleFor, interactive: false }).addTo(map);
+    var land = shapes.filter(function (f) { return !f.properties.highway; });
+    var roads = shapes.filter(function (f) { return f.properties.highway; });
+    L.geoJSON({ type: 'FeatureCollection', features: land }, { style: styleFor, interactive: false }).addTo(map);
+    // roads: darker casing underneath, white road on top, so they read on the cream background
+    L.geoJSON({ type: 'FeatureCollection', features: roads }, { interactive: false, style: function (f) {
+      var w = ROAD_W[f.properties.highway] || 3; return { color: '#C9C2B0', weight: w + 3, opacity: 1, lineCap: 'round', lineJoin: 'round' }; } }).addTo(map);
+    L.geoJSON({ type: 'FeatureCollection', features: roads }, { interactive: false, style: function (f) {
+      var w = ROAD_W[f.properties.highway] || 3; return { color: '#FFFFFF', weight: w + 1, opacity: 1, lineCap: 'round', lineJoin: 'round' }; } }).addTo(map);
     var label = L.layerGroup().addTo(map);
     data.features.filter(function (f) { return f.geometry.type === 'Point' && (f.properties['name:am'] || f.properties.name); }).forEach(function (f) {
       var p = f.properties, g = f.geometry.coordinates, isPlace = !!p.place;
