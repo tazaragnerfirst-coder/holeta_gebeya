@@ -17,6 +17,9 @@
   .btn{flex:1;border:none;border-radius:100px;padding:13px 10px;font-size:14px;font-weight:700;background:#3F63E0;color:#fff;box-shadow:0 4px 14px rgba(0,0,0,.25)}
   .btn.alt{background:#fff;color:#2F4FC4}
   .leaflet-popup-content{font-size:13px;line-height:1.4}
+  .lbl{transform:translate(-50%,-50%);white-space:nowrap;font-size:10.5px;color:#5c5a52;text-shadow:0 0 3px #F6F4EE,0 0 3px #F6F4EE,0 0 3px #F6F4EE;pointer-events:none}
+  .lbl.place{font-size:13px;font-weight:700;color:#2F4FC4;letter-spacing:.3px}
+  .leaflet-container{font-family:system-ui,sans-serif}
 </style>
 </head>
 <body>
@@ -32,41 +35,45 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  // Holeta town centre (approx.)
-  var CENTER = [9.05, 38.50];
-  var map = L.map('map', { zoomControl: false }).setView(CENTER, 14);
+  // Own-styled Holeta map: no tile server. Data = holeta-map.json (OSM extract of the town only).
+  var map = L.map('map', { zoomControl: false, preferCanvas: true, attributionControl: false, zoomSnap: 0.5 });
   L.control.zoom({ position: 'topright' }).addTo(map);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+  L.control.attribution({ position: 'bottomleft', prefix: false }).addAttribution('Map data © OpenStreetMap contributors').addTo(map);
+  document.getElementById('map').style.background = '#F6F4EE';
 
-  // SAMPLE data only (offsets around the centre).
-  var ITEMS = [
-    { cat: 'store',   exact: true,  name: 'ምሳሌ ሱቅ A',      d: [ 0.004,  0.006], note: 'ሱቅ – ትክክለኛ ቦታ ይታያል' },
-    { cat: 'store',   exact: true,  name: 'ምሳሌ ሱቅ B',      d: [-0.005,  0.002], note: 'ሱቅ – ትክክለኛ ቦታ ይታያል' },
-    { cat: 'rent',    exact: false, name: 'ምሳሌ ቤት ኪራይ',     d: [ 0.008, -0.004], note: 'ኪራይ – ግምታዊ ሰፈር ብቻ (ክብ)' },
-    { cat: 'rent',    exact: false, name: 'ምሳሌ ቤት ኪራይ 2',   d: [-0.009, -0.007], note: 'ኪራይ – ግምታዊ ሰፈር ብቻ (ክብ)' },
-    { cat: 'product', exact: false, name: 'ምሳሌ ምርት',        d: [ 0.001, -0.009], note: 'ምርት – ሰፈር' },
-    { cat: 'job',     exact: true,  name: 'ምሳሌ ስራ',         d: [-0.002,  0.010], note: 'ስራ – የስራ ቦታ' }
-  ];
+  var CENTER = [9.05, 38.50];
+  var ITEMS = [], layer = L.layerGroup().addTo(map), current = 'all';
   var COLORS = { store: '#3F63E0', rent: '#E07A3F', product: '#2E9E5B', job: '#9B4FD0' };
   var LABELS = { all: 'ሁሉም', store: 'ሱቅ', rent: 'ኪራይ', product: 'ምርት', job: 'ስራ' };
-  var layer = L.layerGroup().addTo(map);
-  var current = 'all';
 
+  // --- our own style ---
+  var ROAD_W = { motorway: 7, trunk: 7, primary: 6, secondary: 5, tertiary: 4, residential: 3, unclassified: 3, service: 2, track: 1.5, path: 1, footway: 1 };
+  function styleFor(f) {
+    var p = f.properties, t = f.geometry.type;
+    if (p.waterway || p.natural === 'water') return { color: '#9CC6EC', weight: p.waterway ? 2 : 1, fillColor: '#BFD9F2', fillOpacity: 1 };
+    if (p.building) return { color: '#D6CFBF', weight: 0.6, fillColor: '#E6E0D2', fillOpacity: 1 };
+    if (p.landuse || p.natural || p.leisure) {
+      var green = /forest|grass|meadow|park|recreation|wood|scrub|grassland|pitch|playground|farmland|orchard/.test([p.landuse, p.natural, p.leisure].join(' '));
+      return { color: 'transparent', weight: 0, fillColor: green ? '#DCEBD2' : '#EFEBDD', fillOpacity: 1 };
+    }
+    if (p.highway) { var w = ROAD_W[p.highway] || 2; return { color: '#FFFFFF', weight: w, opacity: 1, lineCap: 'round' }; }
+    return { color: '#ccc', weight: 1 };
+  }
+  var ORDER = function (f) { var p = f.properties; return p.landuse||p.natural==='wood'||p.leisure ? 0 : p.waterway||p.natural==='water' ? 1 : p.highway ? 3 : p.building ? 2 : 4; };
+
+  function setItems(c) {
+    var o = [[ .004, .006,'store',true,'ምሳሌ ሱቅ A'],[-.005,.002,'store',true,'ምሳሌ ሱቅ B'],[.008,-.004,'rent',false,'ምሳሌ ቤት ኪራይ'],
+             [-.009,-.007,'rent',false,'ምሳሌ ቤት ኪራይ 2'],[.001,-.009,'product',false,'ምሳሌ ምርት'],[-.002,.010,'job',true,'ምሳሌ ስራ']];
+    ITEMS = o.map(function (x) { return { ll: [c[0]+x[0]*0.6, c[1]+x[1]*0.6], cat: x[2], exact: x[3], name: x[4] }; });
+  }
   function draw() {
     layer.clearLayers();
     ITEMS.forEach(function (it) {
       if (current !== 'all' && it.cat !== current) return;
-      var ll = [CENTER[0] + it.d[0], CENTER[1] + it.d[1]];
       var col = COLORS[it.cat];
-      if (it.exact) {
-        L.circleMarker(ll, { radius: 10, color: '#fff', weight: 3, fillColor: col, fillOpacity: 1 })
-          .bindPopup('<b>' + it.name + '</b><br>' + it.note).addTo(layer);
-      } else {
-        L.circle(ll, { radius: 250, color: col, weight: 2, fillColor: col, fillOpacity: .2 })
-          .bindPopup('<b>' + it.name + '</b><br>' + it.note).addTo(layer);
-      }
+      var note = it.exact ? 'ትክክለኛ ቦታ ይታያል' : 'ግምታዊ ሰፈር ብቻ (ክብ)';
+      if (it.exact) L.circleMarker(it.ll, { radius: 10, color: '#fff', weight: 3, fillColor: col, fillOpacity: 1 }).bindPopup('<b>' + it.name + '</b><br>' + note).addTo(layer);
+      else L.circle(it.ll, { radius: 250, color: col, weight: 2, fillColor: col, fillOpacity: .2 }).bindPopup('<b>' + it.name + '</b><br>' + note).addTo(layer);
     });
   }
 
@@ -78,12 +85,30 @@
     b.onclick = function () {
       current = k;
       Array.prototype.forEach.call(chips.children, function (c) { c.classList.remove('on'); });
-      b.classList.add('on');
-      draw();
+      b.classList.add('on'); draw();
     };
     chips.appendChild(b);
   });
-  draw();
+
+  var note = document.querySelector('.note');
+  fetch('holeta-map.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }).then(function (data) {
+    var bb = data.meta.bbox;
+    var bounds = L.latLngBounds([bb.south, bb.west], [bb.north, bb.east]);
+    // polygons/lines first (by layer order), points later as labels
+    var shapes = data.features.filter(function (f) { return f.geometry.type !== 'Point'; }).sort(function (a, b) { return ORDER(a) - ORDER(b); });
+    L.geoJSON({ type: 'FeatureCollection', features: shapes }, { style: styleFor, interactive: false }).addTo(map);
+    var label = L.layerGroup().addTo(map);
+    data.features.filter(function (f) { return f.geometry.type === 'Point' && (f.properties['name:am'] || f.properties.name); }).forEach(function (f) {
+      var p = f.properties, g = f.geometry.coordinates, isPlace = !!p.place;
+      L.marker([g[1], g[0]], { interactive: false, icon: L.divIcon({ className: '', html: '<div class="lbl' + (isPlace ? ' place' : '') + '">' + (p['name:am'] || p.name) + '</div>' }) }).addTo(label);
+    });
+    map.setMaxBounds(bounds.pad(0.15)); map.setMinZoom(13); map.fitBounds(bounds);
+    var c = bounds.getCenter(); setItems([c.lat, c.lng]); draw();
+    note.innerHTML = 'ይህ <b>ናሙና</b> ነው። ካርታው የሆለታ ከተማ ብቻ ነው፣ በራሳችን ዲዛይን። ፒኖቹ ሀሰተኛ ምሳሌ ናቸው። (' + data.meta.count + ' ነገሮች)';
+  }).catch(function () {
+    map.setView(CENTER, 14); setItems(CENTER); draw();
+    note.innerHTML = 'የሆለታ ካርታ ዳታ ገና አልተፈጠረም። GitHub → Actions → <b>Build Holeta Map Data</b> → Run workflow ሩጥ፣ ከዛ ገጹን አድስ።';
+  });
 
   // "Near me": sort-by-distance idea, here just locate the person.
   var me;
