@@ -8,6 +8,7 @@ import {
   ALL_CHIP_ID, JOB_CHIP_ID, clearRecentSearches, getRecentSearches, pushRecentSearch,
   searchListings, subscribeCategories,
 } from '../lib/search';
+import { homeCache } from '../lib/homeCache';
 import { SearchBar, FilterModal } from '../components/SearchBar';
 import ListingCard from '../components/ListingCard';
 import PromoBannerCarousel from '../components/PromoBannerCarousel';
@@ -24,13 +25,39 @@ function isBoosted(item) {
   return !!ms && ms > Date.now();
 }
 
+const notJob = (l) => l.categoryType !== 'job';
+
+// Web ListingGrid: job posts break out into one full-width row; everything
+// else sits two per row. A lone trailing card keeps a normal half width
+// (the row gets an empty spacer cell) instead of stretching across the row.
+function buildRows(items) {
+  const rows = [];
+  let pair = [];
+  const flush = () => {
+    if (pair.length) rows.push({ key: pair.map((i) => i.id).join('|'), items: pair });
+    pair = [];
+  };
+  for (const item of items) {
+    if (item.categoryType === 'job') {
+      flush();
+      rows.push({ key: `job-${item.id}`, items: [item], full: true });
+    } else {
+      pair.push(item);
+      if (pair.length === 2) flush();
+    }
+  }
+  flush();
+  return rows;
+}
+
 // Public listing feed with search, category chips and filters.
 // Browsing needs no login. Mirrors frontend/src/pages/Home.jsx.
 export default function HomeScreen({ onOpen }) {
   const uid = auth.currentUser?.uid;
-  const [listings, setListings] = useState(null); // null = still loading
+  const [listings, setListings] = useState(homeCache.listings); // null = still loading
   const [error, setError] = useState(false);
-  const [categories, setCategories] = useState([]);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [categories, setCategories] = useState(homeCache.categories);
   const [favorites, setFavorites] = useState([]);
   const [banners, setBanners] = useState(() => getCachedHomeBanners());
 
@@ -44,14 +71,17 @@ export default function HomeScreen({ onOpen }) {
   const [recent, setRecent] = useState([]);
 
   // Pagination (web appData.jsx loadMoreListings: startAfter cursor).
-  const lastDocRef = useRef(null);
-  const [hasMore, setHasMore] = useState(true);
+  const lastDocRef = useRef(homeCache.lastDoc);
+  const [hasMore, setHasMore] = useState(homeCache.hasMore);
   const [loadingMore, setLoadingMore] = useState(false);
 
-  // Feed order: shuffled once on first load, then frozen for this screen
-  // session (web Home.jsx), so scrolling doesn't reshuffle under the finger.
-  const shuffledRef = useRef(false);
-  const [order, setOrder] = useState([]); // array of listing ids, display order
+  // Feed order: shuffled once per screen visit, then frozen (web Home.jsx),
+  // so scrolling doesn't reshuffle under the finger. Items that arrive later
+  // (live posts, next pages) are shuffled among themselves and appended.
+  const shuffledRef = useRef(homeCache.listings !== null);
+  const [order, setOrder] = useState(() => (
+    homeCache.listings ? shuffle(homeCache.listings.filter(notJob)).map((l) => l.id) : []
+  )); // array of listing ids, display order
 
   const term = search.trim().toLowerCase();
   const filtering = Boolean(term || category || filters.minPrice != null || filters.maxPrice != null || filters.conditions.length > 0);
@@ -62,21 +92,33 @@ export default function HomeScreen({ onOpen }) {
       setListings((prev) => {
         // Merge by id (stable) instead of raw-replacing, so a first-page
         // onSnapshot update doesn't reshuffle already-rendered cards.
-        if (!prev) return items;
-        const byId = new Map(prev.map((l) => [l.id, l]));
-        for (const it of items) byId.set(it.id, it);
-        return Array.from(byId.values());
+        let next;
+        if (!prev) {
+          next = items;
+        } else {
+          const byId = new Map(prev.map((l) => [l.id, l]));
+          for (const it of items) byId.set(it.id, it);
+          next = Array.from(byId.values());
+        }
+        homeCache.listings = next;
+        return next;
       });
       if (page) {
         lastDocRef.current = page.lastDoc;
+        homeCache.lastDoc = page.lastDoc;
+        homeCache.hasMore = page.hasMore;
         setHasMore(page.hasMore);
       }
+      setError(false);
     }, () => setError(true));
     return unsub;
-  }, []);
+  }, [reloadKey]);
 
   useEffect(() => {
-    const unsub = subscribeCategories(setCategories, () => {});
+    const unsub = subscribeCategories((data) => {
+      homeCache.categories = data;
+      setCategories(data);
+    }, () => {});
     return unsub;
   }, []);
 
@@ -88,11 +130,21 @@ export default function HomeScreen({ onOpen }) {
     return subscribeFavorites(uid, setFavorites);
   }, [uid]);
 
-  // Shuffle once per screen session, as soon as listings first arrive.
+  // First arrival is shuffled once; anything new after that is shuffled
+  // among itself and appended after what's already showing.
   useEffect(() => {
-    if (!listings || shuffledRef.current) return;
-    shuffledRef.current = true;
-    setOrder(shuffle(listings.filter((l) => l.categoryType !== 'job')).map((l) => l.id));
+    if (!listings) return;
+    const nonJob = listings.filter(notJob);
+    if (!shuffledRef.current) {
+      shuffledRef.current = true;
+      setOrder(shuffle(nonJob).map((l) => l.id));
+      return;
+    }
+    setOrder((prev) => {
+      const seen = new Set(prev);
+      const fresh = nonJob.filter((l) => !seen.has(l.id));
+      return fresh.length ? [...prev, ...shuffle(fresh).map((l) => l.id)] : prev;
+    });
   }, [listings]);
 
   async function loadMore() {
@@ -101,13 +153,16 @@ export default function HomeScreen({ onOpen }) {
     try {
       const page = await fetchMoreListings(lastDocRef.current);
       lastDocRef.current = page.lastDoc;
+      homeCache.lastDoc = page.lastDoc;
+      homeCache.hasMore = page.hasMore;
       setHasMore(page.hasMore);
       setListings((prev) => {
         const byId = new Map((prev || []).map((l) => [l.id, l]));
         for (const it of page.items) byId.set(it.id, it);
-        return Array.from(byId.values());
+        const next = Array.from(byId.values());
+        homeCache.listings = next;
+        return next;
       });
-      setOrder((prev) => [...prev, ...page.items.filter((i) => i.categoryType !== 'job').map((i) => i.id)]);
     } catch {
       // Silent — next scroll attempt retries.
     } finally {
@@ -117,7 +172,7 @@ export default function HomeScreen({ onOpen }) {
 
   // Server-side search (text debounced; chips and filters run right away).
   useEffect(() => {
-    if (!filtering) return;
+    if (!filtering) { setSearchLoading(false); return undefined; }
     let cancelled = false;
     const t = setTimeout(() => {
       setSearchLoading(true);
@@ -146,6 +201,7 @@ export default function HomeScreen({ onOpen }) {
   }, [order, byId, boostedIds]);
 
   const displayed = filtering ? searchResults : feed;
+  const rows = useMemo(() => buildRows(displayed), [displayed]);
 
   const suggestions = useMemo(() => {
     if (!term) return [];
@@ -206,7 +262,38 @@ export default function HomeScreen({ onOpen }) {
     // subscribeFavorites keeps `favorites` live; nothing else to do here.
   }
 
-  const initialLoading = listings === null && !error;
+  function refresh() {
+    setError(false);
+    setReloadKey((k) => k + 1);
+  }
+
+  // Listings exist but the feed order hasn't been computed yet (one render
+  // after the first snapshot) — still loading, not "No listings yet".
+  const feedPending = !filtering && listings !== null && listings.some(notJob) && order.length === 0;
+  const initialLoading = (listings === null && !error) || feedPending;
+  const feedFailed = !filtering && error && displayed.length === 0;
+
+  function renderCard(item) {
+    return (
+      <ListingCard
+        item={item}
+        onPress={() => onOpen && onOpen(item)}
+        boosted={boostedIds.has(item.id)}
+        favorited={favorites.some((f) => f.listingId === item.id)}
+        onToggleFavorite={handleToggleFavorite}
+      />
+    );
+  }
+
+  function renderRow(row) {
+    if (row.full) return <View style={styles.rowFull}>{renderCard(row.items[0])}</View>;
+    return (
+      <View style={styles.row}>
+        {row.items.map((it) => <View key={it.id} style={styles.cell}>{renderCard(it)}</View>)}
+        {row.items.length === 1 ? <View style={styles.cell} /> : null}
+      </View>
+    );
+  }
 
   const header = (
     <View>
@@ -233,14 +320,14 @@ export default function HomeScreen({ onOpen }) {
         })}
       </ScrollView>
       {filtering && searchLoading ? <ActivityIndicator style={styles.inlineLoad} color={colors.primary} /> : null}
-      {!filtering && error ? (
+      {feedFailed ? (
         <View style={styles.stateBox}>
           <View style={styles.stateIcon}>
             <Icon name="wifiOff" size={30} color={colors.inkFaint} />
           </View>
           <Text style={styles.stateTitle}>Couldn't load listings</Text>
           <Text style={styles.stateSub}>Check your connection and try again.</Text>
-          <Pressable onPress={() => setError(false)}>
+          <Pressable onPress={refresh}>
             <Text style={styles.link}>Refresh</Text>
           </Pressable>
         </View>
@@ -279,18 +366,42 @@ export default function HomeScreen({ onOpen }) {
     </View>
   );
 
+  // Web #hog012: a dead-end zero-result screen still leaves other listings to
+  // browse — reuses the already-loaded feed, no extra query.
+  const alsoLike = buildRows(feed.slice(0, 8));
+
   const emptyState = initialLoading ? <ListingGridSkeleton /> : filtering && searchLoading ? null : filtering ? (
-    <View style={styles.emptyBox}>
-      <View style={styles.stateIcon}>
-        <Icon name="frown" size={30} color={colors.inkFaint} />
+    <View>
+      <View style={styles.emptyBox}>
+        <View style={styles.stateIcon}>
+          <Icon name="frown" size={30} color={colors.inkFaint} />
+        </View>
+        <Text style={styles.stateTitle}>No items found</Text>
+        <Text style={styles.stateSub}>
+          {term ? `Nothing matched "${term}". Try a different keyword.` : 'Try adjusting your filters.'}
+        </Text>
+        {popularTags.length > 0 ? (
+          <View style={styles.emptyTags}>
+            {popularTags.slice(0, 4).map((s) => (
+              <Pressable key={s} onPress={() => setSearch(s)} style={styles.tagAccent}>
+                <Icon name="trendingUp" size={12} color={colors.accentDark} />
+                <Text style={styles.tagAccentText}>{s}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        <Pressable onPress={clearAll}>
+          <Text style={styles.link}>Clear search & filters</Text>
+        </Pressable>
       </View>
-      <Text style={styles.stateTitle}>No items found</Text>
-      <Text style={styles.stateSub}>
-        {term ? `Nothing matched "${term}". Try a different keyword.` : 'Try adjusting your filters.'}
-      </Text>
-      <Pressable onPress={clearAll}>
-        <Text style={styles.link}>Clear search & filters</Text>
-      </Pressable>
+      {alsoLike.length > 0 ? (
+        <>
+          <View style={styles.sectionTitle}>
+            <Text style={styles.sectionTitleText}>You might also like</Text>
+          </View>
+          {alsoLike.map((row) => <View key={row.key}>{renderRow(row)}</View>)}
+        </>
+      ) : null}
     </View>
   ) : !error ? (
     <View style={styles.emptyBox}>
@@ -301,11 +412,9 @@ export default function HomeScreen({ onOpen }) {
   return (
     <View style={styles.flex}>
       <FlatList
-        data={displayed}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
+        data={rows}
+        keyExtractor={(row) => row.key}
         contentContainerStyle={styles.list}
-        columnWrapperStyle={styles.row}
         ListHeaderComponent={header}
         keyboardShouldPersistTaps="handled"
         onEndReachedThreshold={0.6}
@@ -314,15 +423,7 @@ export default function HomeScreen({ onOpen }) {
           <ActivityIndicator style={styles.inlineLoad} color={colors.primary} />
         ) : null}
         ListEmptyComponent={emptyState}
-        renderItem={({ item }) => (
-          <ListingCard
-            item={item}
-            onPress={() => onOpen && onOpen(item)}
-            boosted={boostedIds.has(item.id)}
-            favorited={favorites.some((f) => f.listingId === item.id)}
-            onToggleFavorite={handleToggleFavorite}
-          />
-        )}
+        renderItem={({ item: row }) => renderRow(row)}
       />
       <FilterModal
         visible={filterOpen}
@@ -339,6 +440,12 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, textAlign: 'center' },
   emptyBox: { padding: 24, alignItems: 'center' },
+  emptyTags: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 14 },
+  tagAccent: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9,
+    borderRadius: radius.pill, backgroundColor: colors.accentTint,
+  },
+  tagAccentText: { fontFamily: font.familySemiBold, fontSize: 12.5, color: colors.accentDark },
   inlineLoad: { marginVertical: 12 },
   stateBox: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 20 },
   stateIcon: {
@@ -364,7 +471,11 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: colors.tgActive },
   chipText: { fontFamily: font.familyBold, fontSize: 13.5, color: colors.inkSoft },
   chipTextActive: { color: colors.tgActiveInk },
-  // Web .listing-grid: 6px edge margin, 6px gap both ways.
+  // Web .listing-grid: 6px edge margin, 6px gap both ways. `cell` is flex:1
+  // so two fill the row and a lone card keeps half width via a spacer cell;
+  // `rowFull` is the web .listing-grid-full job row.
   list: { paddingHorizontal: 0, paddingTop: 14, paddingBottom: 100 },
-  row: { gap: 6, paddingHorizontal: 6 },
+  row: { flexDirection: 'row', gap: 6, paddingHorizontal: 6, marginBottom: 6 },
+  rowFull: { paddingHorizontal: 6, marginBottom: 6 },
+  cell: { flex: 1 },
 });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { CONDITIONS } from '../lib/search';
 import Icon from './Icon';
@@ -78,6 +78,7 @@ export function SearchBar({
               <View style={styles.tags}>
                 {recent.map((r) => (
                   <Pressable key={r} onPress={() => commit(r)} style={styles.tag}>
+                    <Icon name="history" size={12} color={colors.inkSoft} />
                     <Text style={styles.tagText}>{r}</Text>
                   </Pressable>
                 ))}
@@ -90,6 +91,7 @@ export function SearchBar({
               <View style={styles.tags}>
                 {popularTags.map((t) => (
                   <Pressable key={t} onPress={() => commit(t)} style={[styles.tag, styles.tagAccent]}>
+                    <Icon name="trendingUp" size={12} color={colors.accentDark} />
                     <Text style={[styles.tagText, styles.tagAccentText]}>{t}</Text>
                   </Pressable>
                 ))}
@@ -107,6 +109,17 @@ export function FilterModal({ visible, filters, onApply, onClose }) {
   const [minPrice, setMinPrice] = useState(filters.minPrice != null ? String(filters.minPrice) : '');
   const [maxPrice, setMaxPrice] = useState(filters.maxPrice != null ? String(filters.maxPrice) : '');
   const [conditions, setConditions] = useState(filters.conditions || []);
+
+  // Web FilterSheet re-reads the applied filters every time it opens; this
+  // modal stays mounted, so without this a "Clear search & filters" left
+  // the old values showing in the fields.
+  useEffect(() => {
+    if (visible) {
+      setMinPrice(filters.minPrice != null ? String(filters.minPrice) : '');
+      setMaxPrice(filters.maxPrice != null ? String(filters.maxPrice) : '');
+      setConditions(filters.conditions || []);
+    }
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggle(c) {
     setConditions((prev) => (prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]));
@@ -213,7 +226,7 @@ const styles = StyleSheet.create({
   suggestionText: { flex: 1, fontFamily: font.family, fontSize: 13.5, color: colors.ink },
   link: { fontFamily: font.familyBold, fontSize: 12, color: colors.primary },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tag: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.line },
+  tag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: radius.pill, backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.line },
   tagText: { fontFamily: font.familySemiBold, fontSize: 12.5, color: colors.inkSoft },
   tagAccent: { backgroundColor: colors.accentTint, borderColor: colors.accentTint },
   tagAccentText: { color: colors.accentDark },
