@@ -10,6 +10,9 @@ import {
 } from '../lib/search';
 import { SearchBar, FilterModal } from '../components/SearchBar';
 import ListingCard from '../components/ListingCard';
+import PromoBannerCarousel from '../components/PromoBannerCarousel';
+import { ListingGridSkeleton } from '../components/Skeleton';
+import { getCachedHomeBanners, getHomeBanners } from '../lib/banners';
 import Icon from '../components/Icon';
 import { colors, font, radius } from '../theme';
 
@@ -29,6 +32,7 @@ export default function HomeScreen({ onOpen }) {
   const [error, setError] = useState(false);
   const [categories, setCategories] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [banners, setBanners] = useState(() => getCachedHomeBanners());
 
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState(null); // null, a category id, or JOB_CHIP_ID
@@ -77,6 +81,7 @@ export default function HomeScreen({ onOpen }) {
   }, []);
 
   useEffect(() => { getRecentSearches().then(setRecent); }, []);
+  useEffect(() => { getHomeBanners().then(setBanners); }, []);
 
   useEffect(() => {
     if (!uid) { setFavorites([]); return undefined; }
@@ -201,13 +206,7 @@ export default function HomeScreen({ onOpen }) {
     // subscribeFavorites keeps `favorites` live; nothing else to do here.
   }
 
-  if (listings === null && !error) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  const initialLoading = listings === null && !error;
 
   const header = (
     <View>
@@ -246,6 +245,7 @@ export default function HomeScreen({ onOpen }) {
           </Pressable>
         </View>
       ) : null}
+      {!filtering && banners.length > 0 ? <PromoBannerCarousel banners={banners} /> : null}
       {!filtering && boosted.length > 0 ? (
         <>
           <View style={styles.sectionTitle}>
@@ -279,7 +279,7 @@ export default function HomeScreen({ onOpen }) {
     </View>
   );
 
-  const emptyState = filtering && searchLoading ? null : filtering ? (
+  const emptyState = initialLoading ? <ListingGridSkeleton /> : filtering && searchLoading ? null : filtering ? (
     <View style={styles.emptyBox}>
       <View style={styles.stateIcon}>
         <Icon name="frown" size={30} color={colors.inkFaint} />

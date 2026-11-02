@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { auth } from '../lib/firebase';
 import { subscribeFavorites } from '../lib/favorites';
-import { formatListingPrice } from '../lib/listings';
 import ScreenShell from '../components/ScreenShell';
-import { colors, font, radius } from '../theme';
+import ListingCard from '../components/ListingCard';
+import Icon from '../components/Icon';
+import { ListingGridSkeleton } from '../components/Skeleton';
+import { colors, font } from '../theme';
 
-// Saved listings. Tapping one opens its detail view.
+// Saved listings as the same card grid as Home (web Favorites.jsx).
+// Tapping a card opens its detail view.
 export default function FavoritesScreen({ onBack, onOpen }) {
   const uid = auth.currentUser?.uid;
   const [favorites, setFavorites] = useState(null);
@@ -16,46 +19,48 @@ export default function FavoritesScreen({ onBack, onOpen }) {
     return subscribeFavorites(uid, setFavorites);
   }, [uid]);
 
+  function toListing(f) {
+    return {
+      id: f.listingId,
+      title: f.title,
+      price: f.price,
+      priceType: f.priceType,
+      images: f.photo ? [f.photo] : [],
+      location: f.location,
+      condition: f.condition,
+    };
+  }
+
   return (
-    <ScreenShell title="Saved listings" onBack={onBack} scroll={false}>
+    <ScreenShell title="Favorites" onBack={onBack} scroll={false}>
       {favorites === null ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+        <ListingGridSkeleton />
       ) : favorites.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.muted}>You haven't saved any listings yet.</Text>
+        <View style={styles.empty}>
+          <View style={styles.emptyIcon}>
+            <Icon name="bookmark" size={26} color={colors.inkFaint} />
+          </View>
+          <Text style={styles.emptyTitle}>No favorites yet</Text>
+          <Text style={styles.emptySub}>Tap the bookmark on any listing to save it here.</Text>
         </View>
       ) : (
         <FlatList
           data={favorites}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(f) => f.id}
+          numColumns={2}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.row}
-              onPress={() => onOpen({
-                id: item.listingId,
-                title: item.title,
-                price: item.price,
-                priceType: item.priceType,
-                images: item.photo ? [item.photo] : [],
-                location: item.location,
-                condition: item.condition,
-              })}
-              accessibilityRole="button"
-            >
-              {item.photo ? (
-                <Image source={{ uri: item.photo }} style={styles.thumb} />
-              ) : (
-                <View style={[styles.thumb, styles.noPhoto]} />
-              )}
-              <View style={styles.info}>
-                <Text style={styles.price}>{formatListingPrice(item)}</Text>
-                <Text style={styles.name} numberOfLines={2}>{item.title || 'Untitled'}</Text>
-              </View>
-            </Pressable>
-          )}
+          columnWrapperStyle={styles.row}
+          renderItem={({ item: f }) => {
+            const listing = toListing(f);
+            return (
+              <ListingCard
+                item={listing}
+                onPress={() => onOpen(listing)}
+                favorited
+                onToggleFavorite={() => {}}
+              />
+            );
+          }}
         />
       )}
     </ScreenShell>
@@ -63,16 +68,16 @@ export default function FavoritesScreen({ onBack, onOpen }) {
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
-  muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, textAlign: 'center' },
-  list: { paddingHorizontal: 16, paddingBottom: 100 },
-  row: {
-    flexDirection: 'row', alignItems: 'center', padding: 8, marginBottom: 10,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md,
+  empty: { alignItems: 'center', paddingVertical: 48, paddingHorizontal: 24 },
+  emptyIcon: {
+    width: 60, height: 60, borderRadius: 30, backgroundColor: colors.surfaceSunken,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
   },
-  thumb: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceSunken },
-  noPhoto: { backgroundColor: colors.line },
-  info: { flex: 1, marginLeft: 12 },
-  price: { fontFamily: font.familyExtraBold, fontSize: 14.5, color: colors.primary },
-  name: { marginTop: 2, fontFamily: font.familyMedium, fontSize: 13, color: colors.ink },
+  emptyTitle: { fontFamily: font.familyExtraBold, fontSize: 15, color: colors.ink },
+  emptySub: {
+    marginTop: 6, fontFamily: font.family, fontSize: 12.5, color: colors.inkFaint,
+    textAlign: 'center', lineHeight: 19, maxWidth: 260,
+  },
+  list: { paddingTop: 4, paddingBottom: 100 },
+  row: { gap: 6, paddingHorizontal: 6 },
 });

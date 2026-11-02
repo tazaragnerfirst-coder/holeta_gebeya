@@ -59,7 +59,7 @@ export default function BoostScreen({ onBack, onOpenWallet }) {
   const live = (ads || []).filter(isLiveAd);
 
   return (
-    <ScreenShell title="Boost my ads" onBack={onBack}>
+    <ScreenShell title="Boost My Ads" onBack={onBack}>
       <View style={ui.card}>
         <Text style={ui.cardLabel}>Get seen first</Text>
         <Text style={[ui.cardValue, { fontSize: 20 }]}>{BOOST_PRICE_ETB} ETB / {BOOST_DURATION_DAYS} days</Text>

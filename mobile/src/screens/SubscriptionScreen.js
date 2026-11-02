@@ -46,7 +46,7 @@ export default function SubscriptionScreen({ onBack, onOpenWallet }) {
   }
 
   return (
-    <ScreenShell title="My subscription" onBack={onBack}>
+    <ScreenShell title="My Subscription" onBack={onBack}>
       <View style={ui.card}>
         <Text style={ui.cardLabel}>{active ? 'Premium plan' : 'Free plan'}</Text>
         <Text style={[ui.cardValue, { fontSize: 22 }]}>{active ? "You're subscribed" : 'Not subscribed yet'}</Text>
