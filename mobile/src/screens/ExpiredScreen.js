@@ -1,21 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { auth } from '../lib/firebase';
-import { subscribeMyAds, renewAd, isExpiredAd } from '../lib/ads';
+import { useAppData } from '../lib/appData';
+import { renewAd, isExpiredAd } from '../lib/ads';
 import { formatListingPrice } from '../lib/listings';
 import ScreenShell from '../components/ScreenShell';
 import { colors, font, radius } from '../theme';
 
 // Ads whose expiry date has passed. Mirrors frontend/src/pages/ExpiredItems.jsx.
 export default function ExpiredScreen({ onBack }) {
-  const uid = auth.currentUser?.uid;
-  const [ads, setAds] = useState(null);
+  const { ads } = useAppData(); // null = still loading
   const [renewingId, setRenewingId] = useState(null);
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    return subscribeMyAds(uid, setAds, () => setAds([]));
-  }, [uid]);
 
   async function handleRenew(id) {
     setRenewingId(id);

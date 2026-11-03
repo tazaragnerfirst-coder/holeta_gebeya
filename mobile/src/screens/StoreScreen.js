@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { Image, Linking, Pressable, Text, View } from 'react-native';
 import ScreenShell, { ui } from '../components/ScreenShell';
 import { auth } from '../lib/firebase';
+import { useAppData } from '../lib/appData';
 import { getMyProfile, isSubscriptionActive } from '../lib/profile';
 import { getSellerRating, getStoreProfile } from '../lib/store';
 import { isLiveAd, subscribeMyAds } from '../lib/ads';
 import { formatListingPrice } from '../lib/listings';
+import { getCached, setCached } from '../lib/pageCache';
 import { colors, font, radius } from '../theme';
 
 function socialHref(key, value) {
@@ -28,17 +30,26 @@ const SOCIAL = [['tiktok', 'TikTok'], ['instagram', 'Instagram'], ['whatsapp', '
 export default function StoreScreen({ onBack, onOpen, sellerId }) {
   const uid = sellerId || auth.currentUser?.uid;
   const isOwner = uid === auth.currentUser?.uid;
-  const [profile, setProfile] = useState(null);
-  const [store, setStore] = useState(null);
-  const [rating, setRating] = useState({ avg: 0, count: 0 });
-  const [ads, setAds] = useState(null);
+  // Your own store reads the shared data layer (already loaded); another
+  // seller's store is loaded here on open.
+  const app = useAppData();
+  const [otherProfile, setOtherProfile] = useState(null);
+  const [otherRating, setOtherRating] = useState({ avg: 0, count: 0 });
+  const [otherAds, setOtherAds] = useState(null);
+  const [store, setStore] = useState(() => (uid ? getCached(`store:${uid}`) ?? null : null));
+  const profile = isOwner ? app.profile : otherProfile;
+  const rating = isOwner ? app.sellerRating : otherRating;
+  const ads = isOwner ? app.ads : otherAds;
 
   useEffect(() => {
     if (!uid) return undefined;
-    getMyProfile(uid).then(setProfile);
-    getStoreProfile(uid).then(setStore).catch(() => setStore(null));
-    getSellerRating(uid).then(setRating);
-    return subscribeMyAds(uid, setAds, () => setAds([]));
+    getStoreProfile(uid)
+      .then((st) => { setStore(st); setCached(`store:${uid}`, st); })
+      .catch(() => {});
+    if (isOwner) return undefined;
+    getMyProfile(uid).then(setOtherProfile);
+    getSellerRating(uid).then(setOtherRating);
+    return subscribeMyAds(uid, setOtherAds, () => setOtherAds([]));
   }, [uid]);
 
   const live = (ads || []).filter(isLiveAd);

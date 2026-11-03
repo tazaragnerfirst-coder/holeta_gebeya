@@ -1,5 +1,6 @@
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebase';
+import { getCached, setCached } from './pageCache';
 
 // Seller-level daily analytics (written by the web app and the backend).
 // Mirrors frontend/src/lib/analytics.js (read side only).
@@ -12,6 +13,12 @@ function cutoffString(days) {
 
 // Returns one doc per day with activity, sorted ascending by date.
 // `days` is a lookback window; pass Infinity for all time.
+// Last-known rows for this seller/range (or undefined), so a chart can paint
+// instantly while the fresh read below is still running.
+export function peekSellerAnalytics(sellerId, days = 30) {
+  return getCached(`analytics:${sellerId}:${days}`);
+}
+
 export async function getSellerAnalytics(sellerId, days = 30) {
   if (!sellerId) return [];
   const snap = await getDocs(query(collection(db, 'sellerAnalytics'), where('sellerId', '==', sellerId)));
@@ -20,7 +27,9 @@ export async function getSellerAnalytics(sellerId, days = 30) {
     const cutoff = cutoffString(days);
     rows = rows.filter((a) => a.date >= cutoff);
   }
-  return rows.sort((a, b) => a.date.localeCompare(b.date));
+  rows.sort((a, b) => a.date.localeCompare(b.date));
+  setCached(`analytics:${sellerId}:${days}`, rows);
+  return rows;
 }
 
 // Per-listing daily docs for a set of listing ids, keyed by listing id.

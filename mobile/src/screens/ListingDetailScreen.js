@@ -6,7 +6,8 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { auth, BACKEND_URL, db } from '../lib/firebase';
 import { formatPriceParts } from '../lib/listings';
 import { chatIdFor, getChat } from '../lib/chat';
-import { setFavorite, subscribeFavorites } from '../lib/favorites';
+import { setFavorite } from '../lib/favorites';
+import { useAppData } from '../lib/appData';
 import {
   bumpListingViews, conditionTone, fetchSimilar, isSellerVerified, logContactClick, logListingView,
   notifyAdmin, requestSellerPhone, submitListingReport, timeAgo,
@@ -52,7 +53,8 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
   }, [item.id]);
 
   const [descExpanded, setDescExpanded] = useState(false);
-  const [favorites, setFavorites] = useState([]);
+  const { favorites: savedFavorites } = useAppData();
+  const favorites = savedFavorites || [];
   const [favBusy, setFavBusy] = useState(false);
   const [chatBusy, setChatBusy] = useState(false);
   const [callBusy, setCallBusy] = useState(false);
@@ -72,11 +74,6 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
 
   const isMine = !!uid && item.sellerId === uid;
   const isFavorited = favorites.some((f) => f.listingId === item.id);
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    return subscribeFavorites(uid, setFavorites);
-  }, [uid]);
 
   useEffect(() => {
     fetchListingReviews(item.id).then(setReviews).catch(() => {});

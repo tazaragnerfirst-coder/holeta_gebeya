@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { auth } from '../lib/firebase';
-import { subscribeMyAds } from '../lib/ads';
-import { getSellerAnalytics } from '../lib/analytics';
+import { useAppData } from '../lib/appData';
+import { getSellerAnalytics, peekSellerAnalytics } from '../lib/analytics';
 import { DailyBars, RankedBars } from '../components/Charts';
 import ScreenShell, { ui } from '../components/ScreenShell';
 import { colors, font, radius } from '../theme';
@@ -16,21 +16,17 @@ const RANGES = [
 
 export default function ViewsDetailScreen({ onBack }) {
   const uid = auth.currentUser?.uid;
-  const [ads, setAds] = useState(null);
+  const { ads } = useAppData(); // null = still loading
   const [rangeKey, setRangeKey] = useState('30');
-  const [daily, setDaily] = useState(null);
   const [error, setError] = useState('');
 
   const range = RANGES.find((r) => r.key === rangeKey) || RANGES[1];
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    return subscribeMyAds(uid, setAds, () => setAds([]));
-  }, [uid]);
+  // First frame shows the last-known chart; the fresh read below replaces it.
+  const [daily, setDaily] = useState(() => peekSellerAnalytics(uid, range.days) ?? null);
 
   useEffect(() => {
     if (!uid) return;
-    setDaily(null);
+    setDaily(peekSellerAnalytics(uid, range.days) ?? null);
     getSellerAnalytics(uid, range.days)
       .then(setDaily)
       .catch(() => { setDaily([]); setError("Couldn't load this chart."); });

@@ -1,20 +1,16 @@
-import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { auth } from '../lib/firebase';
-import { subscribeChats, formatChatTime } from '../lib/chat';
+import { useAppData } from '../lib/appData';
+import { formatChatTime } from '../lib/chat';
 import Icon from '../components/Icon';
 import { colors, font } from '../theme';
 
 // Conversations list (same data and unread badge as the web Messages page).
 export default function ChatListScreen({ onOpen }) {
   const uid = auth.currentUser?.uid;
-  const [chats, setChats] = useState(null); // null = still loading
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    return subscribeChats(uid, setChats, () => setError(true));
-  }, [uid]);
+  // Conversations come from the shared data layer (null = still loading).
+  const { chats, chatsError } = useAppData();
+  const error = chatsError && chats === null;
 
   if (error) {
     return (

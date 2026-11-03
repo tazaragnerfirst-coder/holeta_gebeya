@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Alert, Pressable, Text, View } from 'react-native';
 import ScreenShell, { ui } from '../components/ScreenShell';
-import { auth } from '../lib/firebase';
-import { isLiveAd, subscribeMyAds } from '../lib/ads';
-import { spendWallet, subscribeWalletBalance } from '../lib/wallet';
+import { useAppData } from '../lib/appData';
+import { isLiveAd } from '../lib/ads';
+import { spendWallet } from '../lib/wallet';
 import { BOOST_DURATION_DAYS, BOOST_PRICE_ETB } from '../lib/constants';
 
 function boostedUntilText(ad) {
@@ -14,17 +14,8 @@ function boostedUntilText(ad) {
 
 // Pick one of your live ads and boost it with wallet money.
 export default function BoostScreen({ onBack, onOpenWallet }) {
-  const uid = auth.currentUser?.uid;
-  const [ads, setAds] = useState(null);
-  const [balance, setBalance] = useState(null);
+  const { ads, walletBalance: balance } = useAppData(); // null = still loading
   const [busyId, setBusyId] = useState(null);
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    const a = subscribeMyAds(uid, setAds, () => setAds([]));
-    const b = subscribeWalletBalance(uid, setBalance);
-    return () => { a(); b(); };
-  }, [uid]);
 
   function confirmBoost(ad) {
     Alert.alert(

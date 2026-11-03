@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { auth } from '../lib/firebase';
-import { fetchMoreListings, subscribeListings } from '../lib/listings';
-import { subscribeFavorites } from '../lib/favorites';
+import { useAppData } from '../lib/appData';
 import { rotate, shuffle } from '../lib/sessionFeedRotation';
 import {
   ALL_CHIP_ID, JOB_CHIP_ID, clearRecentSearches, getRecentSearches, pushRecentSearch,
-  searchListings, subscribeCategories,
+  searchListings,
 } from '../lib/search';
-import { homeCache } from '../lib/homeCache';
 import { SearchBar, FilterModal } from '../components/SearchBar';
 import ListingCard from '../components/ListingCard';
 import PromoBannerCarousel from '../components/PromoBannerCarousel';
@@ -53,12 +50,14 @@ function buildRows(items) {
 // Public listing feed with search, category chips and filters.
 // Browsing needs no login. Mirrors frontend/src/pages/Home.jsx.
 export default function HomeScreen({ onOpen }) {
-  const uid = auth.currentUser?.uid;
-  const [listings, setListings] = useState(homeCache.listings); // null = still loading
-  const [error, setError] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [categories, setCategories] = useState(homeCache.categories);
-  const [favorites, setFavorites] = useState([]);
+  // Feed, categories and favorites come from the shared data layer
+  // (lib/appData.js), which is already loaded — or already on screen from the
+  // last visit — before this screen opens.
+  const {
+    listings, listingsError: error, loadingMoreListings: loadingMore,
+    loadMoreListings: loadMore, refreshListings, categories, favorites: savedFavorites,
+  } = useAppData();
+  const favorites = savedFavorites || [];
   const [banners, setBanners] = useState(() => getCachedHomeBanners());
 
   const [search, setSearch] = useState('');
@@ -71,65 +70,20 @@ export default function HomeScreen({ onOpen }) {
   const [searchLoading, setSearchLoading] = useState(false);
   const [recent, setRecent] = useState([]);
 
-  // Pagination (web appData.jsx loadMoreListings: startAfter cursor).
-  const lastDocRef = useRef(homeCache.lastDoc);
-  const [hasMore, setHasMore] = useState(homeCache.hasMore);
-  const [loadingMore, setLoadingMore] = useState(false);
-
   // Feed order: shuffled once per screen visit, then frozen (web Home.jsx),
   // so scrolling doesn't reshuffle under the finger. Items that arrive later
   // (live posts, next pages) are shuffled among themselves and appended.
-  const shuffledRef = useRef(homeCache.listings !== null);
+  const shuffledRef = useRef(listings !== null);
   const [order, setOrder] = useState(() => (
-    homeCache.listings ? shuffle(homeCache.listings.filter(notJob)).map((l) => l.id) : []
+    listings ? shuffle(listings.filter(notJob)).map((l) => l.id) : []
   )); // array of listing ids, display order
 
   const term = search.trim().toLowerCase();
   const filtering = Boolean(term || category || filters.minPrice != null || filters.maxPrice != null || filters.conditions.length > 0);
   const filterCount = (filters.minPrice != null ? 1 : 0) + (filters.maxPrice != null ? 1 : 0) + (filters.conditions.length > 0 ? 1 : 0);
 
-  useEffect(() => {
-    const unsub = subscribeListings((items, page) => {
-      setListings((prev) => {
-        // Merge by id (stable) instead of raw-replacing, so a first-page
-        // onSnapshot update doesn't reshuffle already-rendered cards.
-        let next;
-        if (!prev) {
-          next = items;
-        } else {
-          const byId = new Map(prev.map((l) => [l.id, l]));
-          for (const it of items) byId.set(it.id, it);
-          next = Array.from(byId.values());
-        }
-        homeCache.listings = next;
-        return next;
-      });
-      if (page) {
-        lastDocRef.current = page.lastDoc;
-        homeCache.lastDoc = page.lastDoc;
-        homeCache.hasMore = page.hasMore;
-        setHasMore(page.hasMore);
-      }
-      setError(false);
-    }, () => setError(true));
-    return unsub;
-  }, [reloadKey]);
-
-  useEffect(() => {
-    const unsub = subscribeCategories((data) => {
-      homeCache.categories = data;
-      setCategories(data);
-    }, () => {});
-    return unsub;
-  }, []);
-
   useEffect(() => { getRecentSearches().then(setRecent); }, []);
   useEffect(() => { getHomeBanners().then(setBanners); }, []);
-
-  useEffect(() => {
-    if (!uid) { setFavorites([]); return undefined; }
-    return subscribeFavorites(uid, setFavorites);
-  }, [uid]);
 
   // First arrival is shuffled once; anything new after that is shuffled
   // among itself and appended after what's already showing.
@@ -147,29 +101,6 @@ export default function HomeScreen({ onOpen }) {
       return fresh.length ? [...prev, ...shuffle(fresh).map((l) => l.id)] : prev;
     });
   }, [listings]);
-
-  async function loadMore() {
-    if (loadingMore || !hasMore || !lastDocRef.current || filtering) return;
-    setLoadingMore(true);
-    try {
-      const page = await fetchMoreListings(lastDocRef.current);
-      lastDocRef.current = page.lastDoc;
-      homeCache.lastDoc = page.lastDoc;
-      homeCache.hasMore = page.hasMore;
-      setHasMore(page.hasMore);
-      setListings((prev) => {
-        const byId = new Map((prev || []).map((l) => [l.id, l]));
-        for (const it of page.items) byId.set(it.id, it);
-        const next = Array.from(byId.values());
-        homeCache.listings = next;
-        return next;
-      });
-    } catch {
-      // Silent — next scroll attempt retries.
-    } finally {
-      setLoadingMore(false);
-    }
-  }
 
   // Server-side search (text debounced; chips and filters run right away).
   useEffect(() => {
@@ -263,10 +194,7 @@ export default function HomeScreen({ onOpen }) {
     // subscribeFavorites keeps `favorites` live; nothing else to do here.
   }
 
-  function refresh() {
-    setError(false);
-    setReloadKey((k) => k + 1);
-  }
+  const refresh = refreshListings;
 
   // Listings exist but the feed order hasn't been computed yet (one render
   // after the first snapshot) — still loading, not "No listings yet".

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { auth } from '../lib/firebase';
-import { subscribeMyAds, isLiveAd } from '../lib/ads';
-import { subscribeChats } from '../lib/chat';
-import { getSellerAnalytics, getListingAnalyticsBulk } from '../lib/analytics';
+import { useAppData } from '../lib/appData';
+import { isLiveAd } from '../lib/ads';
+import { getSellerAnalytics, getListingAnalyticsBulk, peekSellerAnalytics } from '../lib/analytics';
 import { DailyBars, RankedBars } from '../components/Charts';
 import BoostCard from '../components/BoostCard';
 import Icon from '../components/Icon';
@@ -43,26 +43,21 @@ function avg(list) {
 export default function DashboardScreen({ onBack, onOpenBoost, onOpenViews, onOpenExpired, onOpenAds }) {
   const uid = auth.currentUser?.uid;
 
-  const [ads, setAds] = useState(null);
-  const [chats, setChats] = useState(null);
+  const { ads, chats } = useAppData(); // null = still loading
   const [rangeKey, setRangeKey] = useState('30');
-  const [daily, setDaily] = useState(null);
-  const [allTimeContacts, setAllTimeContacts] = useState(null);
+  const range = RANGES.find((r) => r.key === rangeKey) || RANGES[1];
+  // First frame shows last-known analytics; the fresh reads below replace them.
+  const [daily, setDaily] = useState(() => peekSellerAnalytics(uid, range.days) ?? null);
+  const [allTimeContacts, setAllTimeContacts] = useState(() => {
+    const rows = peekSellerAnalytics(uid, Infinity);
+    return rows ? rows.reduce((s, a) => s + (a.contacts || 0), 0) : null;
+  });
   const [contactsPerAd, setContactsPerAd] = useState({});
   const [error, setError] = useState('');
 
-  const range = RANGES.find((r) => r.key === rangeKey) || RANGES[1];
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    const unsubAds = subscribeMyAds(uid, setAds, () => setAds([]));
-    const unsubChats = subscribeChats(uid, setChats, () => setChats([]));
-    return () => { unsubAds(); unsubChats(); };
-  }, [uid]);
-
   useEffect(() => {
     if (!uid) return;
-    setDaily(null);
+    setDaily(peekSellerAnalytics(uid, range.days) ?? null);
     getSellerAnalytics(uid, range.days)
       .then((rows) => setDaily(rows))
       .catch(() => { setDaily([]); setError("Couldn't load the daily views chart."); });

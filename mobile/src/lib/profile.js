@@ -1,23 +1,38 @@
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { auth, BACKEND_URL, db } from './firebase';
+
+const EMPTY_PROFILE = { name: 'User', photo: '', phone: '', location: '', subscriptionActive: false, subscriptionExpiresAt: null };
+
+function toProfile(data) {
+  return {
+    name: data.fullName || 'User',
+    // Same priority as the web app: custom upload first, then Telegram photo.
+    photo: data.customPhotoUrl || data.photoUrl || '',
+    phone: data.phone || '',
+    location: data.location || '',
+    subscriptionActive: !!data.subscriptionActive,
+    subscriptionExpiresAt: data.subscriptionExpiresAt?.toMillis ? data.subscriptionExpiresAt.toMillis() : null,
+  };
+}
 
 // Reads the signed-in user's OWN users/{uid} doc (allowed by firestore.rules).
 export async function getMyProfile(uid) {
   try {
     const snap = await getDoc(doc(db, 'users', uid));
-    const data = snap.exists() ? snap.data() : {};
-    return {
-      name: data.fullName || 'User',
-      // Same priority as the web app: custom upload first, then Telegram photo.
-      photo: data.customPhotoUrl || data.photoUrl || '',
-      phone: data.phone || '',
-      location: data.location || '',
-      subscriptionActive: !!data.subscriptionActive,
-      subscriptionExpiresAt: data.subscriptionExpiresAt?.toMillis ? data.subscriptionExpiresAt.toMillis() : null,
-    };
+    return toProfile(snap.exists() ? snap.data() : {});
   } catch {
-    return { name: 'User', photo: '', phone: '', location: '', subscriptionActive: false, subscriptionExpiresAt: null };
+    return EMPTY_PROFILE;
   }
+}
+
+// Live version of the above (web appData.jsx keeps this doc live too), so an
+// Edit Info save shows everywhere without a manual refetch.
+export function subscribeMyProfile(uid, onChange) {
+  return onSnapshot(
+    doc(db, 'users', uid),
+    (snap) => onChange(toProfile(snap.exists() ? snap.data() : {})),
+    () => {},
+  );
 }
 
 const PHONE_RE = /^(?:\+251|0)(7|9)\d{8}$/;

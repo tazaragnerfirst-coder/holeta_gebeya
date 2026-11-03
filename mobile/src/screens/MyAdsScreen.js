@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import { auth } from '../lib/firebase';
-import { subscribeMyAds, setAdStatus, deleteAd, isLiveAd } from '../lib/ads';
+import { useAppData } from '../lib/appData';
+import { setAdStatus, deleteAd, isLiveAd } from '../lib/ads';
 import { formatListingPrice } from '../lib/listings';
 import ScreenShell from '../components/ScreenShell';
 import Icon from '../components/Icon';
@@ -9,14 +9,8 @@ import { colors, font, radius } from '../theme';
 
 // The seller's own listings: pause/resume and delete. Editing an ad comes in a later step.
 export default function MyAdsScreen({ onBack, onOpen }) {
-  const uid = auth.currentUser?.uid;
-  const [ads, setAds] = useState(null);
+  const { ads } = useAppData(); // null = still loading
   const [busyId, setBusyId] = useState(null);
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    return subscribeMyAds(uid, setAds, () => setAds([]));
-  }, [uid]);
 
   async function togglePause(ad) {
     setBusyId(ad.id);

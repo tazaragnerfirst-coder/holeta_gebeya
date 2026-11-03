@@ -3,12 +3,10 @@ import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Tex
 import { LinearGradient } from 'expo-linear-gradient';
 import { signOut } from '@firebase/auth';
 import { auth } from '../lib/firebase';
-import { getMyProfile, isSubscriptionActive } from '../lib/profile';
-import { getSellerRating } from '../lib/store';
+import { useAppData } from '../lib/appData';
+import { isSubscriptionActive } from '../lib/profile';
 import { getAppBannerUrl } from '../lib/appBanner';
-import { subscribeWalletBalance } from '../lib/wallet';
-import { subscribeCoinBalance, formatCoin } from '../lib/coin';
-import { subscribeMyAds } from '../lib/ads';
+import { formatCoin } from '../lib/coin';
 import Icon from '../components/Icon';
 import StarRow from '../components/StarRow';
 import { colors, font, radius } from '../theme';
@@ -17,26 +15,15 @@ import { colors, font, radius } from '../theme';
 // three quick cards, then two grouped menu boxes (same items, same order).
 // App-only: the Log out row at the bottom (the bot has no logout).
 export default function ProfileScreen({ onNavigate, onOpenSupport }) {
-  const uid = auth.currentUser?.uid;
-  const [profile, setProfile] = useState(null);
-  const [rating, setRating] = useState({ avg: 0, count: 0 });
+  // Profile, rating, balances and ad count come from the shared data layer,
+  // so this screen opens already filled in (null profile = nothing known yet).
+  const { profile, sellerRating: rating, walletBalance: walletBal, coinBalance: coinBal, ads } = useAppData();
+  const walletBalance = walletBal ?? 0;
+  const coinBalance = coinBal ?? 0;
+  const adCount = ads ? ads.length : 0;
   const [bannerUrl, setBannerUrl] = useState(null);
-  const [walletBalance, setWalletBalance] = useState(0);
-  const [coinBalance, setCoinBalance] = useState(0);
-  const [adCount, setAdCount] = useState(0);
 
-  useEffect(() => {
-    if (!uid) return undefined;
-    getMyProfile(uid).then(setProfile);
-    getSellerRating(uid).then(setRating);
-    getAppBannerUrl().then(setBannerUrl);
-    const unsubs = [
-      subscribeWalletBalance(uid, setWalletBalance),
-      subscribeCoinBalance(uid, setCoinBalance),
-      subscribeMyAds(uid, (ads) => setAdCount(ads.length), () => {}),
-    ];
-    return () => unsubs.forEach((u) => u && u());
-  }, [uid]);
+  useEffect(() => { getAppBannerUrl().then(setBannerUrl); }, []);
 
   function confirmLogout() {
     Alert.alert('Log out?', 'You will need to log in with Telegram again.', [

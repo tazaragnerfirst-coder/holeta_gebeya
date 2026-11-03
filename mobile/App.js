@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, BackHandler, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -7,7 +7,9 @@ import {
 } from '@expo-google-fonts/inter';
 import { onAuthStateChanged } from '@firebase/auth';
 import { auth } from './src/lib/firebase';
-import { openSupportChat, subscribeChats } from './src/lib/chat';
+import { openSupportChat } from './src/lib/chat';
+import { AppDataProvider, useAppData } from './src/lib/appData';
+import { hydrateCache } from './src/lib/pageCache';
 import { getMyProfile } from './src/lib/profile';
 import { colors, font } from './src/theme';
 import Icon from './src/components/Icon';
@@ -47,31 +49,45 @@ const DASHBOARD_SCREENS = ['views', 'expired', 'myAds'];
 // Bot hides its nav on a chat thread and on a product page.
 const NAV_HIDDEN_SCREENS = ['chat', 'listing'];
 
+// Root: loads the saved cache from disk, tracks the login, and mounts the
+// shared data layer ABOVE every screen (bot: AppDataProvider in main.jsx), so
+// the feed, chats, ads, wallet… are already loading — or already on screen
+// from last time — before any screen opens.
 export default function App() {
+  const [cacheReady, setCacheReady] = useState(false);
+  // undefined = still checking the saved session, null = logged out
+  const [user, setUser] = useState(undefined);
+
+  useEffect(() => { hydrateCache().finally(() => setCacheReady(true)); }, []);
+  useEffect(() => onAuthStateChanged(auth, setUser), []);
+
+  // The splash screen stays up until the cache is in memory (a few ms).
+  if (!cacheReady) return null;
+  return (
+    <AppDataProvider uid={user === undefined ? undefined : (user ? user.uid : null)}>
+      <AppShell user={user} />
+    </AppDataProvider>
+  );
+}
+
+function AppShell({ user }) {
   const [fontsLoaded] = useFonts({
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold,
   });
 
-  // undefined = still checking the saved session, null = logged out
-  const [user, setUser] = useState(undefined);
   // Bottom tab: 'home', 'chats', 'dashboard' or 'profile'
   const [tab, setTab] = useState('home');
   // Screens opened on top of the tabs, newest last. Back pops one, so
   // e.g. Saved listings -> a listing -> Back returns to Saved listings.
   const [stack, setStack] = useState([]);
 
-  useEffect(() => onAuthStateChanged(auth, setUser), []);
-
   // Total unread across conversations -> the dot on the Chat tab (same as the bot).
-  const [totalUnread, setTotalUnread] = useState(0);
-  useEffect(() => {
-    if (!user) { setTotalUnread(0); return undefined; }
-    return subscribeChats(
-      user.uid,
-      (chats) => setTotalUnread(chats.reduce((sum, c) => sum + (c.unreadCount?.[user.uid] || 0), 0)),
-      () => {},
-    );
-  }, [user]);
+  const { chats } = useAppData();
+  const uid = user ? user.uid : null;
+  const totalUnread = useMemo(
+    () => (uid && chats ? chats.reduce((sum, c) => sum + (c.unreadCount?.[uid] || 0), 0) : 0),
+    [chats, uid],
+  );
 
   // Bot hides the nav while a text field is focused (on-screen keyboard open).
   const [keyboardOpen, setKeyboardOpen] = useState(false);

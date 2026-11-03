@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import { auth } from '../lib/firebase';
-import { subscribeFavorites } from '../lib/favorites';
+import { useAppData } from '../lib/appData';
 import ScreenShell from '../components/ScreenShell';
 import ListingCard from '../components/ListingCard';
 import Icon from '../components/Icon';
@@ -11,13 +9,7 @@ import { colors, font } from '../theme';
 // Saved listings as the same card grid as Home (web Favorites.jsx).
 // Tapping a card opens its detail view.
 export default function FavoritesScreen({ onBack, onOpen }) {
-  const uid = auth.currentUser?.uid;
-  const [favorites, setFavorites] = useState(null);
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    return subscribeFavorites(uid, setFavorites);
-  }, [uid]);
+  const { favorites } = useAppData(); // null = still loading
 
   function toListing(f) {
     return {

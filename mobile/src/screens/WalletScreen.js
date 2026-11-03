@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import ScreenShell, { ui } from '../components/ScreenShell';
 import { auth } from '../lib/firebase';
-import { getPendingWalletTopup, subscribeWalletBalance, subscribeWalletTransactions } from '../lib/wallet';
+import { useAppData } from '../lib/appData';
+import { getPendingWalletTopup } from '../lib/wallet';
 import { MIN_WALLET_TOPUP_ETB } from '../lib/constants';
 import { formatTxDate } from '../lib/format';
 
@@ -11,16 +12,13 @@ const TX_LABEL = { topup: 'Top-up', subscription: 'Subscription', boost: 'Boost'
 // Balance, pending top-up notice and history. Adding money needs a receipt photo, which is done in the web app for now.
 export default function WalletScreen({ onBack }) {
   const uid = auth.currentUser?.uid;
-  const [balance, setBalance] = useState(null);
-  const [txs, setTxs] = useState(null);
+  // Balance and history come from the shared data layer (null = still loading).
+  const { walletBalance: balance, walletTransactions: txs } = useAppData();
   const [pending, setPending] = useState(undefined);
 
   useEffect(() => {
-    if (!uid) return undefined;
+    if (!uid) return;
     getPendingWalletTopup(uid).then(setPending).catch(() => setPending(null));
-    const a = subscribeWalletBalance(uid, setBalance);
-    const b = subscribeWalletTransactions(uid, setTxs);
-    return () => { a(); b(); };
   }, [uid]);
 
   return (

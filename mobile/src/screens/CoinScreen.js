@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Alert, Pressable, Text, TextInput, View } from 'react-native';
 import ScreenShell, { ui } from '../components/ScreenShell';
-import { auth } from '../lib/firebase';
 import {
-  buyCoin, formatCoin, resolveCoinAddress, sellCoin, subscribeCoinBalance,
-  subscribeCoinMarket, subscribeCoinTransactions, transferCoin,
+  buyCoin, formatCoin, resolveCoinAddress, sellCoin, transferCoin,
 } from '../lib/coin';
+import { useAppData } from '../lib/appData';
 import { COIN_BASE_RATE_ETB, MIN_COIN_BUY_ETB, MIN_COIN_SELL_AMOUNT } from '../lib/constants';
 import { formatTxDate } from '../lib/format';
 
@@ -16,10 +15,8 @@ const TX_LABEL = {
 
 // Holeta Coin: balance, buy/sell against the wallet, send to another address, history.
 export default function CoinScreen({ onBack }) {
-  const uid = auth.currentUser?.uid;
-  const [balance, setBalance] = useState(null);
-  const [market, setMarket] = useState(null);
-  const [txs, setTxs] = useState(null);
+  // Balance, rate and history come from the shared data layer (null = still loading).
+  const { coinBalance: balance, coinMarket: market, coinTransactions: txs } = useAppData();
   const [side, setSide] = useState('buy');
   const [amount, setAmount] = useState('');
   const [tradeBusy, setTradeBusy] = useState(false);
@@ -29,14 +26,6 @@ export default function CoinScreen({ onBack }) {
   const [preview, setPreview] = useState(null);
   const [sendBusy, setSendBusy] = useState(false);
   const [sendError, setSendError] = useState('');
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    const a = subscribeCoinBalance(uid, setBalance);
-    const b = subscribeCoinMarket(setMarket);
-    const c = subscribeCoinTransactions(uid, setTxs);
-    return () => { a(); b(); c(); };
-  }, [uid]);
 
   useEffect(() => {
     const address = sendAddress.trim();

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import ScreenShell, { ui } from '../components/ScreenShell';
-import { auth } from '../lib/firebase';
-import { formatExpiry, getMyProfile, isSubscriptionActive } from '../lib/profile';
-import { spendWallet, subscribeWalletBalance } from '../lib/wallet';
+import { useAppData } from '../lib/appData';
+import { formatExpiry, isSubscriptionActive } from '../lib/profile';
+import { spendWallet } from '../lib/wallet';
 import { SUBSCRIPTION_PERIOD_DAYS, SUBSCRIPTION_PRICE_ETB } from '../lib/constants';
 
 const PERKS = [
@@ -16,17 +16,9 @@ const PERKS = [
 
 // Subscribe with wallet money (server-verified, instant).
 export default function SubscriptionScreen({ onBack, onOpenWallet }) {
-  const uid = auth.currentUser?.uid;
-  const [profile, setProfile] = useState(null);
-  const [balance, setBalance] = useState(null);
+  const { profile, walletBalance: balance } = useAppData(); // null = still loading
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!uid) return undefined;
-    getMyProfile(uid).then(setProfile);
-    return subscribeWalletBalance(uid, setBalance);
-  }, [uid]);
 
   const active = isSubscriptionActive(profile);
   const low = balance !== null && balance < SUBSCRIPTION_PRICE_ETB;
@@ -36,8 +28,8 @@ export default function SubscriptionScreen({ onBack, onOpenWallet }) {
     setBusy(true);
     setError('');
     try {
+      // The profile is live (shared data layer), so the new status appears by itself.
       await spendWallet({ type: 'subscription' });
-      setProfile(await getMyProfile(uid));
     } catch (err) {
       setError(err.insufficient ? `Not enough balance — you need ${SUBSCRIPTION_PRICE_ETB} ETB.` : err.message);
     } finally {
