@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   favBtnActive: { backgroundColor: colors.accentDark },
   footer: { paddingTop: 7, paddingHorizontal: 2 },
   footerJob: { flex: 1, paddingTop: 1, paddingLeft: 0 },
-  eyebrow: { fontFamily: font.familyBold, fontSize: 8.5, color: colors.inkFaint, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 3 },
+  eyebrow: { fontFamily: font.familyBold, fontSize: 8.5, color: colors.inkFaint, textTransform: 'uppercase', letterSpacing: 0.425, marginBottom: 3 },
   title: { fontFamily: font.familySemiBold, fontSize: 12.5, color: colors.ink, lineHeight: 16 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
   ratingValue: { fontFamily: font.familyBold, fontSize: 10.5, color: colors.inkSoft },

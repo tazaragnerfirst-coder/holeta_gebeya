@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { CONDITIONS } from '../lib/search';
 import Icon from './Icon';
 import { colors, font, radius } from '../theme';
@@ -10,6 +10,7 @@ export function SearchBar({
   value, onChange, onSubmit, suggestions = [], recent = [], popularTags = [], onClearRecent, filterCount = 0, onOpenFilters,
 }) {
   const [focused, setFocused] = useState(false);
+  const barRef = useRef(null);
   const term = value.trim();
   const typing = focused && term.length > 0;
   const idle = focused && term.length === 0 && (recent.length > 0 || popularTags.length > 0);
@@ -22,7 +23,8 @@ export function SearchBar({
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.bar, focused && styles.barFocused]}>
+      <View style={[styles.ring, focused && styles.ringOn]}>
+      <View ref={barRef} style={styles.bar}>
         <Icon name="search" size={17} color={colors.inkFaint} />
         <TextInput
           style={styles.input}
@@ -41,10 +43,24 @@ export function SearchBar({
           </Pressable>
         ) : null}
         <View style={styles.divider} />
-        <Pressable onPress={onOpenFilters} style={styles.filterBtn} accessibilityRole="button" accessibilityLabel="Filters">
+        <Pressable
+          onPress={() => {
+            setFocused(false);
+            // Web anchors the filter dropdown 8px under the bar's real bottom edge.
+            if (barRef.current?.measureInWindow) {
+              barRef.current.measureInWindow((x, y, w, h) => onOpenFilters(Math.round(y + h + 8)));
+            } else {
+              onOpenFilters();
+            }
+          }}
+          style={({ pressed }) => [styles.filterBtn, pressed && styles.filterBtnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Filters"
+        >
           <Icon name="sliders" size={17} color={colors.inkSoft} />
           {filterCount > 0 ? <View style={styles.filterDot} /> : null}
         </Pressable>
+      </View>
       </View>
 
       {typing && suggestions.length > 0 ? (
@@ -58,9 +74,8 @@ export function SearchBar({
         </View>
       ) : typing ? (
         <View style={styles.panel}>
-          <Pressable onPress={() => commit(value)} style={styles.suggestion}>
-            <Icon name="search" size={15} color={colors.inkFaint} />
-            <Text style={styles.suggestionText}>Press Enter to search "{term}"</Text>
+          <Pressable onPress={() => commit(value)}>
+            <Text style={styles.suggestionEmpty}>Press Enter to search "{term}"</Text>
           </Pressable>
         </View>
       ) : null}
@@ -70,7 +85,7 @@ export function SearchBar({
           {recent.length > 0 ? (
             <>
               <View style={styles.panelHead}>
-                <Text style={styles.panelTitle}>Recent Searches</Text>
+                <Text style={styles.panelTitleHead}>Recent Searches</Text>
                 <Pressable onPress={onClearRecent} hitSlop={8}>
                   <Text style={styles.link}>Clear all</Text>
                 </Pressable>
@@ -104,8 +119,10 @@ export function SearchBar({
   );
 }
 
-// Price range + condition filters, shown as a bottom sheet.
-export function FilterModal({ visible, filters, onApply, onClose }) {
+// Price range + condition filters. Web FilterSheet is a dropdown card that
+// floats under the search bar (not a bottom sheet) over a dimmed backdrop.
+export function FilterModal({ visible, filters, onApply, onClose, anchorTop }) {
+  const { height } = useWindowDimensions();
   const [minPrice, setMinPrice] = useState(filters.minPrice != null ? String(filters.minPrice) : '');
   const [maxPrice, setMaxPrice] = useState(filters.maxPrice != null ? String(filters.maxPrice) : '');
   const [conditions, setConditions] = useState(filters.conditions || []);
@@ -141,56 +158,64 @@ export function FilterModal({ visible, filters, onApply, onClose }) {
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={styles.sheet}>
-        <View style={styles.sheetHead}>
-          <Text style={styles.sheetTitle}>Filters</Text>
-          <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
-            <Icon name="x" size={18} color={colors.inkSoft} />
-          </Pressable>
-        </View>
-        <ScrollView contentContainerStyle={styles.sheetBody}>
-          <Text style={styles.label}>Price Range (ETB)</Text>
-          <View style={styles.priceRow}>
-            <TextInput
-              style={styles.priceInput}
-              placeholder="Min"
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="numeric"
-              value={minPrice}
-              onChangeText={setMinPrice}
-            />
-            <Text style={styles.dash}>—</Text>
-            <TextInput
-              style={styles.priceInput}
-              placeholder="Max"
-              placeholderTextColor={colors.inkFaint}
-              keyboardType="numeric"
-              value={maxPrice}
-              onChangeText={setMaxPrice}
-            />
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <Pressable style={StyleSheet.absoluteFill} onPress={onClose}>
+        <View style={styles.backdrop} />
+      </Pressable>
+      <View style={[styles.dropWrap, { top: anchorTop ?? 116 }]} pointerEvents="box-none">
+        <View style={[styles.dropdown, { maxHeight: Math.min(height * 0.72, 520) }]}>
+          <View style={styles.sheetHead}>
+            <Text style={styles.sheetTitle}>Filters</Text>
+            <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
+              <Icon name="x" size={18} color={colors.inkSoft} />
+            </Pressable>
           </View>
+          <ScrollView style={styles.sheetScroll} keyboardShouldPersistTaps="handled">
+            <View style={styles.filterBlock}>
+              <Text style={styles.label}>Price Range (ETB)</Text>
+              <View style={styles.priceRow}>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Min"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="numeric"
+                  value={minPrice}
+                  onChangeText={setMinPrice}
+                />
+                <Text style={styles.dash}>—</Text>
+                <TextInput
+                  style={styles.priceInput}
+                  placeholder="Max"
+                  placeholderTextColor={colors.inkFaint}
+                  keyboardType="numeric"
+                  value={maxPrice}
+                  onChangeText={setMaxPrice}
+                />
+              </View>
+            </View>
 
-          <Text style={styles.label}>Condition</Text>
-          <View style={styles.tags}>
-            {CONDITIONS.map((c) => {
-              const on = conditions.includes(c);
-              return (
-                <Pressable key={c} onPress={() => toggle(c)} style={[styles.chip, on && styles.chipOn]}>
-                  <Text style={[styles.chipText, on && styles.chipOnText]}>{c}</Text>
-                </Pressable>
-              );
-            })}
+            <View style={styles.filterBlock}>
+              <Text style={styles.label}>Condition</Text>
+              <View style={styles.tags}>
+                {CONDITIONS.map((c) => {
+                  const on = conditions.includes(c);
+                  return (
+                    <Pressable key={c} onPress={() => toggle(c)} style={[styles.chip, on && styles.chipOn]}>
+                      <Text style={[styles.chipText, on && styles.chipOnText]}>{c}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          </ScrollView>
+          <View style={styles.sheetActions}>
+            <Pressable onPress={reset} style={styles.ghost}>
+              <Text style={styles.ghostText}>Reset</Text>
+            </Pressable>
+            <Pressable onPress={apply} style={styles.primary}>
+              <Text style={styles.primaryText}>Apply Filters</Text>
+            </Pressable>
           </View>
-        </ScrollView>
-        <View style={styles.sheetActions}>
-          <Pressable onPress={reset} style={styles.ghost}>
-            <Text style={styles.ghostText}>Reset</Text>
-          </Pressable>
-          <Pressable onPress={apply} style={styles.primary}>
-            <Text style={styles.primaryText}>Apply Filters</Text>
-          </Pressable>
         </View>
       </View>
     </Modal>
@@ -199,21 +224,25 @@ export function FilterModal({ visible, filters, onApply, onClose }) {
 
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, paddingTop: 48, paddingBottom: 4, backgroundColor: colors.bgApp, zIndex: 10 },
+  // Web .search-bar: 13px/16px padding, and the focus state is a 3px ring
+  // OUTSIDE the pill (box-shadow), so the ring wraps it with negative margin
+  // and the bar never changes size.
+  ring: { borderRadius: radius.pill, padding: 3, margin: -3 },
+  ringOn: { backgroundColor: colors.tgActive },
   bar: {
     flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: colors.tgSearch,
-    borderRadius: radius.pill, paddingLeft: 16, paddingRight: 8, height: 48,
-    borderWidth: 3, borderColor: 'transparent',
+    borderRadius: radius.pill, paddingVertical: 13, paddingHorizontal: 16,
   },
-  barFocused: { borderColor: colors.tgActive },
   input: { flex: 1, fontFamily: font.family, fontSize: 14, color: colors.ink, paddingVertical: 0 },
   filterBtn: {
     width: 34, height: 34, borderRadius: radius.sm, backgroundColor: colors.tgBar,
     alignItems: 'center', justifyContent: 'center',
   },
+  filterBtnPressed: { backgroundColor: colors.tgActive },
   divider: { width: 1, height: 22, backgroundColor: colors.line },
   filterDot: {
     position: 'absolute', top: 2, right: 2, width: 8, height: 8, borderRadius: 4,
-    backgroundColor: colors.safety, borderWidth: 2, borderColor: colors.tgSearch,
+    backgroundColor: colors.safety, borderWidth: 2, borderColor: colors.surface,
   },
   panel: {
     marginTop: 8, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md,
@@ -221,6 +250,8 @@ const styles = StyleSheet.create({
     shadowColor: '#141612', shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.18, shadowRadius: 17, elevation: 8,
   },
   panelHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 9 },
+  panelTitleHead: { fontFamily: font.familyExtraBold, fontSize: 11, color: colors.inkFaint, textTransform: 'uppercase', letterSpacing: 0.4 },
+  suggestionEmpty: { paddingVertical: 16, paddingHorizontal: 6, fontFamily: font.family, fontSize: 12.5, color: colors.inkFaint, textAlign: 'center' },
   panelTitle: { fontFamily: font.familyExtraBold, fontSize: 11, color: colors.inkFaint, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 9 },
   suggestion: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 10, paddingHorizontal: 6 },
   suggestionText: { flex: 1, fontFamily: font.family, fontSize: 13.5, color: colors.ink },
@@ -239,25 +270,24 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: font.familySemiBold, fontSize: 12.5, color: colors.inkSoft },
   chipOnText: { color: colors.white },
   backdrop: { flex: 1, backgroundColor: 'rgba(20,22,18,0.28)' },
-  sheet: {
-    backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg,
-    maxHeight: '72%', paddingBottom: 24,
+  dropWrap: { position: 'absolute', left: 0, right: 0, alignItems: 'center', paddingHorizontal: 16 },
+  dropdown: {
+    width: '100%', maxWidth: 448, backgroundColor: colors.surface, borderRadius: radius.lg, padding: 16,
+    shadowColor: '#141612', shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.3, shadowRadius: 22, elevation: 12,
   },
-  sheetHead: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 14,
-  },
+  sheetHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 },
   sheetTitle: { fontFamily: font.familyExtraBold, fontSize: 16.5, color: colors.ink },
   closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center' },
-  sheetBody: { padding: 16 },
-  label: { fontFamily: font.familyBold, fontSize: 12.5, color: colors.inkSoft, marginTop: 0, marginBottom: 9 },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+  sheetScroll: { flexGrow: 0 },
+  filterBlock: { marginBottom: 18 },
+  label: { fontFamily: font.familyBold, fontSize: 12.5, color: colors.inkSoft, marginBottom: 9 },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   priceInput: {
-    flex: 1, borderWidth: 1.5, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.bgApp,
+    flex: 1, minWidth: 0, borderWidth: 1.5, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.surface,
     paddingHorizontal: 12, paddingVertical: 11, fontFamily: font.family, fontSize: 14, color: colors.ink,
   },
   dash: { color: colors.inkFaint, fontFamily: font.familySemiBold },
-  sheetActions: { flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
+  sheetActions: { flexDirection: 'row', gap: 10, marginTop: 6 },
   ghost: {
     flex: 1, backgroundColor: colors.surfaceSunken, borderRadius: 14, paddingVertical: 13, paddingHorizontal: 16, alignItems: 'center',
   },

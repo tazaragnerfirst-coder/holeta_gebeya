@@ -75,7 +75,7 @@ export default function PromoBannerCarousel({ banners }) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { marginHorizontal: 16, marginTop: 14, borderRadius: radius.lg, overflow: 'hidden' },
+  wrap: { marginHorizontal: 16, marginTop: 14, marginBottom: 14, borderRadius: radius.lg, overflow: 'hidden' },
   sizer: { width: '100%', aspectRatio: 970 / 250 },
   dots: { position: 'absolute', left: 0, right: 0, bottom: 10, flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.55)' },

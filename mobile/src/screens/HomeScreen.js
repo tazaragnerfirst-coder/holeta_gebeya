@@ -65,6 +65,7 @@ export default function HomeScreen({ onOpen }) {
   const [category, setCategory] = useState(null); // null, a category id, or JOB_CHIP_ID
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [filterAnchor, setFilterAnchor] = useState(null);
 
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -306,7 +307,7 @@ export default function HomeScreen({ onOpen }) {
         popularTags={popularTags}
         onClearRecent={handleClearRecent}
         filterCount={filterCount}
-        onOpenFilters={() => setFilterOpen(true)}
+        onOpenFilters={(top) => { setFilterAnchor(top ?? null); setFilterOpen(true); }}
       />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipRow}>
         {chips.map((c) => {
@@ -427,6 +428,7 @@ export default function HomeScreen({ onOpen }) {
       />
       <FilterModal
         visible={filterOpen}
+        anchorTop={filterAnchor}
         filters={filters}
         onApply={setFilters}
         onClose={() => setFilterOpen(false)}
@@ -439,7 +441,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.bgApp },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   muted: { fontFamily: font.family, fontSize: 14, color: colors.inkSoft, textAlign: 'center' },
-  emptyBox: { padding: 24, alignItems: 'center' },
+  emptyBox: { paddingTop: 44, paddingHorizontal: 20, paddingBottom: 24, alignItems: 'center' },
   emptyTags: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 14 },
   tagAccent: {
     flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9,
@@ -450,23 +452,21 @@ const styles = StyleSheet.create({
   stateBox: { alignItems: 'center', paddingVertical: 24, paddingHorizontal: 20 },
   stateIcon: {
     width: 60, height: 60, borderRadius: 30, backgroundColor: colors.surfaceSunken,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 14,
   },
   stateTitle: { fontFamily: font.familyExtraBold, fontSize: 15, color: colors.ink },
   stateSub: {
-    marginTop: 6, fontFamily: font.family, fontSize: 12.5, color: colors.inkFaint,
+    marginTop: 5, fontFamily: font.family, fontSize: 12.5, color: colors.inkFaint,
     textAlign: 'center', lineHeight: 19, maxWidth: 260,
   },
-  link: { marginTop: 10, fontFamily: font.familyBold, fontSize: 12, color: colors.primary },
-  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20, marginBottom: 10, marginHorizontal: 6 },
+  link: { marginTop: 14, fontFamily: font.familyBold, fontSize: 12, color: colors.primary },
+  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 20, marginBottom: 10, marginHorizontal: 16 },
   sectionTitleText: { fontFamily: font.familyBold, fontSize: 15, color: colors.ink },
-  boostScroll: { gap: 11, paddingBottom: 4, paddingHorizontal: 6 },
+  boostScroll: { gap: 11, paddingBottom: 4, paddingHorizontal: 16 },
   boostCard: { width: 152 },
   // One segmented pill (web .cat-chip-row): tgBar track, active = tgActive.
-  chipScroll: { flexGrow: 0, marginTop: 14, marginHorizontal: 16 },
-  chipRow: {
-    gap: 2, padding: 5, backgroundColor: colors.tgBar, borderRadius: radius.pill, alignItems: 'center',
-  },
+  chipScroll: { flexGrow: 0, marginTop: 14, marginHorizontal: 16, backgroundColor: colors.tgBar, borderRadius: radius.pill },
+  chipRow: { gap: 2, padding: 5, alignItems: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 16, paddingVertical: 9, borderRadius: radius.pill },
   chipActive: { backgroundColor: colors.tgActive },
   chipText: { fontFamily: font.familyBold, fontSize: 13.5, color: colors.inkSoft },
