@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, BackHandler, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, AppState, BackHandler, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
 import {
@@ -10,6 +10,7 @@ import { auth } from './src/lib/firebase';
 import { openSupportChat } from './src/lib/chat';
 import { AppDataProvider, useAppData } from './src/lib/appData';
 import { hydrateCache } from './src/lib/pageCache';
+import { maybeOfferUpdate } from './src/lib/update';
 import { getMyProfile } from './src/lib/profile';
 import { colors, font } from './src/theme';
 import Icon from './src/components/Icon';
@@ -96,6 +97,20 @@ function AppShell({ user }) {
     const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardOpen(false));
     return () => { show.remove(); hide.remove(); };
   }, []);
+
+  // In-app update: a small, throttled check a few seconds AFTER the first
+  // screen is up (never at startup), and again when the app returns to the
+  // foreground. Downloading only happens if the person agrees (lib/update.js).
+  const [updateProgress, setUpdateProgress] = useState(null); // 0..1 while downloading
+  const readyToCheck = user !== undefined;
+  useEffect(() => {
+    if (!readyToCheck) return undefined;
+    const t = setTimeout(() => maybeOfferUpdate(setUpdateProgress), 5000);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') maybeOfferUpdate(setUpdateProgress);
+    });
+    return () => { clearTimeout(t); sub.remove(); };
+  }, [readyToCheck]);
 
   const push = (name, params = {}) => setStack((s) => [...s, { name, params }]);
   const pop = () => setStack((s) => s.slice(0, -1));
@@ -248,6 +263,12 @@ function AppShell({ user }) {
           </View>
         </View>
       ) : null}
+      {updateProgress !== null ? (
+        <View style={styles.updateOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.updateText}>Downloading update… {Math.round(updateProgress * 100)}%</Text>
+        </View>
+      ) : null}
       <StatusBar style="dark" />
     </View>
   );
@@ -268,6 +289,11 @@ function TabButton({ tab, active, dot, onPress }) {
 // Values mirror .bottom-nav-wrap / .bottom-nav / .nav-item / .nav-fab in frontend/src/styles/theme.css.
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bgApp },
+  updateOverlay: {
+    ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  updateText: { marginTop: 12, fontFamily: font.familySemiBold, fontSize: 14, color: colors.ink },
   content: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   navWrap: { position: 'absolute', left: 16, right: 16, bottom: 12 },

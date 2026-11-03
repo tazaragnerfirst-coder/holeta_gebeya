@@ -61,7 +61,8 @@ jobs:
           KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          # 64-bit phones only: roughly a third of the download size (data-saving updates).
+          ./gradlew assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
         working-directory: mobile/android
 
       - name: Rename APK
@@ -90,7 +91,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # The app reads this tiny file to learn about updates (see mobile/src/lib/update.js).
+          SIZE=$(stat -c%s HoletaGebeya-next.apk)
+          printf '{"versionCode": %s, "versionName": "1.%s", "size": %s, "url": "https://github.com/%s/releases/download/mobile-apk-latest/HoletaGebeya-next.apk"}\n' \
+            "${{ github.run_number }}" "${{ github.run_number }}" "$SIZE" "${{ github.repository }}" > version.json
+          cat version.json
           gh release delete mobile-apk-latest --cleanup-tag --yes || true
-          gh release create mobile-apk-latest HoletaGebeya-next.apk \
+          gh release create mobile-apk-latest HoletaGebeya-next.apk version.json \
             --title "Holeta Gebeya (native app, preview)" \
             --notes "Native app preview. Future updates install over the top of this one."
