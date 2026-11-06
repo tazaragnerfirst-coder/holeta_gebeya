@@ -41,6 +41,7 @@ export default function SearchHeader({
   onOpenFilters,
   activeFilterCount = 0,
   onSearchFocus,
+  onOpenVideos,
 }) {
   const [focused, setFocused] = useState(false);
   const [recent, setRecent] = useState(getRecentSearches());
@@ -71,36 +72,48 @@ export default function SearchHeader({
 
   return (
     <div className="search-header" ref={wrapRef}>
-      <div className={`search-bar ${focused ? 'is-focused' : ''}`}>
-        <Icon name="search" size={17} style={{ color: 'var(--ink-faint)', flex: '0 0 auto' }} />
-        <input
-          placeholder="Search listings..."
-          value={value}
-          onFocus={() => { setFocused(true); onSearchFocus?.(); }}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && value.trim()) commit(value);
-            if (e.key === 'Escape') { e.currentTarget.blur(); setFocused(false); }
-          }}
-        />
-        {value && (
-          <Icon
-            name="xCircle"
-            size={17}
-            style={{ color: 'var(--ink-faint)', cursor: 'pointer', flex: '0 0 auto' }}
-            onClick={() => onChange('')}
+      <div className="search-row">
+        <div className={`search-bar ${focused ? 'is-focused' : ''}`}>
+          <Icon name="search" size={17} style={{ color: 'var(--ink-faint)', flex: '0 0 auto' }} />
+          <input
+            placeholder="Search listings..."
+            value={value}
+            onFocus={() => { setFocused(true); onSearchFocus?.(); }}
+            onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && value.trim()) commit(value);
+              if (e.key === 'Escape') { e.currentTarget.blur(); setFocused(false); }
+            }}
           />
+          {value && (
+            <Icon
+              name="xCircle"
+              size={17}
+              style={{ color: 'var(--ink-faint)', cursor: 'pointer', flex: '0 0 auto' }}
+              onClick={() => onChange('')}
+            />
+          )}
+          <span className="search-divider" />
+          <button
+            type="button"
+            className="filter-btn"
+            aria-label="Advanced filters"
+            onClick={() => { setFocused(false); onOpenFilters(); }}
+          >
+            <Icon name="sliders" size={17} />
+            {activeFilterCount > 0 && <span className="filter-dot" />}
+          </button>
+        </div>
+        {onOpenVideos && (
+          <button
+            type="button"
+            className="video-btn"
+            aria-label="Videos"
+            onClick={() => { setFocused(false); onOpenVideos(); }}
+          >
+            <Icon name="videoStack" size={26} />
+          </button>
         )}
-        <span className="search-divider" />
-        <button
-          type="button"
-          className="filter-btn"
-          aria-label="Advanced filters"
-          onClick={() => { setFocused(false); onOpenFilters(); }}
-        >
-          <Icon name="sliders" size={17} />
-          {activeFilterCount > 0 && <span className="filter-dot" />}
-        </button>
       </div>
 
       {(showIdlePanel || typing) && (

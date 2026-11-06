@@ -71,6 +71,7 @@ const Store = lazy(() => import('./pages/Store.jsx'));
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy.jsx'));
 const Settings = lazy(() => import('./pages/Settings.jsx'));
 const HoletaCoin = lazy(() => import('./pages/HoletaCoin.jsx'));
+const VideoPage = lazy(() => import('./pages/VideoPage.jsx'));
 
 function RouteFallback() {
   return (
@@ -142,6 +143,7 @@ export default function App() {
                   <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                   <Route path="/settings" element={<Settings />} />
                   <Route path="/holeta-coin" element={<HoletaCoin />} />
+                  <Route path="/videos" element={<VideoPage />} />
                 </Routes>
               </ErrorBoundary>
             </Suspense>

@@ -231,6 +231,7 @@ export default function Home() {
           onOpenFilters={openFilters}
           activeFilterCount={activeFilterCount}
           onSearchFocus={() => setFilterSheetOpen(false)}
+          onOpenVideos={() => navigate('/videos')}
         />
       </div>
 

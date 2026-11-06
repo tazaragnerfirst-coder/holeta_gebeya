@@ -47,6 +47,10 @@ body{margin:0;font-family:var(--font-ui);background:var(--bg-app);color:var(--in
 .section-title{display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;margin:20px 0 10px;color:var(--ink);}
 
 .search-header{position:relative;}
+.search-row{display:flex;align-items:center;gap:10px;}
+.search-row .search-bar{flex:1;min-width:0;}
+.video-btn{display:flex;align-items:center;justify-content:center;width:40px;height:40px;flex:0 0 auto;padding:0;border:none;border-radius:12px;background:transparent;color:var(--tg-accent);cursor:pointer;}
+.video-btn:active{background:var(--tg-active);}
 .search-bar{display:flex;align-items:center;gap:9px;background:var(--tg-search);border:none;border-radius:100px;padding:13px 16px;box-shadow:none;transition:background .15s,box-shadow .15s;}
 .search-bar input{border:none;outline:none;flex:1;background:transparent;font-size:14px;font-family:var(--font-ui);color:var(--ink);min-width:0;}
 .search-bar input::placeholder{color:var(--ink-faint);}

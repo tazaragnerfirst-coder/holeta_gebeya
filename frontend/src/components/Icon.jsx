@@ -36,6 +36,34 @@ import {
   Gift, Ticket, Tag, Money,
 } from '@phosphor-icons/react';
 
+// Custom icon (not in Phosphor): two stacked video cards — a front card
+// with a play triangle over a partly-visible back card. Takes the same
+// props as the Phosphor components below so <Icon name="videoStack" />
+// behaves like every other icon (size / className / style / color).
+function VideoStack({ size = 20, className = '', style, color = 'currentColor', weight, ...rest }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="240 200 300 320"
+      width={size}
+      height={size}
+      fill="none"
+      stroke={color}
+      strokeWidth="16"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      style={style}
+      aria-hidden="true"
+      {...rest}
+    >
+      <path d="M458 233 H488 A30 30 0 0 1 518 263 V461 A30 30 0 0 1 488 491 H458" />
+      <rect x="265" y="221" width="190" height="278" rx="38" />
+      <polygon points="338,325 399,360 338,395" fill={color} stroke="none" />
+    </svg>
+  );
+}
+
 // Icon set: Phosphor (regular/outline weight) — swapped in from
 // lucide-react per Taza's request after two repeat gaps: the
 // verification badge (shieldLock) read as a generic padlock rather
@@ -127,6 +155,7 @@ const COMPONENTS = {
   tiktok: TiktokLogo,
   instagram: InstagramLogo,
   whatsapp: WhatsappLogo,
+  videoStack: VideoStack,
 
   // Marketplace category-icon set (#hog054) — see import comment above.
   // Keys here are what admin's category Icon field / picker use.
