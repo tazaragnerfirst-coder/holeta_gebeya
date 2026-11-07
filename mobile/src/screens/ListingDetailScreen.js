@@ -89,8 +89,12 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
     if (item.sellerId) {
       getSellerRating(item.sellerId).then((r) => { setSellerRating(r); setCached(`sellerRating:${item.sellerId}`, r); }).catch(() => {});
     }
-    fetchSimilar(item).then((d) => { setSimilar(d); setCached(`similar:${item.id}`, d); }).catch(() => {});
   }, [item.id, item.sellerId]);
+
+  useEffect(() => {
+    if (!item.category) return;
+    fetchSimilar(item).then((d) => { setSimilar(d); setCached(`similar:${item.id}`, d); }).catch(() => {});
+  }, [item.id, item.category]);
 
   async function toggleFavorite() {
     if (!uid || favBusy) return;
@@ -118,26 +122,25 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
       logContactClick(item.sellerId, item.id);
       const chatId = chatIdFor(item.sellerId, uid);
       const existing = await getChat(chatId);
+      const listingContext = {
+        listingId: item.id,
+        listingTitle: item.title,
+        listingPhoto: item.images?.[0] || '',
+        listingPrice: item.price,
+        listingPriceType: item.priceType || 'fixed',
+        sellerId: item.sellerId,
+        sellerName: item.sellerName || 'Seller',
+        sellerPhoto: item.sellerPhoto || '',
+      };
       if (existing) {
-        // Reopening an existing thread about a possibly-different listing:
-        // ChatThreadScreen doesn't yet re-attach a new listing to a live
-        // chat (web's pendingListing flow — see #app004), so just open it
-        // as-is rather than risk overwriting the chat doc.
-        onOpenChat(existing);
+        // Reopening an existing thread: ChatThreadScreen attaches this listing
+        // with the next message if it's a different item (web's pendingListing).
+        onOpenChat({ ...existing, pendingListing: listingContext });
       } else {
         onOpenChat({
           id: chatId, buyerId: uid, sellerId: item.sellerId,
-          sellerName: item.sellerName || 'Seller', listingTitle: item.title,
-          draft: {
-            listingId: item.id,
-            listingTitle: item.title,
-            listingPhoto: item.images?.[0] || '',
-            listingPrice: item.price,
-            listingPriceType: item.priceType || 'fixed',
-            sellerId: item.sellerId,
-            sellerName: item.sellerName || 'Seller',
-            sellerPhoto: item.sellerPhoto || '',
-          },
+          sellerName: item.sellerName || 'Seller', sellerPhoto: item.sellerPhoto || '', listingTitle: item.title,
+          draft: listingContext,
         });
       }
     } catch (err) {

@@ -30,6 +30,20 @@ export function subscribeMessages(chatId, onData, onError) {
   );
 }
 
+// Live chat doc (names, photos, current listing) — web ChatThread's onSnapshot on chats/{id}.
+export function subscribeChat(chatId, onData, onError) {
+  return onSnapshot(
+    doc(db, 'chats', chatId),
+    (snap) => { if (snap.exists()) onData(snap.data()); },
+    (err) => onError && onError(err),
+  );
+}
+
+// Best-effort partial update of the chat doc (profile name/photo self-heal).
+export function patchChat(chatId, patch) {
+  return updateDoc(doc(db, 'chats', chatId), patch).catch(() => {});
+}
+
 // Clears this user's unread state for the chat (same as ChatThread.jsx).
 export function markChatRead(chatId, uid) {
   return updateDoc(doc(db, 'chats', chatId), {
@@ -74,14 +88,17 @@ export async function openSupportChat(uid, buyerName) {
 // Sends a text message. For a draft (brand-new thread opened from a
 // listing) the chat doc is created first, with the listing attached,
 // the same way the web ChatThread does on the first send.
-export async function sendChatMessage({ chatId, chat, uid, text, senderName, buyerProfile }) {
+export async function sendChatMessage({ chatId, chat, uid, text, senderName, buyerProfile, pendingListing }) {
   const outgoing = text.trim();
   if (!outgoing) return;
   const chatRef = doc(db, 'chats', chatId);
   const recipientUid = chat.buyerId === uid ? chat.sellerId : chat.buyerId;
 
+  // Listing to attach with this message: the brand-new draft, or (web's
+  // pendingListing) a different item for an already-existing thread.
+  const d = chat.draft || pendingListing || null;
+
   if (chat.draft) {
-    const d = chat.draft;
     await setDoc(chatRef, {
       listingId: d.listingId,
       listingTitle: d.listingTitle,
@@ -98,6 +115,16 @@ export async function sendChatMessage({ chatId, chat, uid, text, senderName, buy
       createdAt: serverTimestamp(),
       lastMessageAt: serverTimestamp(),
     });
+  } else if (pendingListing) {
+    // Existing thread reopened about a different item: refresh the listing it points to.
+    await updateDoc(chatRef, {
+      listingId: d.listingId,
+      listingTitle: d.listingTitle,
+      listingPhoto: d.listingPhoto || '',
+    });
+  }
+
+  if (d) {
     await addDoc(collection(db, 'chats', chatId, 'messages'), {
       senderId: uid,
       type: 'listing',
@@ -131,7 +158,7 @@ export async function sendChatMessage({ chatId, chat, uid, text, senderName, buy
       body: JSON.stringify({
         recipientUid,
         senderName: senderName || 'Someone',
-        listingTitle: chat.listingTitle || chat.draft?.listingTitle,
+        listingTitle: d?.listingTitle || chat.listingTitle,
         text: outgoing,
         chatId,
       }),

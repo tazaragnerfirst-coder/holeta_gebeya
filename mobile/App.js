@@ -164,7 +164,7 @@ function AppShell({ user }) {
           />
         );
       case 'chat':
-        return <ChatThreadScreen chat={top.params.chat} onBack={pop} />;
+        return <ChatThreadScreen chat={top.params.chat} onBack={pop} onOpenListing={openListing} />;
       case 'favorites':
         return <FavoritesScreen onBack={pop} onOpen={openListing} />;
       case 'editInfo':
@@ -210,7 +210,7 @@ function AppShell({ user }) {
   } else if (top) {
     screen = renderTop();
   } else if (tab === 'chats') {
-    screen = <ChatListScreen onOpen={openChat} />;
+    screen = <ChatListScreen onOpen={openChat} onOpenSupport={openSupport} />;
   } else if (tab === 'dashboard') {
     screen = (
       <DashboardScreen
