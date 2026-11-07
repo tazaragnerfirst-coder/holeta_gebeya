@@ -74,7 +74,6 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
   const [lightbox, setLightbox] = useState(null); // index or null
   const [activeSlide, setActiveSlide] = useState(0);
 
-  const isMine = !!uid && item.sellerId === uid;
   // null = trust the live `favorites`; set on tap so the icon flips instantly
   // (same as web), cleared once live data confirms it or reverted on failure.
   const [optimisticFav, setOptimisticFav] = useState(null);
@@ -329,7 +328,7 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
           </View>
         </View>
 
-        {!isMine && item.sellerId ? (
+        {item.sellerId ? (
           <View style={styles.sellerRow}>
             <View style={styles.sellerAvatar}>
               {item.sellerPhoto ? (
@@ -387,7 +386,7 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
         <View style={[styles.section, styles.reviewsSection]}>
           <View style={styles.reviewsHead}>
             <Text style={styles.sectionTitle}>Ratings & Reviews</Text>
-            {!isMine && uid ? (
+            {uid ? (
               <Pressable onPress={() => setReviewOpen(true)} accessibilityRole="button">
                 <Text style={styles.link}>Leave a review</Text>
               </Pressable>
@@ -428,7 +427,7 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
         ) : null}
       </ScrollView>
 
-      {!isMine && uid && item.sellerId ? (
+      {uid && item.sellerId ? (
         <View style={styles.actionBar} pointerEvents="box-none">
           <Pressable onPress={startCall} disabled={callBusy} accessibilityRole="button" style={[styles.outlineButton, callBusy && styles.disabled]}>
             <Icon name="phone" size={16} color={colors.ink} />
