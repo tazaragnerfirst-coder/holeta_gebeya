@@ -155,6 +155,7 @@ function AppShell({ user }) {
       case 'listing':
         return (
           <ListingDetailScreen
+            key={top.params.item.id}
             item={top.params.item}
             onBack={pop}
             onOpen={openListing}

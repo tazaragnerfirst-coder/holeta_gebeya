@@ -7,6 +7,7 @@ import { auth, BACKEND_URL, db } from '../lib/firebase';
 import { formatPriceParts } from '../lib/listings';
 import { chatIdFor, getChat } from '../lib/chat';
 import { setFavorite } from '../lib/favorites';
+import { getCached, setCached } from '../lib/pageCache';
 import { useAppData } from '../lib/appData';
 import {
   bumpListingViews, conditionTone, fetchSimilar, isSellerVerified, logContactClick, logListingView,
@@ -66,28 +67,41 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
   const [reportBusy, setReportBusy] = useState(false);
   const [reportError, setReportError] = useState('');
   const [reportDone, setReportDone] = useState(false);
-  const [reviews, setReviews] = useState([]);
-  const [sellerRating, setSellerRating] = useState({ avg: 0, count: 0 });
-  const [similar, setSimilar] = useState([]);
+  const [reviews, setReviews] = useState(() => getCached(`reviews:${initialItem.id}`) || []);
+  const [sellerRating, setSellerRating] = useState(() => getCached(`sellerRating:${initialItem.sellerId}`) || { avg: 0, count: 0 });
+  const [similar, setSimilar] = useState(() => getCached(`similar:${initialItem.id}`) || []);
+  const carouselRef = useRef(null);
   const [lightbox, setLightbox] = useState(null); // index or null
   const [activeSlide, setActiveSlide] = useState(0);
 
   const isMine = !!uid && item.sellerId === uid;
-  const isFavorited = favorites.some((f) => f.listingId === item.id);
+  // null = trust the live `favorites`; set on tap so the icon flips instantly
+  // (same as web), cleared once live data confirms it or reverted on failure.
+  const [optimisticFav, setOptimisticFav] = useState(null);
+  const realFavorited = favorites.some((f) => f.listingId === item.id);
+  const isFavorited = optimisticFav !== null ? optimisticFav : realFavorited;
 
   useEffect(() => {
-    fetchListingReviews(item.id).then(setReviews).catch(() => {});
-    if (item.sellerId) getSellerRating(item.sellerId).then(setSellerRating).catch(() => {});
-    fetchSimilar(item).then(setSimilar).catch(() => {});
+    if (optimisticFav !== null && realFavorited === optimisticFav) setOptimisticFav(null);
+  }, [realFavorited]);
+
+  useEffect(() => {
+    fetchListingReviews(item.id).then((d) => { setReviews(d); setCached(`reviews:${item.id}`, d); }).catch(() => {});
+    if (item.sellerId) {
+      getSellerRating(item.sellerId).then((r) => { setSellerRating(r); setCached(`sellerRating:${item.sellerId}`, r); }).catch(() => {});
+    }
+    fetchSimilar(item).then((d) => { setSimilar(d); setCached(`similar:${item.id}`, d); }).catch(() => {});
   }, [item.id, item.sellerId]);
 
   async function toggleFavorite() {
     if (!uid || favBusy) return;
     const willFavorite = !isFavorited;
+    setOptimisticFav(willFavorite);
     setFavBusy(true);
     try {
       await setFavorite(uid, item, isFavorited);
     } catch (err) {
+      setOptimisticFav(null);
       Alert.alert("Couldn't update favorites", err.message || 'Please try again.');
     } finally {
       setFavBusy(false);
@@ -154,7 +168,10 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
     try {
       const fresh = await saveReview(item, { rating, comment });
       setReviews(fresh);
-      if (item.sellerId) getSellerRating(item.sellerId).then(setSellerRating).catch(() => {});
+      setCached(`reviews:${item.id}`, fresh);
+      if (item.sellerId) {
+        getSellerRating(item.sellerId).then((r) => { setSellerRating(r); setCached(`sellerRating:${item.sellerId}`, r); }).catch(() => {});
+      }
       setReviewOpen(false);
     } catch (err) {
       setReviewError(err.message || "Couldn't submit your review.");
@@ -179,8 +196,13 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
 
   async function share() {
     try {
-      await Share.share({ message: `${BACKEND_URL}/share/${item.id}` });
+      await Share.share({ title: item.title || 'Holeta Gebeya listing', message: `${BACKEND_URL}/share/${item.id}` });
     } catch {}
+  }
+
+  function goTo(i) {
+    carouselRef.current?.scrollTo({ x: i * SCREEN_W, animated: true });
+    setActiveSlide(i);
   }
 
   const photos = useMemo(() => (item.images?.length ? item.images : (item.photo ? [item.photo] : [])), [item.images, item.photo]);
@@ -192,6 +214,7 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
   const boosted = item.boostedUntil && (typeof item.boostedUntil.toMillis === 'function' ? item.boostedUntil.toMillis() : item.boostedUntil) > Date.now();
   const tone = conditionTone(item.condition);
   const sellerInitial = (item.sellerName || 'S').charAt(0).toUpperCase();
+  const attrEntries = Object.entries(item.attributes || {}).filter(([, v]) => v !== '' && v !== undefined && v !== null);
 
   if (notFound) {
     return (
@@ -221,6 +244,7 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
           {photos.length ? (
             <>
               <ScrollView
+                ref={carouselRef}
                 horizontal pagingEnabled showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={(e) => setActiveSlide(Math.round(e.nativeEvent.contentOffset.x / SCREEN_W))}
               >
@@ -250,7 +274,19 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
               <Text style={[styles.conditionText, toneTextStyle(tone)]}>{item.condition}</Text>
             </View>
           ) : null}
+        </View>
 
+        {photos.length > 1 ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip} contentContainerStyle={{ gap: 6, paddingHorizontal: 14 }}>
+            {photos.map((p, i) => (
+              <Pressable key={i} onPress={() => goTo(i)} style={[styles.thumb, i === activeSlide && styles.thumbActive]}>
+                <Image source={{ uri: p }} style={styles.thumbImg} />
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : null}
+
+        <View style={styles.heroFooter}>
           <Pressable onPress={share} style={[styles.roundBtn, styles.shareBtn]} accessibilityRole="button" accessibilityLabel="Share">
             <Icon name="share" size={15} color={colors.inkFaint} />
           </Pressable>
@@ -263,19 +299,6 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
               <Icon name="bookmark" size={15} weight={isFavorited ? 'fill' : 'regular'} color={isFavorited ? '#fff' : colors.inkFaint} />
             </Pressable>
           ) : null}
-        </View>
-
-        {photos.length > 1 ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.thumbStrip} contentContainerStyle={{ gap: 6, paddingHorizontal: 14 }}>
-            {photos.map((p, i) => (
-              <Pressable key={i} onPress={() => setLightbox(i)} style={[styles.thumb, i === activeSlide && styles.thumbActive]}>
-                <Image source={{ uri: p }} style={styles.thumbImg} />
-              </Pressable>
-            ))}
-          </ScrollView>
-        ) : null}
-
-        <View style={styles.section}>
           <Text style={styles.title}>{item.title || 'Untitled'}</Text>
           <Text style={styles.price}>
             {price.text}{price.currency ? <Text style={styles.priceEtb}> ETB</Text> : null}
@@ -321,18 +344,15 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
                 {isSellerVerified(item) ? <Icon name="shieldLock" size={13} weight="fill" color={colors.primary} /> : null}
               </View>
               <View style={styles.sellerMeta}>
-                {sellerRating.count > 0 ? (
-                  <>
-                    <StarRow value={sellerRating.avg} size={12} />
-                    <Text style={styles.sellerMetaText}>{sellerRating.avg.toFixed(1)} ({sellerRating.count})</Text>
-                  </>
-                ) : (
-                  <Text style={styles.sellerMetaText}>No ratings yet</Text>
-                )}
+                <StarRow value={sellerRating.avg} size={12} />
+                <Text style={styles.sellerMetaText}>
+                  {sellerRating.count ? `${sellerRating.avg.toFixed(1)} (${sellerRating.count})` : 'No ratings yet'}
+                </Text>
               </View>
               {onOpenStore ? (
-                <Pressable onPress={() => onOpenStore(item.sellerId)} accessibilityRole="button">
-                  <Text style={styles.visitStore}>Visit Store ›</Text>
+                <Pressable onPress={() => onOpenStore(item.sellerId)} accessibilityRole="button" style={styles.visitStoreRow}>
+                  <Text style={styles.visitStore}>Visit Store</Text>
+                  <Icon name="chevronRight" size={11} color={colors.primary} />
                 </Pressable>
               ) : null}
             </View>
@@ -343,9 +363,9 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
           </View>
         ) : null}
 
-        {item.attributes && Object.keys(item.attributes).length > 0 ? (
+        {attrEntries.length > 0 ? (
           <View style={styles.attrList}>
-            {Object.entries(item.attributes).map(([k, v], i, arr) => (
+            {attrEntries.map(([k, v], i, arr) => (
               <View key={k} style={[styles.attrRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
                 <Text style={styles.attrKey}>{k}</Text>
                 <Text style={styles.attrValue}>{String(v)}</Text>
@@ -364,13 +384,6 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
           ) : null}
         </View>
 
-        {reportDone ? (
-          <View style={styles.okBanner}>
-            <Icon name="check" size={14} color={colors.primary} />
-            <Text style={styles.okBannerText}>Thanks — our team will review this listing.</Text>
-          </View>
-        ) : null}
-
         <View style={[styles.section, styles.reviewsSection]}>
           <View style={styles.reviewsHead}>
             <Text style={styles.sectionTitle}>Ratings & Reviews</Text>
@@ -382,21 +395,21 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
           </View>
           {reviews.length === 0 ? (
             <Text style={styles.noReviews}>No reviews yet — be the first to rate this seller.</Text>
-          ) : reviews.slice(0, 3).map((r) => (
-            <View key={r.id} style={styles.reviewItem}>
+          ) : reviews.slice(0, 3).map((r, i, arr) => (
+            <View key={r.id} style={[styles.reviewItem, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
               <View style={styles.reviewTop}>
                 <Text style={styles.reviewName}>{r.buyerName || 'Buyer'}</Text>
                 <Text style={styles.reviewDate}>{timeAgo(r.createdAt)}</Text>
               </View>
               <StarRow value={r.rating} size={12} />
-              <Text style={styles.reviewComment}>{r.comment}</Text>
+              {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
             </View>
           ))}
         </View>
 
         {similar.length > 0 ? (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>You might also like</Text>
+            <Text style={styles.similarTitle}>You might also like</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 11, paddingTop: 10 }}>
               {similar.map((s) => (
                 <View key={s.id} style={{ width: 152 }}>
@@ -406,10 +419,17 @@ export default function ListingDetailScreen({ item: initialItem, onBack, onOpen,
             </ScrollView>
           </View>
         ) : null}
+
+        {reportDone ? (
+          <View style={styles.okBanner}>
+            <Icon name="check" size={14} color={colors.primary} />
+            <Text style={styles.okBannerText}>Thanks — our team will review this listing.</Text>
+          </View>
+        ) : null}
       </ScrollView>
 
       {!isMine && uid && item.sellerId ? (
-        <View style={styles.actionBar}>
+        <View style={styles.actionBar} pointerEvents="box-none">
           <Pressable onPress={startCall} disabled={callBusy} accessibilityRole="button" style={[styles.outlineButton, callBusy && styles.disabled]}>
             <Icon name="phone" size={16} color={colors.ink} />
             <Text style={styles.outlineText}>{callBusy ? 'Loading…' : 'Call'}</Text>
@@ -469,11 +489,11 @@ const styles = StyleSheet.create({
     width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,.85)',
     alignItems: 'center', justifyContent: 'center',
   },
-  content: { paddingBottom: 110 },
+  content: { paddingBottom: 90 },
   notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   notFoundText: { fontFamily: font.familyMedium, fontSize: 14, color: colors.inkSoft, textAlign: 'center' },
   carouselWrap: { position: 'relative' },
-  slide: { width: SCREEN_W, aspectRatio: 1, backgroundColor: colors.surfaceSunken },
+  slide: { width: SCREEN_W, height: 300, backgroundColor: colors.surfaceSunken },
   slideImg: { width: '100%', height: '100%' },
   noPhoto: { alignItems: 'center', justifyContent: 'center' },
   countBadge: {
@@ -482,30 +502,31 @@ const styles = StyleSheet.create({
   },
   countBadgeText: { color: '#fff', fontFamily: font.familyBold, fontSize: 11 },
   badgeBoost: {
-    position: 'absolute', top: 8, left: 8, width: 24, height: 24, borderRadius: 12,
+    position: 'absolute', top: Platform.OS === 'ios' ? 61 : 53, right: 14, width: 24, height: 24, borderRadius: 12,
     backgroundColor: 'rgba(20,22,18,.38)', alignItems: 'center', justifyContent: 'center',
   },
-  conditionBadge: { position: 'absolute', top: 8, left: 8, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 100 },
+  conditionBadge: { position: 'absolute', top: Platform.OS === 'ios' ? 61 : 53, right: 14, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 100 },
   conditionText: { fontFamily: font.familyExtraBold, fontSize: 9 },
   roundBtn: {
-    position: 'absolute', top: 14, width: 32, height: 32, borderRadius: 16,
+    position: 'absolute', top: 14, zIndex: 1, width: 32, height: 32, borderRadius: 16,
     backgroundColor: colors.surfaceSunken, alignItems: 'center', justifyContent: 'center',
   },
   shareBtn: { right: 54 },
   saveBtn: { right: 14 },
   saveBtnActive: { backgroundColor: colors.accentDark },
-  thumbStrip: { marginTop: 8 },
+  thumbStrip: { paddingVertical: 8 },
   thumb: { width: 34, height: 34, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'transparent', opacity: 0.65 },
   thumbActive: { borderColor: colors.primary, opacity: 1 },
   thumbImg: { width: '100%', height: '100%' },
   section: { paddingHorizontal: 16, paddingTop: 16 },
-  title: { fontFamily: font.familySemiBold, fontSize: 16, color: colors.ink, lineHeight: 22 },
+  heroFooter: { position: 'relative', paddingTop: 16, paddingRight: 96, paddingBottom: 12, paddingLeft: 16, backgroundColor: 'rgba(255,255,255,.66)' },
+  title: { fontFamily: font.familyBold, fontSize: 16, color: colors.ink, lineHeight: 22 },
   price: { marginTop: 4, fontFamily: font.familyExtraBold, fontSize: 20, letterSpacing: -0.2, color: colors.primary },
   priceEtb: { fontFamily: font.familyBold, fontSize: 11, color: colors.primary, opacity: 0.7 },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 9 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', rowGap: 10, columnGap: 14, marginTop: 9 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   meta: { fontFamily: font.family, fontSize: 11.5, color: colors.inkFaint },
-  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 16 },
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 12 },
   sellerAvatar: {
     width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primaryTint,
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
@@ -517,11 +538,12 @@ const styles = StyleSheet.create({
   sellerName: { fontFamily: font.familyBold, fontSize: 13, color: colors.ink },
   sellerMeta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 },
   sellerMetaText: { fontFamily: font.family, fontSize: 11, color: colors.inkFaint },
-  visitStore: { marginTop: 4, fontFamily: font.familyBold, fontSize: 11.5, color: colors.primary },
+  visitStoreRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 },
+  visitStore: { fontFamily: font.familyBold, fontSize: 11.5, color: colors.primary },
   reportLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   reportText: { fontFamily: font.familyBold, fontSize: 11.5, color: colors.inkFaint },
   attrList: { marginHorizontal: 16, marginTop: 12, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md, backgroundColor: colors.surface, overflow: 'hidden' },
-  attrRow: { flexDirection: 'row', justifyContent: 'space-between', padding: 11, borderBottomWidth: 1, borderBottomColor: colors.line },
+  attrRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: colors.line },
   attrKey: { fontFamily: font.family, fontSize: 12.5, color: colors.inkFaint, textTransform: 'capitalize' },
   attrValue: { fontFamily: font.familyMedium, fontSize: 12.5, color: colors.ink },
   sectionTitle: { fontFamily: font.familyBold, fontSize: 13.5, color: colors.ink, marginBottom: 7 },
@@ -532,27 +554,30 @@ const styles = StyleSheet.create({
     marginHorizontal: 16, marginTop: 14, borderRadius: radius.md, padding: 11,
   },
   okBannerText: { fontFamily: font.familySemiBold, fontSize: 12, color: colors.primary, flex: 1 },
-  reviewsSection: { marginTop: 4 },
+  reviewsSection: { marginTop: 0 },
+  similarTitle: { fontFamily: font.familyBold, fontSize: 15, color: colors.ink, marginTop: 4 },
   reviewsHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   link: { fontFamily: font.familyBold, fontSize: 12, color: colors.primary },
   noReviews: { fontFamily: font.family, fontSize: 12.5, color: colors.inkFaint, marginTop: 6 },
-  reviewItem: { paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: colors.line },
+  reviewItem: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line },
   reviewTop: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   reviewName: { fontFamily: font.familyBold, fontSize: 12.5, color: colors.ink },
   reviewDate: { fontFamily: font.family, fontSize: 11, color: colors.inkFaint },
   reviewComment: { marginTop: 5, fontFamily: font.family, fontSize: 12.5, lineHeight: 19, color: colors.inkSoft },
   actionBar: {
-    flexDirection: 'row', gap: 10, padding: 12, paddingBottom: Platform.OS === 'ios' ? 28 : 16,
-    borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: colors.bgApp,
+    position: 'absolute', left: 0, right: 0, bottom: Platform.OS === 'ios' ? 28 : 18,
+    flexDirection: 'row', justifyContent: 'center', gap: 10, paddingHorizontal: 16,
   },
   primaryButton: {
-    flex: 2, flexDirection: 'row', gap: 7, backgroundColor: colors.primary,
-    paddingVertical: 13, borderRadius: 100, alignItems: 'center', justifyContent: 'center',
+    flexDirection: 'row', gap: 7, backgroundColor: colors.primary,
+    paddingVertical: 13, paddingHorizontal: 22, borderRadius: 100, alignItems: 'center', justifyContent: 'center',
+    elevation: 6, shadowColor: '#141612', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 8 },
   },
   primaryText: { color: colors.white, fontFamily: font.familyBold, fontSize: 14 },
   outlineButton: {
-    flex: 1, flexDirection: 'row', gap: 6, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
-    paddingVertical: 13, borderRadius: 100, alignItems: 'center', justifyContent: 'center',
+    flexDirection: 'row', gap: 6, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    paddingVertical: 13, paddingHorizontal: 22, borderRadius: 100, alignItems: 'center', justifyContent: 'center',
+    elevation: 6, shadowColor: '#141612', shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 8 },
   },
   outlineText: { color: colors.ink, fontFamily: font.familyBold, fontSize: 14 },
   disabled: { opacity: 0.6 },
