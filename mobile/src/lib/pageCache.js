@@ -16,7 +16,7 @@ const mem = new Map();
 const PREFIX = 'hg_cache:';
 const LAST_UID_KEY = 'hg_last_uid';
 const CACHE_VERSION = 1;
-const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours (listeners refresh it right after launch)
+const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (stale data only paints the first frame; listeners refresh it right after launch)
 
 let lastUid = null;
 
