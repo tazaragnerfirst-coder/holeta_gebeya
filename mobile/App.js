@@ -34,6 +34,7 @@ import DashboardScreen from './src/screens/DashboardScreen';
 import ViewsDetailScreen from './src/screens/ViewsDetailScreen';
 import ExpiredScreen from './src/screens/ExpiredScreen';
 import PostTypeScreen from './src/screens/PostTypeScreen';
+import VideoScreen from './src/screens/VideoScreen';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -185,6 +186,8 @@ function AppShell({ user }) {
         return <SettingsScreen onBack={pop} />;
       case 'privacy':
         return <PrivacyScreen onBack={pop} />;
+      case 'videos':
+        return <VideoScreen onBack={pop} />;
       case 'post':
         return <PostTypeScreen onBack={pop} />;
       case 'views':
@@ -223,7 +226,7 @@ function AppShell({ user }) {
   } else if (tab === 'profile') {
     screen = <ProfileScreen onNavigate={push} onOpenSupport={openSupport} />;
   } else {
-    screen = <HomeScreen onOpen={openListing} />;
+    screen = <HomeScreen onOpen={openListing} onOpenVideos={() => push('videos')} />;
   }
 
   const showTabs = !!user && !keyboardOpen && !(top && NAV_HIDDEN_SCREENS.includes(top.name));

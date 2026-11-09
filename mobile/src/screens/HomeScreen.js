@@ -49,7 +49,7 @@ function buildRows(items) {
 
 // Public listing feed with search, category chips and filters.
 // Browsing needs no login. Mirrors frontend/src/pages/Home.jsx.
-export default function HomeScreen({ onOpen }) {
+export default function HomeScreen({ onOpen, onOpenVideos }) {
   // Feed, categories and favorites come from the shared data layer
   // (lib/appData.js), which is already loaded — or already on screen from the
   // last visit — before this screen opens.
@@ -236,6 +236,7 @@ export default function HomeScreen({ onOpen }) {
         onClearRecent={handleClearRecent}
         filterCount={filterCount}
         onOpenFilters={(top) => { setFilterAnchor(top ?? null); setFilterOpen(true); }}
+        onOpenVideos={onOpenVideos}
       />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={styles.chipRow}>
         {chips.map((c) => {

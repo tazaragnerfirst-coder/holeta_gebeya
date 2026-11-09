@@ -9,7 +9,20 @@ import {
   ChartBar, ListBullets, Vibrate, Wallet, ArrowDown, CopySimple, ArrowsLeftRight,
   SmileySad, Sun, Moon, Monitor, Paperclip, WifiSlash, TiktokLogo, InstagramLogo, WhatsappLogo,
 } from 'phosphor-react-native';
+import Svg, { Path, Rect, Polygon } from 'react-native-svg';
 import { colors } from '../theme';
+
+// Custom icon (same drawing as VideoStack in frontend/src/components/Icon.jsx):
+// a front card with a play triangle over a partly-visible back card.
+function VideoStack({ size = 20, color = colors.inkSoft, style }) {
+  return (
+    <Svg width={size} height={size} viewBox="240 200 300 320" fill="none" style={style}>
+      <Path d="M458 233 H488 A30 30 0 0 1 518 263 V461 A30 30 0 0 1 488 491 H458" stroke={color} strokeWidth={16} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <Rect x={265} y={221} width={190} height={278} rx={38} stroke={color} strokeWidth={16} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <Polygon points="338,325 399,360 338,395" fill={color} />
+    </Svg>
+  );
+}
 
 // Same name -> glyph mapping as frontend/src/components/Icon.jsx
 // (UI subset only — category glyphs aren't needed on mobile yet).
@@ -75,6 +88,7 @@ const ICONS = {
   tiktok: TiktokLogo,
   instagram: InstagramLogo,
   whatsapp: WhatsappLogo,
+  videoStack: VideoStack,
 };
 
 export default function Icon({ name, size = 20, color = colors.inkSoft, weight = 'regular', style }) {

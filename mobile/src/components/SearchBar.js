@@ -7,7 +7,7 @@ import { colors, font, radius } from '../theme';
 // Search field with suggestions, recent searches and popular tags.
 // Mirrors frontend/src/components/SearchHeader.jsx (.search-bar pill + .filter-btn).
 export function SearchBar({
-  value, onChange, onSubmit, suggestions = [], recent = [], popularTags = [], onClearRecent, filterCount = 0, onOpenFilters,
+  value, onChange, onSubmit, suggestions = [], recent = [], popularTags = [], onClearRecent, filterCount = 0, onOpenFilters, onOpenVideos,
 }) {
   const [focused, setFocused] = useState(false);
   const barRef = useRef(null);
@@ -23,6 +23,8 @@ export function SearchBar({
 
   return (
     <View style={styles.wrap}>
+      <View style={styles.row}>
+      <View style={styles.barCol}>
       <View style={[styles.ring, focused && styles.ringOn]}>
       <View ref={barRef} style={styles.bar}>
         <Icon name="search" size={17} color={colors.inkFaint} />
@@ -61,6 +63,18 @@ export function SearchBar({
           {filterCount > 0 ? <View style={styles.filterDot} /> : null}
         </Pressable>
       </View>
+      </View>
+      </View>
+      {onOpenVideos ? (
+        <Pressable
+          onPress={() => { setFocused(false); onOpenVideos(); }}
+          style={({ pressed }) => [styles.videoBtn, pressed && styles.videoBtnPressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Videos"
+        >
+          <Icon name="videoStack" size={26} color={colors.tgAccent} />
+        </Pressable>
+      ) : null}
       </View>
 
       {typing && suggestions.length > 0 ? (
@@ -227,6 +241,11 @@ const styles = StyleSheet.create({
   // Web .search-bar: 13px/16px padding, and the focus state is a 3px ring
   // OUTSIDE the pill (box-shadow), so the ring wraps it with negative margin
   // and the bar never changes size.
+  // Web .search-row: bar (flex 1) + 40px video button, 10px gap.
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  barCol: { flex: 1, minWidth: 0 },
+  videoBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  videoBtnPressed: { backgroundColor: colors.tgActive },
   ring: { borderRadius: radius.pill, padding: 3, margin: -3 },
   ringOn: { backgroundColor: colors.tgActive },
   bar: {
